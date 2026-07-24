@@ -7,6 +7,7 @@ distance from a source expensive.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import torch
@@ -37,25 +38,50 @@ class SubstrateConfig:
     fire_rate: float = 0.5
 
     # --- metabolism (cell-side) ---
-    e_death: float = 0.10  # below this a cell is not alive
-    e_max: float = 2.0
-    e_tau: float = 0.02  # softness of the alive gate; small = closer to a hard threshold
-    maintenance: float = 0.004  # per-step cost of merely existing
-    activity_cost: float = 0.020  # per-step cost proportional to |state update|
+    # Costs are ~20x lower than the first draft. That draft's ecology could support a
+    # body of about FOUR cells (see `feasibility.py`), which is not enough for
+    # morphology of any kind to exist. Lowering cost rather than raising the field's
+    # magnitude keeps `r` at O(1), which matters because `r` is fed straight into the
+    # rule's perception alongside inputs of that scale.
+    e_death: float = 0.01  # below this a cell is not alive
+    e_max: float = 0.20
+    e_tau: float = 0.002  # softness of the alive gate; small = closer to a hard threshold
+    maintenance: float = 2e-4  # per-step cost of merely existing
+    activity_cost: float = 1e-3  # per-step cost proportional to |state update|
     uptake_rate: float = 0.35  # fraction of local resource a live cell can absorb
     e_transport: float = 0.30  # ceiling on energy sharing between adjacent body cells
-    effort_cost: float = 0.010  # absorptive machinery is not free
-    seed_energy: float = 2.0  # yolk: enough reserve to reach food before starving
+    effort_cost: float = 5e-4  # absorptive machinery is not free
+    seed_energy: float = 0.20  # yolk: enough reserve to reach food before starving
 
     # --- resource field (environment-side) ---
-    field_diffusion: float = 0.20
+    # `source_rate` is total emission per step across all sources, not per source cell;
+    # `make_sources` normalises geometries to equal supply so that a contingency test
+    # compares arrangement rather than abundance.
+    field_diffusion: float = 0.40
     field_decay: float = 0.002
-    source_rate: float = 0.060
-    field_cap: float = 1.0
+    source_rate: float = 1.00
+    field_cap: float = 4.00  # below ~4 the clamp throttles a point source and raising
+    #                          source_rate does nothing at all
+
+    # --- curriculum (see `train_m0.py`) ---
+    spread_start: float = 0.15  # sources begin near the seed...
+    spread_end: float = 0.35  # ...and walk outward to here
+    spread_frac: float = 0.6  # fraction of training spent walking them out
 
     def light_cone_ok(self, size: int, steps: int) -> bool:
         """Perception radius is 1, so information travels one cell per step."""
         return steps >= size
+
+    def spread_at(self, progress: float) -> float:
+        """Curriculum position. A seed's yolk cannot fund a 30-cell journey through
+        barren ground, so early training puts food within reach and walks it out.
+
+        `spread_end` is capped at a value verified feasible by `feasibility.py`, not at
+        1.0. Push it further only after confirming a trained rule can actually bridge
+        the gap — an infeasible final stage silently turns the last 40% of training into
+        noise."""
+        t = min(1.0, max(0.0, progress / max(self.spread_frac, 1e-9)))
+        return self.spread_start + t * (self.spread_end - self.spread_start)
 
 
 class Substrate(nn.Module):
@@ -192,7 +218,13 @@ class Substrate(nn.Module):
         effort = torch.sigmoid(x[:, self.EFFORT : self.EFFORT + 1] + self.gate_bias[0])
         conduct = torch.sigmoid(x[:, self.TRANSPORT : self.TRANSPORT + 1] + self.gate_bias[1])
 
-        uptake = (soft * cfg.uptake_rate * effort * r).clamp(max=cfg.field_cap)
+        # A cell cannot absorb more than it has room for. Without this it strips the
+        # field, keeps `e_max`, and annihilates the remainder — which both destroys
+        # energy and hides how scarce the world really is. It also creates the incentive
+        # the whole design wants: a full cell must move energy onward before it can eat
+        # again, so harvesting *requires* transport rather than merely permitting it.
+        room = (cfg.e_max - e).clamp(min=0.0)
+        uptake = torch.minimum(soft * cfg.uptake_rate * effort * r, room)
         r = (r - uptake).clamp(min=0.0)
 
         cost = (
@@ -234,7 +266,12 @@ class Substrate(nn.Module):
 
 
 def make_sources(
-    name: str, batch: int, size: int, device=None, normalize: bool = True
+    name: str,
+    batch: int,
+    size: int,
+    device=None,
+    normalize: bool = True,
+    spread: float = 1.0,
 ) -> torch.Tensor:
     """Where food comes from. Moving these and retraining is the M0 falsification test.
 
@@ -246,32 +283,49 @@ def make_sources(
     would report a confident PASS for entirely the wrong reason.
 
     Pass `normalize=False` only when abundance is deliberately the independent variable.
+
+    `spread` moves every source along the line from the seed at the centre out to its
+    full position: 0 puts food on top of the seed, 1 is the geometry as defined. This is
+    the distance curriculum ARCHITECTURE.md §M0 calls for — a seed's yolk cannot fund a
+    30-cell journey, so early training has to put food within reach and walk it outward.
     """
-    s = torch.zeros(batch, 1, size, size, device=device)
     m = size // 2
-    q = size // 4
-    if name == "center":
-        s[:, 0, m, m] = 1.0
-    elif name == "west":
-        s[:, 0, m, 2] = 1.0
-    elif name == "poles":
-        s[:, 0, 2, m] = 1.0
-        s[:, 0, size - 3, m] = 1.0
-    elif name == "corners":
-        for yy in (q, size - q):
-            for xx in (q, size - q):
-                s[:, 0, yy, xx] = 1.0
-    elif name == "ring":
-        yy, xx = torch.meshgrid(
-            torch.arange(size, device=device), torch.arange(size, device=device), indexing="ij"
-        )
-        d = ((yy - m) ** 2 + (xx - m) ** 2).float().sqrt()
-        s[:, 0] = ((d - (m - 3)).abs() < 0.7).float()
-    else:
-        raise ValueError(f"unknown source geometry: {name}")
+    pts = source_points(name, size)
+
+    s = torch.zeros(batch, 1, size, size, device=device)
+    for y, x in pts:
+        yy = min(size - 1, max(0, int(round(m + spread * (y - m)))))
+        xx = min(size - 1, max(0, int(round(m + spread * (x - m)))))
+        s[:, 0, yy, xx] = 1.0
+
     if normalize:
         s = s / s.sum(dim=(1, 2, 3), keepdim=True).clamp(min=1.0)
     return s
+
+
+def source_points(name: str, size: int) -> list[tuple[int, int]]:
+    """Source cell positions at full spread. Separated out so a curriculum can move
+    them toward the seed without each geometry needing its own special case."""
+    m, q = size // 2, size // 4
+    if name == "center":
+        return [(m, m)]
+    if name == "west":
+        return [(m, 2)]
+    if name == "poles":
+        return [(2, m), (size - 3, m)]
+    if name == "corners":
+        return [(y, x) for y in (q, size - q) for x in (q, size - q)]
+    if name == "ring":
+        rad = m - 3
+        n = max(8, int(2 * math.pi * rad * 1.5))
+        return [
+            (
+                int(round(m + rad * math.sin(2 * math.pi * i / n))),
+                int(round(m + rad * math.cos(2 * math.pi * i / n))),
+            )
+            for i in range(n)
+        ]
+    raise ValueError(f"unknown source geometry: {name}")
 
 
 # --- morphology descriptors ---------------------------------------------------

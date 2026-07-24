@@ -73,7 +73,7 @@ def rollout_frames(
     """Run a rollout and collect frames. No gradient, single sample."""
     dev = torch.device(device)
     x, r = sub.seed(1, grid, dev)
-    src = make_sources(geom, 1, grid, dev)
+    src = make_sources(geom, 1, grid, dev, spread=sub.cfg.spread_end)
     frames = [render_state(x, r, sub, scale)]
     for i in range(steps):
         x, r = sub.step(x, r, src)

@@ -26,6 +26,7 @@ import torch
 
 from . import checkpoint
 from .render import render_state, rollout_frames, to_gif
+from .feasibility import analyse, verdict as feas_verdict
 from .substrate import SubstrateConfig, descriptors, make_sources
 from .train_m0 import train
 
@@ -36,7 +37,7 @@ DEFAULT_VALUES = (0.02, 0.05, 0.10, 0.20, 0.40, 0.80)
 def _final_state(sub, geom, grid, steps, device):
     dev = torch.device(device)
     x, r = sub.seed(8, grid, dev)
-    src = make_sources(geom, 8, grid, dev)
+    src = make_sources(geom, 8, grid, dev, spread=sub.cfg.spread_end)
     x, r, _ = sub.rollout(x, r, src, steps=steps)
     return x, r
 
@@ -73,6 +74,7 @@ def sweep(
     outdir: Path = Path("runs/sweep"),
     scale: int = 4,
     gifs: bool = True,
+    want_mass: int = 300,
 ):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -82,6 +84,20 @@ def sweep(
         tag = f"d{v:g}".replace(".", "p")
         print(f"\n=== field_diffusion = {v:g} ===")
         cfg = replace(SubstrateConfig(), field_diffusion=v)
+
+        # Do not train inside a regime where nothing can live. The first version of this
+        # sweep spent 40 minutes on six values that were all unsurvivable, and returned
+        # six identical rows. This costs about a second per value.
+        feas = analyse(cfg, geom, grid, steps, spread=cfg.spread_end)
+        ok, lines = feas_verdict(feas, want_mass=want_mass)
+        for line in lines:
+            print("  " + line)
+        if not ok:
+            print(f"  SKIPPED — infeasible ecology at field_diffusion={v:g}")
+            results.append({"field_diffusion": v, "tag": tag, "skipped": True,
+                            "feasibility": feas})
+            continue
+
         sub, history = train(
             geom, iters, grid, steps, batch, lr, device,
             log=max(1, iters // 10),
@@ -92,14 +108,15 @@ def sweep(
         )
         x, r = _final_state(sub, geom, grid, steps, device)
         d = descriptors(x, sub.cfg)
-        results.append({"field_diffusion": v, "tag": tag, **d})
+        results.append({"field_diffusion": v, "tag": tag, "skipped": False,
+                        "n_max": feas["n_max"], "usable": feas["usable_cells"], **d})
         print(f"  -> {json.dumps({k: round(val, 3) for k, val in d.items()})}")
 
         panels.append(render_state(x, r, sub, scale))
         if gifs:
             to_gif(rollout_frames(sub, geom, grid, steps, device, scale), outdir / f"{tag}.gif")
 
-    sheet = contact_sheet(panels, outdir / "contact_sheet.png")
+    sheet = contact_sheet(panels, outdir / "contact_sheet.png") if panels else None
     (outdir / "sweep.json").write_text(
         json.dumps(
             {"geom": geom, "grid": grid, "steps": steps, "iters": iters,
@@ -111,6 +128,9 @@ def sweep(
     print("\n=== sweep ===")
     print(f"{'diffusion':>10}  {'mass':>8} {'compact':>8} {'gyration':>8} {'box_dim':>8}")
     for r_ in results:
+        if r_.get("skipped"):
+            print(f"{r_['field_diffusion']:>10.3g}  {'— infeasible ecology, not trained —':>44}")
+            continue
         # HANDOFF.md: below ~50 occupied cells the descriptors — box_dim especially —
         # are noise. Flag it in the table rather than trusting the reader to remember.
         flag = "  << mass<50, descriptors unreliable" if r_["mass"] < 50 else ""

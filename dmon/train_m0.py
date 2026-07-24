@@ -76,8 +76,17 @@ def train(
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, iters)
 
     pool = Pool(sub, 256, grid, dev)
-    src_pool = make_sources(geom, 256, grid, dev)
     history = []
+    # sources are rebuilt as the curriculum walks them outward; cached so we only pay
+    # for it when the spread actually changes
+    _src_cache: dict[float, torch.Tensor] = {}
+
+    def sources_at(progress: float):
+        sp = round(cfg.spread_at(progress), 3)
+        if sp not in _src_cache:
+            _src_cache.clear()
+            _src_cache[sp] = make_sources(geom, batch, grid, dev, spread=sp)
+        return _src_cache[sp], sp
 
     def _save(i):
         if ckpt is None:
@@ -94,13 +103,15 @@ def train(
                 "lr": lr,
                 "seed": seed,
                 "field_diffusion": cfg.field_diffusion,
+                "spread_end": cfg.spread_end,
                 "history": history,
             },
         )
 
     for i in range(iters):
         idx, x, r = pool.sample(batch)
-        src = src_pool[: x.shape[0]]
+        src, spread = sources_at(i / max(1, iters - 1))
+        src = src[: x.shape[0]]
         n = int(torch.randint(steps // 2, steps + 1, (1,)).item())
         x, r, mass = sub.rollout(x, r, src, steps=n)
 
@@ -117,7 +128,7 @@ def train(
             history.append({"iter": i, **d})
             print(
                 f"[{i:5d}] mass={d['mass']:7.1f} compact={d['compactness']:5.2f} "
-                f"gyr={d['gyration']:5.2f} dim={d['box_dim']:5.2f}"
+                f"gyr={d['gyration']:5.2f} dim={d['box_dim']:5.2f} spread={spread:4.2f}"
             )
         if ckpt is not None and (i + 1) % ckpt_every == 0:
             _save(i)
@@ -130,9 +141,12 @@ def train(
 
 @torch.no_grad()
 def evaluate(sub: Substrate, geom: str, grid: int, steps: int, device: str, reps: int = 8):
+    """Evaluated at the curriculum's *final* spread — the world the rule was last
+    trained in. Evaluating at spread 1.0 would score every rule on an ecology it never
+    saw and that `feasibility.py` says is unsurvivable."""
     dev = torch.device(device)
     x, r = sub.seed(reps, grid, dev)
-    src = make_sources(geom, reps, grid, dev)
+    src = make_sources(geom, reps, grid, dev, spread=sub.cfg.spread_end)
     x, r, _ = sub.rollout(x, r, src, steps=steps)
     return descriptors(x, sub.cfg)
 

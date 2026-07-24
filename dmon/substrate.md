@@ -107,5 +107,21 @@ two pressures alone are enough to produce shape.
 - **Light-cone constraint**: perception radius is 1, so `steps ≥ grid` for information
   to cross the field. `SubstrateConfig.light_cone_ok` checks this. Violating it is the
   single most likely cause of a mysteriously featureless result.
-- `e_max = 2.0` and `seed_energy = 2.0` means the seed starts full — the yolk is just
+- `e_max = 0.2` and `seed_energy = 0.2` means the seed starts full — the yolk is just
   a full tank, not a special case.
+- **The cost scale was recalibrated ~20x down.** The first draft's ecology could support
+  a body of about *four cells* (`feasibility.py` computes this in a second; nobody ran
+  it, and a 40-minute sweep was spent inside that regime). Cost came down rather than
+  the field's magnitude going up, because `r` is fed straight into the rule's perception
+  alongside O(1) inputs and a field ranging to 100 would wreck the conditioning.
+  **Every metabolic constant tuned before this is void.**
+- **Uptake is capped by remaining capacity** (`e_max - e`). Without it a cell near a
+  source strips 1.4/step from the field, keeps 0.2, and annihilates the rest — which
+  destroys energy and hides how scarce the world is. It also supplies the incentive the
+  whole design wants: a full cell has to move energy onward before it can eat again, so
+  harvesting *requires* transport rather than merely permitting it.
+- **`spread` and the curriculum**: `SubstrateConfig.spread_at()` walks sources outward
+  from the seed during training. `spread_end` defaults to 0.35 because that is the
+  furthest position `feasibility.py` certifies as survivable, *not* because 1.0 was
+  aesthetically rejected. Raise it only after confirming a trained rule can bridge the
+  gap.

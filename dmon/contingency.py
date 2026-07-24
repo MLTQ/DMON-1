@@ -43,7 +43,7 @@ def descriptor_vector(sub: Substrate, geom: str, grid: int, steps: int, device: 
     """Mean descriptor vector for one rule under one geometry. Returns a (4,) tensor."""
     dev = torch.device(device)
     x, r = sub.seed(reps, grid, dev)
-    src = make_sources(geom, reps, grid, dev)
+    src = make_sources(geom, reps, grid, dev, spread=sub.cfg.spread_end)
     x, r, _ = sub.rollout(x, r, src, steps=steps)
     d = descriptors_per_sample(x, sub.cfg)
     return torch.stack([d[k].mean() for k in KEYS]).cpu()

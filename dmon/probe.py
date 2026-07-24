@@ -57,7 +57,7 @@ def run_probe(
     """Grow → hold fed → ramp source to zero → hold starved. Records every step."""
     dev = torch.device(device)
     x, r = sub.seed(reps, grid, dev)
-    src = make_sources(geom, reps, grid, dev)
+    src = make_sources(geom, reps, grid, dev, spread=sub.cfg.spread_end)
 
     trace: dict[str, list] = {k: [] for k in KEYS}
     trace["energy"] = []
