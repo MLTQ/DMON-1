@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# run outputs: checkpoints, gifs, probe json. Regenerable, and large.
+runs/
+
+# beads local db (jsonl is the source of truth)
+.beads/beads.db
