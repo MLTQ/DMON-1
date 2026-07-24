@@ -48,6 +48,21 @@ not a scalar — a run with high mass and no structure is a failure, not a good 
 | `render.py` | `render_state`, `rollout_frames`, `to_gif` | Signatures |
 | next step | `runs/sweep/sweep.json` carries per-value descriptors | Schema |
 
+## Known limitation
+
+**The curriculum endpoint is held fixed while diffusion varies, and that is a
+confound.** `spread_end` was chosen feasible at `field_diffusion=0.4`, so lower values
+fail REACH — food cannot cross the 10 cells to the seed — and get skipped. That is a
+true statement about the physics (it is precisely the "too slow, only cells touching a
+source survive" end of the band `ARCHITECTURE.md` §M0 predicts), but it means this sweep
+answers *"which diffusion values admit life at this geometry"* rather than *"what shape
+does each diffusion value produce"*.
+
+The fairer follow-up co-varies `spread_end` with `D` — keep sources at the edge of the
+diffusive reach `2√(D·T)` — so every value gets a survivable world and the comparison is
+about morphology instead of about arrival. Run that before concluding anything about
+shape versus diffusion.
+
 ## Notes
 
 - 6 values × 4k iters ≈ 40 min on the 4090 at 64×64/64 steps/batch 32 (0.097 s/iter,
