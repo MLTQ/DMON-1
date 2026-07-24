@@ -111,9 +111,12 @@ def sweep(
     print("\n=== sweep ===")
     print(f"{'diffusion':>10}  {'mass':>8} {'compact':>8} {'gyration':>8} {'box_dim':>8}")
     for r_ in results:
+        # HANDOFF.md: below ~50 occupied cells the descriptors — box_dim especially —
+        # are noise. Flag it in the table rather than trusting the reader to remember.
+        flag = "  << mass<50, descriptors unreliable" if r_["mass"] < 50 else ""
         print(
             f"{r_['field_diffusion']:>10.3g}  {r_['mass']:>8.1f} {r_['compactness']:>8.2f} "
-            f"{r_['gyration']:>8.2f} {r_['box_dim']:>8.2f}"
+            f"{r_['gyration']:>8.2f} {r_['box_dim']:>8.2f}{flag}"
         )
     print(f"\ncontact sheet: {sheet}")
     print("Panels are left-to-right in the order above. Read the sheet before the table:")
