@@ -32,13 +32,11 @@ different bodies.
 - **Rationale**: the probe and renderer both consume checkpoints, and a 20k-iteration
   run that cannot be resumed or re-examined is a run you have to repeat.
 
-### `contingency`
-- **Does**: Trains one rule per geometry, cross-evaluates each rule under every other
-  geometry, reports between-geometry spread.
-- **Rationale**: Cross-evaluation separates two very different outcomes — a rule that
-  *learned a shape* will carry it to a new field, whereas a rule that learned to
-  *respond to gradients* will produce a different body there. The second is what M0
-  is looking for.
+### `contingency` — **moved to `contingency.py`**
+- The version that lived here could not fail, in two separate ways: no noise-floor
+  baseline, and cross-evaluation results computed then discarded. Both are fixed in
+  `contingency.py`, which also keeps the trainer from being the thing that grades
+  itself. See `contingency.md`.
 
 ## Decisions
 
@@ -54,25 +52,11 @@ different bodies.
 
 | Dependent | Expects | Breaking changes |
 |-----------|---------|------------------|
-| CLI | `--geom --iters --grid --steps --batch --lr --device --contingency` | Flag names |
-| `PROJECT.md` M0 | contingency spread reported against within-geometry noise | Metric definition |
+| CLI | `--geom --iters --grid --steps --batch --lr --device --ckpt --seed --log` | Flag names |
+| `contingency.py`, `sweep.py` | `train(..., seed=, cfg=)` returns `(sub, history)` | Signature |
 
 ## Notes
 
-- **The contingency test is incomplete as written, in two separate ways.**
-  1. It reports between-geometry spread but does not measure the within-geometry
-     baseline that spread must exceed. A test that cannot fail is not a test.
-     **That baseline must come from independent *training* runs** — 5 seeds × 4
-     geometries = 20 runs, not 4 — because re-evaluating one rule only samples firing
-     jitter (see `evaluate` above), which will give a floor far too low to fail against.
-     `--seed` exists for this.
-  2. The cross-evaluation results are computed (`results[g][h]`) and then **never used**
-     — `spread` is taken only over the `self` entries. Cross-evaluation is the half that
-     catches the *dangerous* failure, a rule that memorised a shape and ignores the
-     field. Currently it is collected and discarded.
-- **Record the whole descriptor point cloud, not just the verdict.** Its dimensionality
-  is what the bridge to M3 rests on; see `ARCHITECTURE.md` §M0. It costs one array and
-  an SVD on a run that has to happen anyway.
 - **The light cone binds on the eval horizon.** Training samples rollout length from
   `[steps//2, steps]`, so roughly half of all training rollouts violate it by design —
   that is a curriculum and is fine. `train()` warns if `steps < grid`.

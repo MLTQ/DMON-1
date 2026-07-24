@@ -22,25 +22,35 @@ hypothesis of the project is completely untested.
 
 ## Do this first, in this order
 
-1. **Fix the contingency test.** `contingency()` in `train_m0.py` reports
-   between-geometry spread but never measures within-geometry seed noise — the
-   baseline that spread has to exceed. As written **the test cannot fail**, which
-   makes it a demo rather than an experiment. Run ≥5 seeds per geometry, compute the
-   noise floor, and only then compare. Nothing else in this project is worth doing
-   until this is right.
+1. ~~**Fix the contingency test.**~~ Done — `dmon/contingency.py`. The noise floor now
+   comes from independent *training* runs (`--seeds`), cross-evaluation is used rather
+   than discarded, and the verdict refuses to divide by a degenerate noise floor.
 
 2. **Sweep diffusion length before anything else.** `field_diffusion` relative to grid
    diameter is the knob that decides whether M0 can work at all. Too fast → uniform
    field → no gradient → blob. Too slow → only cells touching a source survive. There
    is a Goldilocks band and you need to find it before interpreting any morphology.
+   `python -m dmon.sweep` — ~40 min on the 4090 at a 4k-iteration screening budget.
 
 3. **Verify the light cone.** `steps ≥ grid` (perception radius is 1, so information
-   moves one cell per step). `SubstrateConfig.light_cone_ok()` checks it. If you scale
-   the grid without scaling steps, the far side of the field is causally unreachable
-   and results will be confusingly featureless.
+   moves one cell per step). `SubstrateConfig.light_cone_ok()` checks it and `train()`
+   now warns. It binds on the *eval* horizon; training deliberately samples shorter
+   rollouts as a curriculum.
 
-4. **Then run M0 properly.** 64×64, ≥64 steps, batch 32, 20k+ iterations on the 4090.
-   Gradient checkpointing before a smaller grid — the memory is rollout, not model.
+4. **Run M0 properly, then probe it.** 64×64, ≥64 steps, batch 32, 20k+ iterations on
+   the 4090 (~33 min). Then `python -m dmon.probe` on that single checkpoint — the
+   legibility probe needs one rule, not twenty, and it tests the assumption M2, M3 and
+   M4 all rest on. See `ARCHITECTURE.md` §M2.
+
+5. **Then the full contingency sweep.** 4 geometries × 5 seeds × 20k iters ≈ 11 h.
+   An overnight job. Do not economise on the seed count; it is the only thing standing
+   between this project and a test that cannot fail.
+
+Compute is `m@192.168.0.202` (host `Aine`). Note that `CUDA_VISIBLE_DEVICES=0` selects
+the **4090**, not the 2070S — CUDA orders devices fastest-first while `nvidia-smi` lists
+the 2070S as index 0. Check `nvidia-smi` for which card is actually busy before
+believing you are on the big one. At 64×64/64 steps/batch 32 the peak is 8.4 GB, so
+these settings do not fit on the 2070S at all; lower `--batch` before `--grid`.
 
 ---
 
@@ -106,6 +116,13 @@ following. Each one is the exact failure mode this project exists to avoid.
 - **Energy minting.** Channel 0 is masked out of the rule's update. If you ever let
   the rule write energy directly, the economy stops meaning anything and every result
   after that point is void.
+- **A verdict that divides by a collapsed noise floor.** The first smoke test of
+  `contingency.py` returned `PASS — separation 34x noise` on four rules whose bodies
+  were each a single dead seed cell: every rule produced identical descriptors, so the
+  noise floor went to zero and the ratios exploded. The lesson generalises beyond this
+  one function — **every headline number in this project is a quotient by a baseline,
+  and a degenerate baseline manufactures confidence out of nothing.** Any new metric
+  needs a guard that fires when its denominator collapses.
 
 ---
 

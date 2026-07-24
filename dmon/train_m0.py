@@ -6,14 +6,17 @@ source geometries and check that the resulting morphologies separate. If they do
 shape is not coming from the ecology and M0 has failed no matter how good the renders
 look.
 
-    python -m dmon.train_m0 --geom west --iters 2000
-    python -m dmon.train_m0 --contingency
+The verdict itself lives in `contingency.py`, not here — it needs many training runs
+and its own analysis, and keeping it out of this file stops the trainer from being the
+thing that also grades itself.
+
+    python -m dmon.train_m0 --geom west --iters 2000 --ckpt runs/west.pt
+    python -m dmon.contingency --iters 20000 --seeds 5
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 import torch
@@ -134,36 +137,6 @@ def evaluate(sub: Substrate, geom: str, grid: int, steps: int, device: str, reps
     return descriptors(x, sub.cfg)
 
 
-def contingency(geoms, iters, grid, steps, batch, lr, device, out: Path | None = None):
-    """The actual M0 verdict. Train one rule per geometry, compare morphologies."""
-    results = {}
-    for g in geoms:
-        print(f"\n=== training under '{g}' ===")
-        sub, _ = train(g, iters, grid, steps, batch, lr, device)
-        results[g] = {"self": evaluate(sub, g, grid, steps, device)}
-        # cross-evaluate: does a rule trained on g behave differently elsewhere?
-        for h in geoms:
-            if h != g:
-                results[g][h] = evaluate(sub, h, grid, steps, device)
-
-    print("\n=== contingency ===")
-    keys = ["mass", "compactness", "gyration", "box_dim"]
-    for g in geoms:
-        d = results[g]["self"]
-        print(f"{g:10s} " + "  ".join(f"{k}={d[k]:7.2f}" for k in keys))
-
-    spread = {
-        k: max(results[g]["self"][k] for g in geoms) - min(results[g]["self"][k] for g in geoms)
-        for k in keys
-    }
-    print("\nbetween-geometry spread:", {k: round(v, 3) for k, v in spread.items()})
-    print("PASS if this spread exceeds within-geometry seed noise. Measure that too.")
-
-    if out:
-        out.write_text(json.dumps(results, indent=2))
-    return results
-
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--geom", default="west")
@@ -173,24 +146,16 @@ def main():
     p.add_argument("--batch", type=int, default=8)
     p.add_argument("--lr", type=float, default=2e-3)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    p.add_argument("--contingency", action="store_true")
-    p.add_argument("--out", type=Path, default=None)
     p.add_argument("--ckpt", type=Path, default=None)
     p.add_argument("--ckpt-every", type=int, default=1000)
     p.add_argument("--log", type=int, default=100)
     p.add_argument("--seed", type=int, default=None)
     a = p.parse_args()
 
-    if a.contingency:
-        contingency(
-            ["center", "west", "poles", "corners"],
-            a.iters, a.grid, a.steps, a.batch, a.lr, a.device, a.out,
-        )
-    else:
-        train(
-            a.geom, a.iters, a.grid, a.steps, a.batch, a.lr, a.device,
-            log=a.log, ckpt=a.ckpt, ckpt_every=a.ckpt_every, seed=a.seed,
-        )
+    train(
+        a.geom, a.iters, a.grid, a.steps, a.batch, a.lr, a.device,
+        log=a.log, ckpt=a.ckpt, ckpt_every=a.ckpt_every, seed=a.seed,
+    )
 
 
 if __name__ == "__main__":

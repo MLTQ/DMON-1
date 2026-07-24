@@ -34,15 +34,14 @@ rendering (`dmon/render.py`), and the legibility probe (`dmon/probe.py`). Full c
 runs end to end on CPU. Compute is `m@192.168.0.202` (host `Aine`): RTX 4090 24GB +
 RTX 2070S 8GB, torch 2.11/cu130.
 
-Blocking issues, both in `contingency()`:
-1. It reports between-geometry spread but never measures the within-geometry baseline
-   that spread must exceed, so as written the test cannot fail. The baseline must come
-   from independent *training* runs (`--seed`), not repeated evaluation — `seed()` is
-   deterministic, so re-evaluating one rule samples only firing jitter.
-2. Cross-evaluation results are computed and then discarded; `spread` uses only the
-   `self` entries. That is the half that catches a memoriser.
+The contingency test is now capable of failing (`dmon/contingency.py`). Both original
+defects are fixed — the noise floor comes from independent training runs rather than
+repeated evaluation, and cross-evaluation is used rather than discarded — and the
+verdict refuses to report a ratio when the noise floor is degenerate. That guard is not
+theoretical: the module's first smoke test returned a confident `PASS — separation 34x
+noise` on four rules whose bodies were each a single dead seed cell.
 
-Fix both before any run is interpreted. See `HANDOFF.md`.
+Still untested at scale. The central hypothesis remains untested.
 
 Existing assets to draw on:
 - `~/Code/Bonsai` — Swift/Metal NCA runtime, 2D + volumetric, FiLM mood manifold,
