@@ -46,6 +46,18 @@ class Pool:
     def commit(self, idx, x, r):
         self.x[idx], self.r[idx] = x.detach(), r.detach()
 
+    def reseed(self, frac: float):
+        """Reset a fraction of the pool to fresh seeds.
+
+        Called when the curriculum moves the sources. Without this the pool's
+        already-grown bodies simply follow the food outward and nothing is ever asked
+        to solve seed-to-first-meal at the new distance — which is exactly how a rule
+        came to report mass 1100 in training and mass 0 from a fresh seed."""
+        n = max(1, int(frac * self.x.shape[0]))
+        idx = torch.randperm(self.x.shape[0], device=self.device)[:n]
+        sx, sr = self.sub.seed(n, self.grid, self.device)
+        self.x[idx], self.r[idx] = sx, sr
+
 
 def train(
     geom: str,
@@ -60,6 +72,7 @@ def train(
     ckpt_every: int = 1000,
     seed: int | None = None,
     cfg: SubstrateConfig | None = None,
+    reseed_frac: float = 0.5,
 ):
     dev = torch.device(device)
     if seed is not None:
@@ -82,10 +95,13 @@ def train(
     _src_cache: dict[float, torch.Tensor] = {}
 
     def sources_at(progress: float):
-        sp = round(cfg.spread_at(progress), 3)
+        sp = round(cfg.spread_at(progress), 4)
         if sp not in _src_cache:
             _src_cache.clear()
             _src_cache[sp] = make_sources(geom, batch, grid, dev, spread=sp)
+            if _src_cache.get("_seen"):
+                pool.reseed(reseed_frac)  # the world moved; re-face the hard part
+            _src_cache["_seen"] = True
         return _src_cache[sp], sp
 
     def _save(i):
@@ -125,10 +141,17 @@ def train(
 
         if i % log == 0 or i == iters - 1:
             d = descriptors(x, cfg)
-            history.append({"iter": i, **d})
+            # The pool's descriptors are NOT what evaluation measures: pool states are
+            # the product of thousands of composed steps, while evaluation starts from
+            # a bare seed. When those diverge the run is failing and the log alone
+            # would never show it, so report both side by side.
+            fresh = _fresh_mass(sub, geom, grid, steps, dev, spread)
+            history.append({"iter": i, "fresh_mass": fresh, "spread": spread, **d})
+            warn = "  <<< DIES FROM SEED" if fresh < 1.0 and d["mass"] > 50 else ""
             print(
                 f"[{i:5d}] mass={d['mass']:7.1f} compact={d['compactness']:5.2f} "
-                f"gyr={d['gyration']:5.2f} dim={d['box_dim']:5.2f} spread={spread:4.2f}"
+                f"gyr={d['gyration']:5.2f} dim={d['box_dim']:5.2f} spread={spread:4.2f} "
+                f"fresh={fresh:7.1f}{warn}"
             )
         if ckpt is not None and (i + 1) % ckpt_every == 0:
             _save(i)
@@ -137,6 +160,18 @@ def train(
     if ckpt is not None:
         print(f"saved {ckpt}")
     return sub, history
+
+
+@torch.no_grad()
+def _fresh_mass(sub, geom, grid, steps, dev, spread, reps: int = 4) -> float:
+    """Mass reached from a bare seed. The number the training log cannot fake."""
+    was = sub.training
+    sub.eval()
+    x, r = sub.seed(reps, grid, dev)
+    src = make_sources(geom, reps, grid, dev, spread=spread)
+    x, r, _ = sub.rollout(x, r, src, steps=steps)
+    sub.train(was)
+    return (x[:, :1] > sub.cfg.e_death).float().sum().item() / reps
 
 
 @torch.no_grad()

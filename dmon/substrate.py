@@ -65,8 +65,12 @@ class SubstrateConfig:
 
     # --- curriculum (see `train_m0.py`) ---
     spread_start: float = 0.15  # sources begin near the seed...
-    spread_end: float = 0.35  # ...and walk outward to here
+    spread_end: float = 0.25  # ...and walk outward to here. Calibrated by experiment,
+    #                            not by taste: rules survive from seed at 8.3x
+    #                            break-even (0.25) and die at 3.6x (0.30) and 1.5x
+    #                            (0.35). See feasibility.py's `margin`.
     spread_frac: float = 0.6  # fraction of training spent walking them out
+    spread_stages: int = 8  # quantised, so "the world changed" is a discrete event
 
     def light_cone_ok(self, size: int, steps: int) -> bool:
         """Perception radius is 1, so information travels one cell per step."""
@@ -79,8 +83,17 @@ class SubstrateConfig:
         `spread_end` is capped at a value verified feasible by `feasibility.py`, not at
         1.0. Push it further only after confirming a trained rule can actually bridge
         the gap — an infeasible final stage silently turns the last 40% of training into
-        noise."""
+        noise.
+
+        Quantised into `spread_stages` discrete steps so a stage change is an event the
+        trainer can react to. It has to react: a sample pool carries already-grown
+        bodies across a curriculum, so established creatures just follow the food
+        outward and the *seed-to-first-meal* problem at the new distance never enters
+        the training distribution. That is not hypothetical — a rule trained to spread
+        0.35 grew happily from a seed with food 4 cells away and died outright at 10,
+        while its training log read mass 1100+ throughout."""
         t = min(1.0, max(0.0, progress / max(self.spread_frac, 1e-9)))
+        t = round(t * self.spread_stages) / self.spread_stages
         return self.spread_start + t * (self.spread_end - self.spread_start)
 
 

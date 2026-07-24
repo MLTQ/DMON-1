@@ -78,7 +78,7 @@ def analyse(
     }
 
 
-def verdict(a: dict, want_mass: int = 300) -> tuple[bool, list[str]]:
+def verdict(a: dict, want_mass: int = 300, margin: float = 8.0) -> tuple[bool, list[str]]:
     """Each equation gets its own line, so a failure names itself."""
     out, ok = [], True
 
@@ -113,16 +113,23 @@ def verdict(a: dict, want_mass: int = 300) -> tuple[bool, list[str]]:
             f"reach {a['diffusive_reach']:.0f}."
         )
 
-    if a["r_at_seed"] < a["r_star"]:
+    # Break-even means *zero net gain*. A creature also has to build a body and pay
+    # activity costs, so it needs real margin, not parity. The default is calibrated by
+    # experiment rather than taste: rules grow from a bare seed at 8.3x break-even, and
+    # die outright at 3.6x and at 1.5x. The first version of this check required only
+    # 1.0x and passed worlds where every rule died on arrival.
+    ratio = a["r_at_seed"] / max(a["r_star"], 1e-12)
+    if ratio < margin:
         ok = False
         out.append(
-            f"CONCEN  fail — r at seed {a['r_at_seed']:.5f} < break-even "
-            f"{a['r_star']:.5f}. A cell there loses energy by trying to eat."
+            f"CONCEN  fail — r at seed {a['r_at_seed']:.5f} is {ratio:.1f}x break-even "
+            f"{a['r_star']:.5f}; want >={margin:.0f}x. Parity is not enough — the cell "
+            "breaks even and never grows."
         )
     else:
         out.append(
-            f"CONCEN  ok   — r at seed {a['r_at_seed']:.4f} vs break-even "
-            f"{a['r_star']:.4f} ({a['usable_cells']} cells above it)."
+            f"CONCEN  ok   — r at seed {a['r_at_seed']:.4f} = {ratio:.1f}x break-even "
+            f"({a['usable_cells']} cells above it)."
         )
 
     if not a["light_cone_ok"]:
@@ -138,6 +145,7 @@ def main():
     p.add_argument("--grid", type=int, default=64)
     p.add_argument("--steps", type=int, default=64)
     p.add_argument("--want-mass", type=int, default=300)
+    p.add_argument("--margin", type=float, default=8.0)
     p.add_argument("--spread", type=float, default=1.0)
     p.add_argument("--source-rate", type=float, default=None)
     p.add_argument("--field-cap", type=float, default=None)
@@ -155,7 +163,7 @@ def main():
     cfg = replace(cfg, **over)
 
     res = analyse(cfg, a.geom, a.grid, a.steps, spread=a.spread)
-    ok, lines = verdict(res, a.want_mass)
+    ok, lines = verdict(res, a.want_mass, a.margin)
     print(f"\n=== feasibility: geom={a.geom} grid={a.grid} steps={a.steps} spread={a.spread} ===")
     print(f"source_rate={cfg.source_rate} field_cap={cfg.field_cap} "
           f"field_diffusion={cfg.field_diffusion}\n")
