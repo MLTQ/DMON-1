@@ -116,6 +116,24 @@ following. Each one is the exact failure mode this project exists to avoid.
 - **Energy minting.** Channel 0 is masked out of the rule's update. If you ever let
   the rule write energy directly, the economy stops meaning anything and every result
   after that point is void.
+- **Energy minting through non-conservative transport.** *The big one.* The transport
+  term was `e += e_transport * conduct * laplace(e) * body`. The laplacian kernel sums
+  to zero, so unmodulated it conserves — but `conduct` is per-cell, so cell *i* gained
+  using `conduct_i` while its neighbours lost using theirs, and `Σ conduct_i·lap(e)_i`
+  is not zero when conductance is high where the laplacian is positive. **The rule
+  controls conductance.** Channel 0 being masked out of the rule's update did not
+  prevent the rule from writing to the ledger; it only prevented it from doing so
+  directly. In 4k iterations it found the exploit and grew a stable 25-cell body on a
+  grid **with no food in it at all** — verified by deleting the sources and getting an
+  identical body. Seed energy 2.0 became 10.4 in a closed system.
+  Fixed by `Substrate._transport`: pairwise flux exchange with symmetric conductance
+  `min(c_i, c_j)`, so every unit leaving one cell arrives in exactly one neighbour and
+  `sum(de)` is identically zero by construction. `dmon/test_conservation.py` tests it,
+  including against a conductance field deliberately shaped like the exploit.
+  **Everything measured before this fix is void**, including the first diffusion sweep.
+  The general lesson: an invariant that is enforced on one channel can be violated
+  through any operator that channel passes through. Check the operators, not just the
+  masks.
 - **A verdict that divides by a collapsed noise floor.** The first smoke test of
   `contingency.py` returned `PASS — separation 34x noise` on four rules whose bodies
   were each a single dead seed cell: every rule produced identical descriptors, so the

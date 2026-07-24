@@ -32,6 +32,17 @@ two pressures alone are enough to produce shape.
 - **Rationale**: Averaging over a tail rather than reading mass at T stops the rule
   from learning a terminal spike that isn't survival.
 
+### `Substrate._transport`
+- **Does**: conservative pairwise flux exchange between adjacent body cells. Pair
+  conductance is `min(c_i, c_j)`; `sum(de)` is identically zero by construction.
+- **Rationale**: replaces a conductance-modulated laplacian that let the rule mint
+  energy. `min` rather than an average because a channel is as narrow as its narrowest
+  point, and because it lets either cell unilaterally refuse to share — the primitive
+  M1's kin discrimination will need.
+- **Note**: the `/4` is explicit-scheme stability across four neighbours. It also
+  changes what `e_transport` means numerically, so **any tuning of `e_transport` from
+  before the fix is void.**
+
 ### `make_sources`
 - **Does**: Source geometries (`center`, `west`, `poles`, `corners`, `ring`).
 - **Rationale**: These are the independent variable of the M0 experiment.
@@ -77,10 +88,16 @@ two pressures alone are enough to produce shape.
 
 ## Notes
 
-- **Energy is not exactly conserved.** The transport laplacian is masked by `body`,
-  which breaks conservation at the boundary — energy leaks slightly at the growing
-  edge. Tolerable for M0; must be fixed before any claim about metabolic efficiency.
-  A conservative flux-exchange formulation is the correct replacement.
+- **Energy conservation.** The original note here said energy "leaks slightly at the
+  growing edge" and called it "tolerable for M0". That assessment was wrong in both
+  direction and magnitude: the operator *created* energy, by a factor of five, and it
+  was the dominant dynamic rather than a rounding error. A rule trained under it grew a
+  stable body on a grid containing no food. See Decisions above and `HANDOFF.md`.
+  Now fixed by `_transport`, and covered by `test_conservation.py`.
+  Two deliberate non-conservations remain, both losses and both design choices rather
+  than bugs: a cell caps at `e_max`, and energy in cells that fall out of the body mask
+  is destroyed rather than released to neighbours. Real decomposition returns nutrients;
+  this does not. Revisit at M1, where death becomes common enough to matter.
 - **Light-cone constraint**: perception radius is 1, so `steps ≥ grid` for information
   to cross the field. `SubstrateConfig.light_cone_ok` checks this. Violating it is the
   single most likely cause of a mysteriously featureless result.

@@ -369,6 +369,55 @@ long-range information in O(log N) rather than O(N). This is exactly what multig
 was invented for, and it maps onto long-range cortical projections. Expect to need it
 by M2.
 
+### The ecology has to be able to support a body
+
+Three design equations, none of which were written down before the first sweep, and all
+three of which the default configuration violated. They are checkable in seconds with no
+training, and they should be checked before any GPU time is spent — the first diffusion
+sweep burned 40 minutes sweeping a knob that could not matter, in a regime where nothing
+could have lived.
+
+**1. Supply must exceed demand.** A cell at full uptake effort costs
+`maintenance + effort_cost` per step. A source emits `source_rate` per step. So
+
+```
+N_max  ≈  (total source emission) / (maintenance + effort_cost)
+```
+
+is a hard ceiling on sustainable body size, before any losses to diffusion, decay or
+imperfect capture. At the original defaults — one source at 0.06, costs at 0.014 — that
+ceiling is **about four cells**. No morphology of any kind is available at four cells.
+A body of a few hundred cells needs total emission two to three orders of magnitude
+higher, and because a single cell saturates at `field_cap`, that means *more source
+cells*, not a bigger number on one of them.
+
+**2. The field has its own light cone, and it is slower than the creature's.** §4's
+light-cone constraint governs *information*, which moves ballistically at one cell per
+step. Resource moves *diffusively*:
+
+```
+d  ≤  2 √(D · T)
+```
+
+Food more than `2√(D·T)` from the body simply does not arrive within a rollout of length
+`T`. At `D = 0.4, T = 64` that is about 10 cells. A seed at the centre of a 64×64 grid is
+30 cells from a west-edge source, so under those settings the food may as well not exist
+— and no value of `D` fixes it, because `D` is bounded above by numerical stability.
+
+**3. Concentration must exceed break-even where the body is.**
+
+```
+r*  =  (maintenance + effort_cost) / uptake_rate
+```
+
+A cell sitting in a field below `r*` loses energy by trying to eat. At the original
+defaults `r* = 0.04`, and the field never exceeded `0.019` anywhere the creature could
+reach.
+
+The three interact: raising `source_rate` past the point where the source cell saturates
+at `field_cap` does nothing at all, which is why the first parameter scan showed
+identical reach for emission rates of 0.5 and 2.0.
+
 ### Addition does not bind
 
 Petridish's two-binding retrieval failure is not a tuning problem. Soft attention over

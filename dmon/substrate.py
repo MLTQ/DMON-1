@@ -113,6 +113,36 @@ class Substrate(nn.Module):
         w = self.kern[3:4]  # (1,1,3,3)
         return F.conv2d(t, w, padding=1)
 
+    def _transport(self, e: torch.Tensor, conduct: torch.Tensor, body: torch.Tensor):
+        """Conservative pairwise flux exchange between adjacent body cells.
+
+        Every unit of energy that leaves one cell arrives in exactly one neighbour.
+        `sum(de)` is identically zero by construction, so the creature cannot mint
+        currency no matter what it does with its conductance.
+
+        The previous formulation — `e_transport * conduct * laplace(e) * body` — did
+        not have this property. The laplacian kernel sums to zero, but modulating it
+        by a *per-cell* conductance breaks the antisymmetry: cell i gained using
+        `conduct_i` while its neighbours lost using theirs, so a rule that raised
+        conductance where the laplacian was positive and lowered it where negative
+        created energy from nothing. It found that in 4k iterations and grew to a
+        stable body on a grid with no food in it at all.
+
+        Pair conductance is `min(c_i, c_j)`: a channel is as narrow as its narrowest
+        point, and either cell can unilaterally refuse to share — which is the
+        primitive M1's kin discrimination needs.
+        """
+        k = self.cfg.e_transport * conduct * body / 4.0  # /4: explicit-scheme stability
+        de = torch.zeros_like(e)
+        for axis in (-1, -2):
+            ea, eb = e.narrow(axis, 0, e.shape[axis] - 1), e.narrow(axis, 1, e.shape[axis] - 1)
+            ka, kb = k.narrow(axis, 0, k.shape[axis] - 1), k.narrow(axis, 1, k.shape[axis] - 1)
+            f = torch.minimum(ka, kb) * (eb - ea)  # + means b gives to a
+            pad_lo = (0, 0, 1, 0) if axis == -2 else (1, 0)
+            pad_hi = (0, 0, 0, 1) if axis == -2 else (0, 1)
+            de = de + F.pad(f, pad_hi) - F.pad(f, pad_lo)
+        return de
+
     def seed(self, batch: int, size: int, device=None) -> tuple[torch.Tensor, torch.Tensor]:
         """One live cell at the centre, empty field."""
         c = self.cfg.channels
@@ -173,8 +203,9 @@ class Substrate(nn.Module):
         e = e + uptake - cost
 
         # transport: energy moves through the body, so reach costs something.
-        # gated per-cell, which is the only way the creature can build a vasculature.
-        e = e + cfg.e_transport * conduct * self._laplace(e) * body
+        # Conservative pairwise exchange — see `_transport`. Energy is redistributed
+        # here and never created; the only inflow to the ledger is `uptake`.
+        e = e + self._transport(e, conduct, body)
         e = e.clamp(0.0, cfg.e_max)
 
         x = torch.cat([e, x[:, 1:]], dim=1) * body
