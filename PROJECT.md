@@ -23,7 +23,26 @@ replaces it.
 
 ## Current State
 
-Empty repo. Nothing implemented. Plan only.
+M0 substrate and trainer implemented (`dmon/substrate.py`, `dmon/train_m0.py`),
+~420 lines, ~11K parameters. Runs on CPU. A 300-iteration smoke run on a 24x24 grid
+took mass 1 -> 23 with box dimension near 1.54 — this establishes that the gradient
+path is intact and the survival objective is learnable, and **nothing else**. No run
+at scale. No contingency test performed. The central hypothesis is untested.
+
+Now a real package (`dmon/`), with checkpointing (`dmon/checkpoint.py`), diagnostic
+rendering (`dmon/render.py`), and the legibility probe (`dmon/probe.py`). Full chain
+runs end to end on CPU. Compute is `m@192.168.0.202` (host `Aine`): RTX 4090 24GB +
+RTX 2070S 8GB, torch 2.11/cu130.
+
+Blocking issues, both in `contingency()`:
+1. It reports between-geometry spread but never measures the within-geometry baseline
+   that spread must exceed, so as written the test cannot fail. The baseline must come
+   from independent *training* runs (`--seed`), not repeated evaluation — `seed()` is
+   deterministic, so re-evaluating one rule samples only firing jitter.
+2. Cross-evaluation results are computed and then discarded; `spread` uses only the
+   `self` entries. That is the half that catches a memoriser.
+
+Fix both before any run is interpreted. See `HANDOFF.md`.
 
 Existing assets to draw on:
 - `~/Code/Bonsai` — Swift/Metal NCA runtime, 2D + volumetric, FiLM mood manifold,
@@ -35,6 +54,17 @@ Existing assets to draw on:
 ## Active Work
 
 **M0 — Kill the target.** Nothing else starts until M0 either works or fails cleanly.
+
+Immediate order of operations (detail in `HANDOFF.md`):
+1. Sweep diffusion length relative to grid diameter — this decides whether M0 can work.
+2. One real training run on the 4090: 64x64, >=64 steps, batch 32, 20k+ iters.
+3. **Legibility probe** on that single rule (`ARCHITECTURE.md` §M2). Needs one rule,
+   not twenty, so it runs first in wall-clock despite being conceptually later. It is
+   the cheapest falsification in the project and sits under M2, M3 and M4 at once.
+4. Make the contingency test capable of failing (training-seed baseline + actually use
+   the cross-evaluation), then the full 20-run sweep.
+
+Deeper reasoning lives in `ARCHITECTURE.md`.
 
 ## Architecture Overview
 
@@ -118,6 +148,47 @@ milestone.
 - **[2026-07] Constraint: no cluster rental until M2** — the bottleneck is objective
   specification, not FLOPs. Renting compute for an underspecified objective buys a wrong
   answer faster.
+
+- **[2026-07] Rule may read energy, may not write it** — channel 0 masked out of the
+  update. Otherwise the creature prints its own currency and the economy is decorative.
+- **[2026-07] Rule gets two metabolic levers, no direct control of shape** — uptake
+  effort and transport conductance. Morphology is a consequence of differential
+  investment. This is the central bet; if M0 fails this is the likely reason, and the
+  response is a third lever, not abandoning the ecology.
+- **[2026-07] Tried hidden channels with no path to the ledger** — gradient was exactly
+  zero. The rule could compute anything and never touch survival. Any new channel needs
+  a path to the ledger or it is decoration.
+- **[2026-07] Neither Bonsai nor petridish is a viable fork base** — Bonsai's trainers
+  are all target-shaped; petridish's physical space is an address space for a
+  computation graph, not a body. M0 written fresh so it stays cheap to throw away.
+
+- **[2026-07] Body and display are separate organs; the no-target rule is scoped to
+  the body** — the old formulation ("form is not specified anywhere") contradicts the
+  actual end state, which is a creature a human wants to look at. Restated: *no target
+  on the body, targets permitted on the display, display paid for out of regime 1.*
+  Stricter than a blanket ban, because it names why the body is protected — its shape
+  is a claim about the world, and specifying it makes the claim fraudulent. A display
+  makes no such claim. See `ARCHITECTURE.md` §M3.
+- **[2026-07] The display is structurally an M3 object and cannot be prototyped early**
+  — it is deliberately not load-bearing for survival, so before an attention field
+  exists it has no path to the ledger and the gradient is exactly zero. This is the
+  bug that already happened once, not a hypothesis.
+- **[2026-07] Morphology drifts over a continuous morphospace; it is never selected
+  from a menu** — a creature choosing among trained forms is a selector over a library
+  someone else authored, i.e. the spritesheet one level further up. Looking like a
+  chibi must be an outcome, not a decision.
+- **[2026-07] Display cost is M3's Goldilocks knob** — same status as `field_diffusion`
+  at M0. Too cheap, ornament decouples (Fisherian runaway); too expensive, selection
+  deletes the display. Sweep it first.
+- **[2026-07] The weeks timescale is enforced by information rate, not a
+  hyperparameter** — attention-derived reward from one human is a few hundred bits a
+  week, which cannot move 11K parameters quickly at any learning rate. The pet/feed
+  distinction is therefore structural. Strongest case yet for ES at the outer loop:
+  there is no differentiable path from a human's regard to a cell rule.
+- **[2026-07] Rejected "objective increases with usage"** — that is the operator's
+  objective wearing the creature's face. What makes an animal compelling is having an
+  agenda that isn't you; the wanting is load-bearing because it is intermittent. The
+  failure mode to design against is not "wants attention" but "has nothing else."
 
 ## Sharp Edges
 
