@@ -44,8 +44,14 @@ two pressures alone are enough to produce shape.
   before the fix is void.**
 
 ### `make_sources`
-- **Does**: Source geometries (`center`, `west`, `poles`, `corners`, `ring`).
-- **Rationale**: These are the independent variable of the M0 experiment.
+- **Does**: Source geometries (`center`, `west`, `poles`, `corners`, `ring`), scaled by
+  default to equal *total* emission.
+- **Rationale**: These are the independent variable of the M0 experiment, so everything
+  else has to be held constant — including how much food exists. Unnormalised the
+  geometries differ by 248x in supply (`west` has one source cell, `ring` has 248), so a
+  contingency test across them would be measuring abundance rather than arrangement and
+  would report a confident PASS for the wrong reason. `source_rate` therefore means
+  food entering the world per step, not food per source cell.
 
 ### `descriptors_per_sample`
 - **Does**: mass, compactness (perimeter/√area), radius of gyration, box-counting

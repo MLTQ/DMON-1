@@ -233,8 +233,20 @@ class Substrate(nn.Module):
 # --- source geometries --------------------------------------------------------
 
 
-def make_sources(name: str, batch: int, size: int, device=None) -> torch.Tensor:
-    """Where food comes from. Moving these and retraining is the M0 falsification test."""
+def make_sources(
+    name: str, batch: int, size: int, device=None, normalize: bool = True
+) -> torch.Tensor:
+    """Where food comes from. Moving these and retraining is the M0 falsification test.
+
+    `normalize=True` scales every geometry to the same *total* emission, so that
+    `source_rate` means "food entering the world per step" rather than "food per source
+    cell". This is not cosmetic. Unnormalised, these geometries differ by a factor of
+    248 in total supply — `west` has one source cell and `ring` has 248 — so a
+    contingency test across them would be comparing abundance, not arrangement, and
+    would report a confident PASS for entirely the wrong reason.
+
+    Pass `normalize=False` only when abundance is deliberately the independent variable.
+    """
     s = torch.zeros(batch, 1, size, size, device=device)
     m = size // 2
     q = size // 4
@@ -257,6 +269,8 @@ def make_sources(name: str, batch: int, size: int, device=None) -> torch.Tensor:
         s[:, 0] = ((d - (m - 3)).abs() < 0.7).float()
     else:
         raise ValueError(f"unknown source geometry: {name}")
+    if normalize:
+        s = s / s.sum(dim=(1, 2, 3), keepdim=True).clamp(min=1.0)
     return s
 
 
