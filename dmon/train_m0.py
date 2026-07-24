@@ -56,11 +56,12 @@ def train(
     ckpt: Path | None = None,
     ckpt_every: int = 1000,
     seed: int | None = None,
+    cfg: SubstrateConfig | None = None,
 ):
     dev = torch.device(device)
     if seed is not None:
         torch.manual_seed(seed)
-    cfg = SubstrateConfig()
+    cfg = cfg or SubstrateConfig()
     if not cfg.light_cone_ok(grid, steps):
         print(
             f"[warn] light cone violated: steps={steps} < grid={grid}. Information "
@@ -89,6 +90,7 @@ def train(
                 "batch": batch,
                 "lr": lr,
                 "seed": seed,
+                "field_diffusion": cfg.field_diffusion,
                 "history": history,
             },
         )
