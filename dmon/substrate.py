@@ -204,8 +204,19 @@ class Substrate(nn.Module):
     # --- the step -------------------------------------------------------------
 
     def step(
-        self, x: torch.Tensor, r: torch.Tensor, sources: torch.Tensor
+        self,
+        x: torch.Tensor,
+        r: torch.Tensor,
+        sources: torch.Tensor,
+        gates: tuple[float, float] | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """`gates=(effort, conductance)` overrides the rule and holds both levers at
+        fixed constants everywhere — no spatial differentiation of any kind.
+
+        This is the null model. Any claim that the learned rule is doing work has to
+        beat the *best* constant policy, not merely beat a dead grid. A zero-weight
+        rule at the init gate biases is one arbitrary point in this space and is not
+        the baseline it looks like."""
         cfg = self.cfg
 
         # 1. environment moves first, indifferently
@@ -228,8 +239,12 @@ class Substrate(nn.Module):
 
         # 4. ledger
         e = x[:, self.E : self.E + 1]
-        effort = torch.sigmoid(x[:, self.EFFORT : self.EFFORT + 1] + self.gate_bias[0])
-        conduct = torch.sigmoid(x[:, self.TRANSPORT : self.TRANSPORT + 1] + self.gate_bias[1])
+        if gates is None:
+            effort = torch.sigmoid(x[:, self.EFFORT : self.EFFORT + 1] + self.gate_bias[0])
+            conduct = torch.sigmoid(x[:, self.TRANSPORT : self.TRANSPORT + 1] + self.gate_bias[1])
+        else:
+            effort = torch.full_like(x[:, :1], float(gates[0]))
+            conduct = torch.full_like(x[:, :1], float(gates[1]))
 
         # A cell cannot absorb more than it has room for. Without this it strips the
         # field, keeps `e_max`, and annihilates the remainder — which both destroys
