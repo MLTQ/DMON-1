@@ -34,13 +34,26 @@ class Pool:
         self.sub, self.grid, self.device = sub, grid, device
         self.x, self.r = sub.seed(size, grid, device)
 
-    def sample(self, batch: int):
+    def sample(self, batch: int, fresh_frac: float = 0.25):
+        """Draw a batch, with a guaranteed fraction of *fresh seeds*.
+
+        Resetting only the worst sample (the Growing-NCA recipe) puts ~3% fresh seeds in
+        a batch of 32, and that is not enough to keep growing-from-nothing in the
+        objective. Once the curriculum stops advancing, training reliably drifts to a
+        policy that is optimal for established pool bodies and fatal for a seed: a
+        residual run scored fresh-seed mass 194 at iteration 1600 and 0 by 3200, while
+        its pool mass held above 1200 throughout.
+
+        The evaluation starts from a seed, so the training distribution has to contain
+        seeds — permanently, not just when the world changes."""
         idx = torch.randint(0, self.x.shape[0], (batch,), device=self.device)
         x, r = self.x[idx].clone(), self.r[idx].clone()
+        n_fresh = max(1, int(fresh_frac * batch))
+        sx, sr = self.sub.seed(n_fresh, self.grid, self.device)
+        # lowest-mass slots become the fresh ones, so we overwrite what was dying anyway
         mass = (x[:, :1] > self.sub.cfg.e_death).float().sum(dim=(1, 2, 3))
-        worst = mass.argmin()
-        sx, sr = self.sub.seed(1, self.grid, self.device)
-        x[worst], r[worst] = sx[0], sr[0]
+        worst = mass.argsort()[:n_fresh]
+        x[worst], r[worst] = sx, sr
         return idx, x, r
 
     def commit(self, idx, x, r):
@@ -73,6 +86,7 @@ def train(
     seed: int | None = None,
     cfg: SubstrateConfig | None = None,
     reseed_frac: float = 0.5,
+    fresh_frac: float = 0.25,
 ):
     dev = torch.device(device)
     if seed is not None:
@@ -125,7 +139,7 @@ def train(
         )
 
     for i in range(iters):
-        idx, x, r = pool.sample(batch)
+        idx, x, r = pool.sample(batch, fresh_frac)
         src, spread = sources_at(i / max(1, iters - 1))
         src = src[: x.shape[0]]
         n = int(torch.randint(steps // 2, steps + 1, (1,)).item())
