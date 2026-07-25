@@ -36,6 +36,10 @@ class SubstrateConfig:
     channels: int = 16
     hidden: int = 128
     fire_rate: float = 0.5
+    cell: str = "gru"  # "residual" (Growing-NCA additive delta) or "gru" (gated).
+    #                    Gated is the default because an additive update cannot hold a
+    #                    differentiated state against stochastic firing, and persistent
+    #                    differentiation is what differential investment requires.
 
     # --- metabolism (cell-side) ---
     # Costs are ~20x lower than the first draft. That draft's ecology could support a
@@ -133,12 +137,74 @@ class Substrate(nn.Module):
         # seed feeds itself before it starts bleeding energy into the halo
         self.gate_bias = nn.Parameter(torch.tensor([2.0, -2.0]))
 
-        self.rule = nn.Sequential(
-            nn.Conv2d(4 * c + 4, self.cfg.hidden, 1),
-            nn.ReLU(),
-            nn.Conv2d(self.cfg.hidden, c, 1, bias=False),
-        )
-        nn.init.zeros_(self.rule[-1].weight)  # start as a no-op; grow into behaviour
+        p_in = 4 * c + 4  # 4 kernels over c state channels, plus 4 over the field
+        h = self.cfg.hidden
+
+        if self.cfg.cell == "residual":
+            # Growing-NCA's update: a pure additive delta. Kept as the control.
+            self.rule = nn.Sequential(
+                nn.Conv2d(p_in, h, 1), nn.ReLU(), nn.Conv2d(h, c, 1, bias=False)
+            )
+            nn.init.zeros_(self.rule[-1].weight)  # start as a no-op
+        elif self.cfg.cell == "gru":
+            # A gated cell, because `x = x + dx` cannot *hold* a state. Under
+            # stochastic firing an additive rule has to keep re-deriving whatever it
+            # wants to remember, so a cell cannot stably be "vessel" rather than
+            # "harvester". Persistent differentiation is the precondition for
+            # differential investment, which is the whole bet of M0 — so the missing
+            # mechanism is retention, not capacity for its own sake.
+            self.trunk = nn.Sequential(nn.Conv2d(p_in, h, 1), nn.ReLU())
+            self.to_z = nn.Conv2d(h, c, 1)  # update gate: how much to overwrite
+            self.to_r = nn.Conv2d(h, c, 1)  # reset gate: how much history the candidate sees
+            self.to_c = nn.Conv2d(h + c, c, 1, bias=False)  # candidate state
+            nn.init.zeros_(self.to_c.weight)  # start as a no-op, as above
+            nn.init.constant_(self.to_z.bias, -2.0)  # ...and start closed, so the
+            #                                          creature begins by remembering
+        else:
+            raise ValueError(f"unknown cell type: {self.cfg.cell}")
+
+    @torch.no_grad()
+    def silence_rule(self):
+        """Make the cell output identically zero, whatever its type.
+
+        Not the same operation for both. Zeroing the residual cell's last layer gives a
+        zero delta. Zeroing the gated cell's *candidate* gives `z*(0 - x)`, which decays
+        the state toward zero — the opposite of inert. The update gate has to be shut
+        instead. Getting this wrong would silently make the null model an active
+        state-destroying policy rather than a do-nothing one."""
+        if self.cfg.cell == "residual":
+            nn.init.zeros_(self.rule[-1].weight)
+        else:
+            nn.init.constant_(self.to_z.bias, -20.0)
+            nn.init.zeros_(self.to_z.weight)
+            nn.init.zeros_(self.to_c.weight)
+        return self
+
+    @torch.no_grad()
+    def randomise_rule(self, std: float = 0.5):
+        """An untrained-but-active cell, for tests that need the rule to actually do
+        something."""
+        if self.cfg.cell == "residual":
+            nn.init.normal_(self.rule[-1].weight, std=std)
+        else:
+            nn.init.normal_(self.to_c.weight, std=std)
+            nn.init.normal_(self.to_z.weight, std=std)
+        return self
+
+    def _cell(self, px: torch.Tensor, pr: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        """Returns the *proposed change* to the state, before firing/body masking.
+
+        Both cell types return a delta so the caller's masking semantics are identical
+        and the comparison between them is clean.
+        """
+        p = torch.cat([px, pr], dim=1)
+        if self.cfg.cell == "residual":
+            return self.rule(p)
+        h = self.trunk(p)
+        z = torch.sigmoid(self.to_z(h))
+        rst = torch.sigmoid(self.to_r(h))
+        cand = torch.tanh(self.to_c(torch.cat([h, rst * x], dim=1)))
+        return z * (cand - x)  # gated interpolation, expressed as a delta
 
     # --- helpers --------------------------------------------------------------
 
@@ -230,7 +296,7 @@ class Substrate(nn.Module):
         # 2. perceive self and world
         px = self._depthwise(x)
         pr = self._depthwise(r)
-        dx = self.rule(torch.cat([px, pr], dim=1))
+        dx = self._cell(px, pr, x)
 
         # 3. rule cannot mint energy, cannot act outside the body, fires stochastically
         fire = (torch.rand_like(x[:, :1]) < cfg.fire_rate).float()

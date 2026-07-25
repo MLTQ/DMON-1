@@ -72,7 +72,7 @@ def sweep_levers(
 ) -> dict:
     cfg = cfg or SubstrateConfig()
     sub = Substrate(cfg).to(device)
-    torch.nn.init.zeros_(sub.rule[-1].weight)  # inert rule; physics only
+    sub.silence_rule()  # inert rule; physics only
 
     vals = [i / (n - 1) for i in range(n)]
     rows = []

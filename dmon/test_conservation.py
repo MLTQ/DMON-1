@@ -57,7 +57,7 @@ def test_step_never_mints():
     """
     cfg = replace(SubstrateConfig(), **FREE)
     sub = Substrate(cfg)
-    torch.nn.init.normal_(sub.rule[-1].weight, std=0.5)
+    sub.randomise_rule(0.5)
 
     x, r = sub.seed(2, 32)
     src = torch.zeros_like(r)
@@ -80,7 +80,7 @@ def test_no_growth_without_food():
     """
     cfg = SubstrateConfig()
     sub = Substrate(cfg)
-    torch.nn.init.normal_(sub.rule[-1].weight, std=0.5)
+    sub.randomise_rule(0.5)
 
     x, r = sub.seed(4, 48)
     start = x[:, :1].sum().item()
@@ -100,7 +100,7 @@ def test_uptake_is_the_only_inflow():
     """Energy gained must be accounted for by resource removed from the field."""
     cfg = replace(SubstrateConfig(), maintenance=0.0, activity_cost=0.0, effort_cost=0.0)
     sub = Substrate(cfg)
-    torch.nn.init.normal_(sub.rule[-1].weight, std=0.5)
+    sub.randomise_rule(0.5)
 
     x, r = sub.seed(2, 32)
     src = make_sources("center", 2, 32)

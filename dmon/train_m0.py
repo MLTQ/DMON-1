@@ -199,11 +199,16 @@ def main():
     p.add_argument("--ckpt-every", type=int, default=1000)
     p.add_argument("--log", type=int, default=100)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--cell", default=None, choices=["residual", "gru"])
     a = p.parse_args()
 
+    cfg = SubstrateConfig()
+    if a.cell:
+        from dataclasses import replace as _replace
+        cfg = _replace(cfg, cell=a.cell)
     train(
         a.geom, a.iters, a.grid, a.steps, a.batch, a.lr, a.device,
-        log=a.log, ckpt=a.ckpt, ckpt_every=a.ckpt_every, seed=a.seed,
+        log=a.log, ckpt=a.ckpt, ckpt_every=a.ckpt_every, seed=a.seed, cfg=cfg,
     )
 
 
