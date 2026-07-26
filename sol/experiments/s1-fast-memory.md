@@ -35,11 +35,16 @@ remained finite while reducing loss from 3.093 to 0.001; mean fast efficacy ende
 
 ## Initial gain falsification
 
-The first GPU run used gain 0.04, limit 0.75, and no metabolism, directly matching the
-best S0 control. It tracked that control through 2,000 updates and reached 2.621 BPC at
-update 1,750 versus 2.631 for the matched control: only a 0.010 improvement.
+Both initial GPU runs used gain 0.04 and limit 0.75.
 
-It then failed sharply near update 2,250:
+| Variant | Best BPC | Best update | Final BPC | Outcome |
+|---|---:|---:|---:|---|
+| Fast memory, no metabolism | 2.621 | 1,750 | 6.528 | Failed sharply near update 2,250 |
+| Fast memory, metabolism | 2.466 | 3,500 | 12.214 | Metabolism delayed failure until after update 3,750 |
+
+The no-metabolism run directly matched the best S0 control. It tracked that control
+through 2,000 updates and reached 2.621 BPC at update 1,750 versus 2.631 for the matched
+control: only a 0.010 improvement. It then failed sharply near update 2,250:
 
 - Mean fast efficacy had repeatedly approached 0.6 against the 0.75 bound.
 - Held-out BPC moved from 2.692 at update 2,000 to 5.630 at update 2,250.
@@ -48,6 +53,15 @@ It then failed sharply near update 2,250:
 - Directed flow had risen to roughly three times the S0 level.
 
 This falsifies broad high-gain potentiation as a stable memory rule.
+
+Metabolism damped the field long enough to produce a more informative transient result.
+Its best checkpoint reached 2.466 BPC: 0.018 better than the default S0 organism, but
+still 0.015 worse than the no-metabolism S0 live checkpoint. It then moved to 2.515 at
+update 3,750, 8.040 at update 4,000, and 12.214 at the final update. Metabolism delayed
+the same failure rather than solving it.
+
+Neither initial fast-memory checkpoint is eligible for live promotion: the existing
+no-metabolism checkpoint remains better and stable.
 
 ## Stabilized rule
 
