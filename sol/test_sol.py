@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import torch
 from torch.nn import functional as F
 
+from .baselines import CharacterGRU, evaluate_gru, match_gru_hidden_size
+from .checkpoint import load_checkpoint, save_checkpoint
+from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .train import ContinuousTrainer
@@ -115,3 +119,55 @@ def test_tiny_continuous_corpus_loss_falls() -> None:
     losses = [trainer.step().loss for _ in range(60)]
     assert sum(losses[-8:]) / 8 < 0.55 * (sum(losses[:8]) / 8)
     assert trainer.state.eligibility.abs().sum().item() > 0
+
+
+def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
+    torch.manual_seed(12)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=3,
+        chunk_length=4,
+        learning_rate=4e-3,
+    )
+    for _ in range(3):
+        trainer.step()
+    checkpoint = save_checkpoint(tmp_path / "resume.pt", trainer, {"tag": "test"})
+    expected = trainer.step()
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = resumed.step()
+    assert metadata == {"tag": "test"}
+    assert resumed.updates == trainer.updates
+    assert resumed.stream.position == trainer.stream.position
+    assert actual.loss == expected.loss
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+
+
+def test_heldout_evaluation_reports_state_ablations() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    model = _model(vocab_size=len(vocabulary))
+    metrics = evaluate_state_ablations(
+        model, vocabulary, text, tokens=12, warmup=4
+    )
+    assert set(metrics) == {"persistent", "reset_each_token", "shuffled_cells"}
+    assert all(value["tokens"] == 12 for value in metrics.values())
+    assert all(value["bits_per_character"] > 0 for value in metrics.values())
+
+
+def test_gru_control_matches_budget_and_scores_stream() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    target = sum(parameter.numel() for parameter in _model().parameters())
+    hidden = match_gru_hidden_size(len(vocabulary), target)
+    model = CharacterGRU(len(vocabulary), hidden)
+    nearest_error = abs(model.parameter_count() - target)
+    assert nearest_error / target < 0.08
+    metrics = evaluate_gru(
+        model, vocabulary.encode(text), tokens=12, warmup=4
+    )
+    assert metrics["tokens"] == 12
+    assert metrics["bits_per_character"] > 0

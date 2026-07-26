@@ -25,8 +25,16 @@ tensor shapes.
 - **Does**: Requires substantial loss reduction on a deterministic character stream
   without resetting organism state.
 
+### Checkpoint test
+- **Does**: Proves save/load preserves the exact next update, stream cursor, live field
+  state, optimizer, vocabulary, and metadata.
+
+### Evaluation and control tests
+- **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU
+  control is genuinely parameter matched.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| SOL development | All causal, metabolic, and learning paths remain real | Removing assertions or replacing measured state with synthetic diagnostics |
+| SOL development | All causal, metabolic, learning, resume, and control paths remain real | Removing assertions or replacing measured state with synthetic diagnostics |

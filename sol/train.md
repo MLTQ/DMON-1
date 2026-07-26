@@ -17,6 +17,13 @@ one-character-at-a-time organism path used during training.
   `stream.py`.
 - **Rationale**: An optimizer boundary detaches history but never resets experience.
 
+### `ContinuousTrainer.state_dict` / `from_state_dict`
+- **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,
+  vocabulary, hyperparameters, update count, and random-number state.
+- **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
+- **Rationale**: Resuming only weights would silently create a new organism and a new
+  stream position.
+
 ### `generate`
 - **Does**: Feeds a prompt and sampled characters through ordinary `tick` calls.
 - **Rationale**: Generation cannot use a separate decoder path that bypasses the field.
@@ -30,7 +37,7 @@ one-character-at-a-time organism path used during training.
 |---|---|---|
 | CLI users | `python -m sol.train` is self-contained | Flag names |
 | Tests | `step()` returns finite metrics and preserves `state` | Metric fields |
-| Future checkpointing | Trainer owns model, optimizer, stream position, and field state | Ownership changes |
+| `checkpoint.py` | Trainer snapshots contain the complete continuous process | State keys |
 
 ## Notes
 

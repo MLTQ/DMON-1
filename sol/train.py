@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+from typing import Any
 
 import torch
 from torch.nn import functional as F
@@ -46,11 +47,73 @@ class ContinuousTrainer:
         )
         self.chunk_length = chunk_length
         self.grad_clip = grad_clip
+        self.learning_rate = learning_rate
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(), lr=learning_rate, weight_decay=1e-4
         )
         self.state = self.model.initial_state(batch_size, self.device)
         self.updates = 0
+
+    def state_dict(self) -> dict[str, Any]:
+        """Serialize the uninterrupted training process, not only model weights."""
+
+        return {
+            "model_config": asdict(self.model.cfg),
+            "model": self.model.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "field_state": {
+                field.name: getattr(self.state, field.name).detach().cpu()
+                for field in fields(FieldState)
+            },
+            "stream": self.stream.state_dict(),
+            "vocabulary": list(self.vocabulary.characters),
+            "batch_size": self.stream.batch_size,
+            "chunk_length": self.chunk_length,
+            "learning_rate": self.learning_rate,
+            "grad_clip": self.grad_clip,
+            "updates": self.updates,
+            "torch_rng_state": torch.get_rng_state(),
+            "cuda_rng_state": (
+                torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+            ),
+        }
+
+    @classmethod
+    def from_state_dict(
+        cls,
+        payload: dict[str, Any],
+        text: str,
+        device: torch.device | str = "cpu",
+    ) -> "ContinuousTrainer":
+        """Rebuild a trainer at the exact stream and organism state in a checkpoint."""
+
+        vocabulary = CharacterVocabulary(tuple(payload["vocabulary"]))
+        model = SparseAxonField(SolConfig(**payload["model_config"]))
+        trainer = cls(
+            model,
+            text,
+            vocabulary,
+            batch_size=int(payload["batch_size"]),
+            chunk_length=int(payload["chunk_length"]),
+            learning_rate=float(payload["learning_rate"]),
+            grad_clip=float(payload["grad_clip"]),
+            device=device,
+        )
+        trainer.model.load_state_dict(payload["model"])
+        trainer.optimizer.load_state_dict(payload["optimizer"])
+        trainer.state = FieldState(
+            **{
+                field.name: payload["field_state"][field.name].to(trainer.device)
+                for field in fields(FieldState)
+            }
+        )
+        trainer.stream.load_state_dict(payload["stream"])
+        trainer.updates = int(payload["updates"])
+        torch.set_rng_state(payload["torch_rng_state"].cpu())
+        cuda_rng_state = payload.get("cuda_rng_state")
+        if cuda_rng_state is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(cuda_rng_state)
+        return trainer
 
     def step(self) -> TrainMetrics:
         """Advance the stream once, backpropagate, and keep the detached organism."""
