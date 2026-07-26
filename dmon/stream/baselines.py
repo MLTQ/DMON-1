@@ -44,6 +44,76 @@ class GRUBaseline(nn.Module):
         return sum(p.numel() for p in self.parameters())
 
 
+class TransformerBaseline(nn.Module):
+    """Small causal transformer over a fixed context window.
+
+    Comparability note: a vanilla transformer has no persistent state, so it is given
+    exactly the history the lattice holds in its mirror cells — `context` tokens. The
+    lattice additionally carries persistent state the transformer has no equivalent of,
+    which is the point of the architecture and not a handicap to correct for. This is
+    the bar, and it is expected to be a hard one at small scale.
+    """
+
+    def __init__(self, vocab: int, d_model: int, context: int, n_layer: int = 2, n_head: int = 4):
+        super().__init__()
+        self.context = context
+        self.embed = nn.Embedding(vocab, d_model)
+        self.pos = nn.Parameter(torch.zeros(1, context, d_model))
+        layer = nn.TransformerEncoderLayer(
+            d_model, n_head, dim_feedforward=4 * d_model, batch_first=True,
+            dropout=0.0, norm_first=True,
+        )
+        self.blocks = nn.TransformerEncoder(layer, n_layer)
+        self.norm = nn.LayerNorm(d_model)
+        self.readout = nn.Linear(d_model, vocab)
+        mask = torch.triu(torch.ones(context, context, dtype=torch.bool), 1)
+        self.register_buffer("mask", mask)
+
+    def blank_state(self, batch: int, device=None):
+        return None  # stateless by construction; context is supplied per tick
+
+    def tick(self, state, token: torch.Tensor, history: torch.Tensor):
+        # history is most-recent-first; reverse to chronological and append nothing —
+        # `token` is already history[:, 0] because the caller pushes before ticking.
+        ctx = history[:, : self.context].flip(1)
+        h = self.embed(ctx) + self.pos[:, : ctx.shape[1]]
+        h = self.norm(self.blocks(h, mask=self.mask[: ctx.shape[1], : ctx.shape[1]]))
+        return state, self.readout(h[:, -1])
+
+    def param_count(self) -> int:
+        return sum(p.numel() for p in self.parameters())
+
+
+def _match(build, target_params: int, lo: int = 8, hi: int = 1024, step: int = 4):
+    """Largest build(size) whose parameter count does not exceed the budget.
+
+    Search rather than algebra: the closed form is easy to get subtly wrong, and an
+    under-budgeted baseline makes a favourable comparison meaningless.
+    """
+    best = None
+    for size in range(lo, hi + 1, step):
+        try:
+            n = build(size).param_count()
+        except Exception:
+            break
+        if n <= target_params:
+            best = size
+        else:
+            break
+    return build(best or lo)
+
+
+def transformer_matched_to(
+    target_params: int, vocab: int, context: int, n_head: int = 4
+) -> TransformerBaseline:
+    return _match(
+        lambda d: TransformerBaseline(vocab, d - (d % n_head) or n_head, context, n_head=n_head),
+        target_params,
+        lo=n_head,
+        step=n_head,
+    )
+
+
 def gru_matched_to(target_params: int, vocab: int, embed: int = 32) -> GRUBaseline:
     """Largest GRU whose parameter count does not exceed `target_params`.
 

@@ -24,7 +24,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
-from .baselines import GRUBaseline, gru_matched_to
+from .baselines import gru_matched_to, transformer_matched_to
 from .corpus import CharStream, History
 from .lattice import LatticeConfig, StreamingLattice
 
@@ -97,7 +97,7 @@ def train_stream(
             # The graph is truncated here. The STATE is not: it carries forward
             # detached, so the creature keeps its context across the boundary. Calling
             # blank_state() here instead would silently make this episodic.
-            state = state.detach()
+            state = state.detach() if state is not None else None
 
         if (t + 1) % log == 0:
             bpc = (running / seen) * LOG2E
@@ -127,7 +127,8 @@ def main():
     p.add_argument("--mirror-len", type=int, default=24)
     p.add_argument("--log", type=int, default=1000)
     p.add_argument("--eval-ticks", type=int, default=2000)
-    p.add_argument("--only", default=None, choices=["lattice", "gru", "inert"])
+    p.add_argument("--only", default=None,
+                   choices=["lattice", "gru", "inert", "transformer"])
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = p.parse_args()
@@ -149,6 +150,10 @@ def main():
         g = gru_matched_to(n, vocab)
         print(f"gru params={g.param_count()} (budget {n})")
         runs.append(("gru", g))
+    if want in (None, "transformer"):
+        tr = transformer_matched_to(n, vocab, a.mirror_len)
+        print(f"transformer params={tr.param_count()} (budget {n}, ctx {a.mirror_len})")
+        runs.append(("transformer", tr))
 
     results = []
     for name, model in runs:

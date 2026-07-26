@@ -184,6 +184,50 @@ class StreamingLattice(nn.Module):
             x = self.micro_step(x)
         return x, self.read_output(x)
 
+    # --- growth ---------------------------------------------------------------
+
+    def grown(self, new_size: int) -> tuple["StreamingLattice", callable]:
+        """Return a larger lattice sharing this one's weights, plus a state migrator.
+
+        This is the operation that justifies choosing cellular automata. The rule is
+        shared and local, so **the parameter count does not change** — every weight
+        transfers unmodified and the larger creature is the same creature with more
+        room. No retraining, no re-initialisation, no architecture change.
+
+        New cells start at zero state. They are not noise and they are not copies; they
+        are unrecruited substrate, and whether the creature actually recruits them is
+        precisely what S2 tests rather than assumes.
+
+        Regions are re-derived at the new centre, so the migrator translates old state
+        to keep the port aligned. Without that the creature would wake up with its
+        input arriving somewhere it has never sensed.
+        """
+        if new_size < self.cfg.size:
+            raise ValueError("grown() does not shrink")
+        from dataclasses import replace as _replace
+
+        bigger = StreamingLattice(_replace(self.cfg, size=new_size))
+        # `driven` is a size-shaped buffer describing where the stream writes; it is
+        # rebuilt by the constructor at the new geometry and must not be copied across.
+        # Everything else — every learnable weight — transfers verbatim, which is the
+        # whole point.
+        weights = {k: v for k, v in self.state_dict().items() if k != "driven"}
+        missing, unexpected = bigger.load_state_dict(weights, strict=False)
+        if unexpected or [m for m in missing if m != "driven"]:
+            raise RuntimeError(
+                f"weights did not transfer cleanly (missing={missing}, "
+                f"unexpected={unexpected})"
+            )
+
+        off = (new_size - self.cfg.size) // 2
+
+        def migrate(x: torch.Tensor) -> torch.Tensor:
+            y = bigger.blank_state(x.shape[0], x.device)
+            y[:, :, off : off + self.cfg.size, off : off + self.cfg.size] = x
+            return y
+
+        return bigger, migrate
+
     # --- introspection --------------------------------------------------------
 
     def param_count(self) -> int:
