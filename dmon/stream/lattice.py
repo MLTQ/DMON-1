@@ -79,6 +79,13 @@ class LatticeConfig:
     # to find out whether the mechanism helps before paying for the sophisticated form.
     scales: tuple = ()  # e.g. (4, 8) — pooling factors for coarse levels
 
+    # Readout width. 0 = the 4x4 port patch only. Anything else samples the whole
+    # lattice on that stride, so every region has direct access to the loss instead of
+    # having to funnel through 16 cells. The port readout is a keyhole: a distant cell's
+    # influence is bandwidth-limited however good its routes are, which is the last
+    # structural suspect for why the useful radius sits at 5.
+    readout_stride: int = 0
+
     local_pred: float = 0.0  # weight on local next-state prediction
     var_weight: float = 1.0  # anti-collapse. Predicting your own next state has the
     #                          trivial optimum "be constant" — every cell can reach it
@@ -159,7 +166,12 @@ class StreamingLattice(nn.Module):
                 "the input directly and the lattice would be bypassed"
             )
 
-        self.readout = nn.Linear(c * p * p, self.cfg.vocab)
+        if self.cfg.readout_stride:
+            k = self.cfg.readout_stride
+            n_read = len(range(0, s, k)) ** 2
+            self.readout = nn.Linear(c * n_read, self.cfg.vocab)
+        else:
+            self.readout = nn.Linear(c * p * p, self.cfg.vocab)
 
     # --- state ----------------------------------------------------------------
 
@@ -243,7 +255,11 @@ class StreamingLattice(nn.Module):
         return x
 
     def read_output(self, x: torch.Tensor) -> torch.Tensor:
-        patch = x[:, :, self.out_slice[0], self.out_slice[1]]
+        if self.cfg.readout_stride:
+            k = self.cfg.readout_stride
+            patch = x[:, :, ::k, ::k]
+        else:
+            patch = x[:, :, self.out_slice[0], self.out_slice[1]]
         return self.readout(patch.reshape(patch.shape[0], -1))
 
     def tick(
