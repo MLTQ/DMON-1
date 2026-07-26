@@ -463,7 +463,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sensory-cells", type=int, default=8)
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
-    parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
+    parser.add_argument("--fast-plasticity-gain", type=float, default=0.02)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--log-every", type=int, default=25)

@@ -59,6 +59,9 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
   forward transport, backward credit, and persistent event memory are demonstrated.
 - Slow edge parameters learn by exact truncated BPTT. Fast efficacy is stream-local,
   bounded, decays, and changes only when delayed reward meets a remembered edge tag.
+- Locally computed tags are centered across each target's dendrites before entering
+  eligibility memory. This makes plasticity competitive within a dendrite fan instead
+  of allowing globally positive reward to potentiate every incoming edge together.
 - Energy currently modulates computation but does not kill or reproduce cells.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

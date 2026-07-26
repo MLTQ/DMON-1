@@ -125,6 +125,15 @@ def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
     assert torch.count_nonzero(untagged).item() == 0
 
 
+def test_learned_edge_tags_are_competitive_per_target() -> None:
+    model = _model(edge_eligibility_decay=0.0)
+    state = model.initial_state(2)
+    _, next_state, _ = model.tick(state, torch.tensor([0, 1]))
+    tag_sums = next_state.edge_eligibility.sum(dim=2)
+    assert torch.allclose(tag_sums, torch.zeros_like(tag_sums), atol=1e-6)
+    assert next_state.edge_eligibility.abs().sum().item() > 0
+
+
 def test_fast_synapses_are_reward_dependent_bounded_and_differentiable() -> None:
     model = _model(reward_gain=0.0)
     no_reward = model.initial_state(1)

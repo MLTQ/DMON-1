@@ -35,8 +35,8 @@ class SolConfig:
     stimulation_decay: float = 0.72
     reward_gain: float = 0.25
     fast_weight_decay: float = 0.995
-    fast_plasticity_gain: float = 0.04
-    fast_weight_limit: float = 0.75
+    fast_plasticity_gain: float = 0.02
+    fast_weight_limit: float = 0.25
 
     energy_start: float = 0.60
     basal_cost: float = 0.002
@@ -388,6 +388,9 @@ class SparseAxonField(nn.Module):
                 (source_hidden * target_change.unsqueeze(2)).mean(dim=3)
                 * math.sqrt(cfg.channels)
             )
+            edge_tag = (
+                edge_tag - edge_tag.mean(dim=2, keepdim=True)
+            ).clamp(-1.0, 1.0)
             edge_eligibility = (
                 cfg.edge_eligibility_decay * edge_eligibility
                 + (1 - cfg.edge_eligibility_decay) * edge_tag
