@@ -36,7 +36,10 @@ probabilities out. It is not a transformer imitation.
 
 Rewiring is disabled by default. The matched structural control receives the same
 rotating exploratory traffic and continues ordinary learning, but never installs a
-candidate into its permanent dendrite table.
+candidate into its permanent dendrite table. Every live traffic trial is checkpointed
+with its on/off reward evidence and energy state, then aligned with validation before
+and after the intervention so a candidate cannot count as successful while the body
+collapses around it.
 
 ## Run
 

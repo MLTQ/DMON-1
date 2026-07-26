@@ -129,6 +129,7 @@ class StructuralProbation:
     optimizer_slots: dict[str, dict[str, torch.Tensor]] = field(
         default_factory=dict
     )
+    trial_history: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def mean_advantage(self) -> float:
@@ -311,11 +312,19 @@ class StructuralProbation:
         margin: float,
         growth_cost: float = 0.0,
         min_endpoint_energy: float = 0.0,
+        resolved_update: int | None = None,
     ) -> bool:
         """Commit positive probation or restore the exact pre-graft slot."""
 
         if not self.active:
             raise RuntimeError("no structural probation is active")
+        body_energy_before = float(state.energy.mean().item())
+        target_energy_before = float(
+            state.energy[:, self.target].mean().item()
+        )
+        candidate_energy_before = float(
+            state.energy[:, self.candidate_source].mean().item()
+        )
         decision_advantage = self.mean_advantage
         committed = (
             decision_advantage > margin
@@ -395,6 +404,64 @@ class StructuralProbation:
             self.total_committed += 1
         elif not self.virtual and not self.exploratory_traffic:
             self.total_rolled_back += 1
+        outcome = (
+            "virtual"
+            if self.virtual
+            else (
+                "committed"
+                if committed
+                else (
+                    "rejected"
+                    if self.exploratory_traffic
+                    else "rolled_back"
+                )
+            )
+        )
+        self.trial_history.append(
+            {
+                "mode": (
+                    "exploratory_traffic"
+                    if self.exploratory_traffic
+                    else "post_graft"
+                ),
+                "outcome": outcome,
+                "virtual": self.virtual,
+                "started_update": self.started_update,
+                "resolved_update": (
+                    self.started_update + self.observations
+                    if resolved_update is None
+                    else int(resolved_update)
+                ),
+                "target": self.target,
+                "slot": self.slot,
+                "old_source": self.old_source,
+                "candidate_source": self.candidate_source,
+                "observations": self.observations,
+                "candidate_observations": self.candidate_observations,
+                "incumbent_observations": self.incumbent_observations,
+                "mean_candidate_reward": (
+                    self.candidate_reward_sum
+                    / max(1, self.candidate_observations)
+                ),
+                "mean_incumbent_reward": (
+                    self.incumbent_reward_sum
+                    / max(1, self.incumbent_observations)
+                ),
+                "decision_advantage": decision_advantage,
+                "decision_margin": float(margin),
+                "candidate_edge_credit": self.candidate_edge_credit,
+                "body_energy_before": body_energy_before,
+                "body_energy_after": float(state.energy.mean().item()),
+                "target_energy_before": target_energy_before,
+                "target_energy_after": float(
+                    state.energy[:, self.target].mean().item()
+                ),
+                "candidate_energy_before": candidate_energy_before,
+                "candidate_energy_after": float(
+                    state.energy[:, self.candidate_source].mean().item()
+                ),
+            }
+        )
         self.last_mean_advantage = decision_advantage
         self.active = False
         self.virtual = False
@@ -791,6 +858,9 @@ def structural_summary(
                 "total_committed": probation.total_committed,
                 "total_rolled_back": probation.total_rolled_back,
                 "total_rejected": probation.total_rejected,
+                "trial_history": [
+                    dict(trial) for trial in probation.trial_history
+                ],
             }
             if probation is not None
             else {}

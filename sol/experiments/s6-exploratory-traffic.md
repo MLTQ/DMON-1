@@ -22,6 +22,10 @@ organism whose topology is frozen?
    margin and both endpoints can still pay, the candidate becomes a dendrite and pays
    the growth cost. Otherwise the candidate is rejected without anatomical mutation or
    energy expenditure.
+7. Every decision is retained in a checkpointed ledger with its candidate identity,
+   ABBA rewards, decision update, outcome, and body/endpoint energy. Held-out validation
+   immediately before and after the trial is aligned to that record until the next
+   intervention.
 
 The fixed-topology probes-only run is now a diagnostic rather than the primary fitness
 criterion.
@@ -63,6 +67,25 @@ that real exploratory traffic can drive balanced, checkpointable decisions while
 whole organism learns. They do not establish that the resulting morphology improves
 language modeling.
 
+## Decision-aligned survival smoke
+
+After adding the permanent trial ledger, a fresh 16-cell, 400-update run used the same
+live-body protocol with validation every 50 updates. It recorded three complete trials:
+
+| Trial | Decision | ABBA advantage | Pre-trial BPC | Post-trial BPC | Survival |
+|---:|---|---:|---:|---:|---|
+| 1 | reject | -0.05386 | 5.44351 | 5.24031 | pass |
+| 2 | reject | -0.02793 | 5.24031 | no isolated evaluation | pending |
+| 3 | commit | +0.00571 | 4.74495 | 4.55362, then 4.32248 | pass |
+
+The accepted graft charged exactly 0.005 mean energy to each endpoint and reduced
+whole-body mean energy from 1.0 to 0.999375. The organism continued improving afterward
+and the completed run was stable. This demonstrates that the artifact can distinguish a
+positive local traffic decision inside a surviving body from two rejected organs and can
+admit missing follow-up evidence instead of manufacturing a verdict. It still does not
+show that the graft caused the later language improvement: the ABBA reward difference is
+the local causal evidence, while decision-aligned held-out BPC is the survival gate.
+
 ## GPU status
 
 The first S5 launch reached update 500 before the RTX 2070 Super disappeared from the
@@ -72,6 +95,8 @@ selected explicitly by UUID. No graft had begun, so there is no partial scientif
 result to retain.
 
 The full S6 run should begin only after CUDA service is restored. Its primary gate is
-the distribution of within-organism exploratory advantages and subsequent post-commit
-stability. A frozen-topology organism may still be recorded for context, but it must not
-decide whether the living body accepts an organ change.
+the distribution of within-organism exploratory advantages and decision-aligned
+whole-body survival. A candidate win is insufficient if subsequent held-out BPC exceeds
+the configured regression threshold before the next intervention. A frozen-topology
+organism may still be recorded for context, but it must not decide whether the living
+body accepts an organ change.

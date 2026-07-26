@@ -29,7 +29,8 @@ one-character-at-a-time organism path used during training.
   continuous window.
 - **Probation order**: Accumulates the just-completed window's signed prequential reward,
   resolves a due probation after the optimizer step, and skips a new graft on that same
-  update. Ordinary body learning is never paused.
+  update. It passes the exact resolution update into the permanent trial ledger.
+  Ordinary body learning is never paused.
 - **Exploratory probation**: Before each streamed window, gates only the selected
   candidate probe according to a checkpointed ABBA schedule. Both arms update the same
   persistent body and optimizer; all unselected probes remain live. Resolution compares
@@ -46,7 +47,7 @@ one-character-at-a-time organism path used during training.
   vocabulary, structural policy and buffers, hyperparameters, update count, and
   random-number state.
 - **Does**: Includes the complete active graft backup and probation evidence so resume
-  produces the same future commit or rollback.
+  produces the same future commit or rollback, plus all completed trial records.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.

@@ -29,7 +29,10 @@ from .model import SolConfig, SparseAxonField
 from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
-from .stability import summarize_stability
+from .stability import (
+    summarize_exploratory_survival,
+    summarize_stability,
+)
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .structure import StructuralConfig, apply_structural_phase
 from .topology import analyze_topology
@@ -991,6 +994,7 @@ def test_exploratory_probation_uses_abba_traffic_before_grafting() -> None:
         trainer.optimizer,
         margin=0.0,
         growth_cost=config.growth_cost,
+        resolved_update=6,
     )
     assert committed
     assert int(model.sources[target, slot]) == candidate
@@ -999,6 +1003,17 @@ def test_exploratory_probation_uses_abba_traffic_before_grafting() -> None:
         trainer.stream.batch_size * config.growth_cost,
         abs=2e-6,
     )
+    trial = trainer.structural_probation.trial_history[-1]
+    assert trial["mode"] == "exploratory_traffic"
+    assert trial["outcome"] == "committed"
+    assert trial["started_update"] == 2
+    assert trial["resolved_update"] == 6
+    assert trial["target"] == target
+    assert trial["candidate_source"] == candidate
+    assert trial["candidate_observations"] == 2
+    assert trial["incumbent_observations"] == 2
+    assert trial["decision_advantage"] == pytest.approx(0.3)
+    assert trial["body_energy_after"] < trial["body_energy_before"]
 
 
 def test_exploratory_rejection_preserves_live_anatomy_and_energy() -> None:
@@ -1422,6 +1437,10 @@ def test_checkpoint_resume_preserves_exploratory_traffic_arm(
         resumed.structural_probation.last_mean_advantage
         == trainer.structural_probation.last_mean_advantage
     )
+    assert (
+        resumed.structural_probation.trial_history
+        == trainer.structural_probation.trial_history
+    )
 
 
 def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
@@ -1696,6 +1715,60 @@ def test_stability_ignores_early_learning_but_rejects_post_best_collapse() -> No
     assert not collapsed["stable"]
     assert collapsed["evaluations"] == 3
     assert collapsed["worst_regression_bpc"] == pytest.approx(0.8)
+
+
+def test_exploratory_survival_aligns_each_trial_with_the_living_body() -> None:
+    trials = [
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "committed",
+            "virtual": False,
+            "started_update": 100,
+            "resolved_update": 140,
+            "decision_advantage": 0.04,
+        },
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "rejected",
+            "virtual": False,
+            "started_update": 220,
+            "resolved_update": 260,
+            "decision_advantage": -0.01,
+        },
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "virtual",
+            "virtual": True,
+            "started_update": 300,
+            "resolved_update": 340,
+            "decision_advantage": 0.02,
+        },
+    ]
+    summary = summarize_exploratory_survival(
+        [
+            (50, 3.0),
+            (100, 2.8),
+            (150, 2.9),
+            (200, 2.7),
+            (250, 2.6),
+            (300, 3.4),
+        ],
+        trials,
+        max_regression_bpc=0.5,
+    )
+    assert summary["trials"] == 2
+    assert summary["committed"] == 1
+    assert summary["rejected"] == 1
+    assert summary["evaluated_trials"] == 2
+    assert summary["survived_trials"] == 1
+    assert summary["unstable_trials"] == 1
+    first, second = summary["trial_history"]
+    assert first["baseline_update"] == 100
+    assert first["first_post_update"] == 150
+    assert first["survived"]
+    assert second["baseline_update"] == 200
+    assert second["worst_regression_bpc"] == pytest.approx(0.7)
+    assert not second["survived"]
 
 
 def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:

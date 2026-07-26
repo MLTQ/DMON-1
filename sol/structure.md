@@ -58,6 +58,9 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 - **Does**: In exploratory-traffic mode, assigns streamed windows in a balanced ABBA
   candidate-on/incumbent-only schedule, retains separate reward aggregates, and grafts
   only after the candidate wins within the same organism.
+- **Does**: Appends every resolved trial to a checkpointed event ledger with the exact
+  candidate, traffic rewards, decision, and whole-body/endpoint energy before and after
+  the decision.
 - **Rationale**: Failed anatomy can be removed without pretending the rest of the body
   did not experience and adapt during the trial.
 - **Rationale**: A frozen organ in a separate organism cannot serve as the primary
@@ -65,7 +68,7 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 
 ### `structural_summary`
 - **Does**: Reports policy, rewrite attempts, retained credit, edge age, active probes,
-  and probation start/commit/rollback telemetry.
+  probation start/commit/rollback telemetry, and the complete trial ledger.
 
 ## Contracts
 
@@ -75,6 +78,7 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 | `benchmark.py` | Fixed and growing runs retain identical parameter counts and fan-in | Resizing tensors |
 | Checkpoint resume | Model buffers and trainer policy preserve exact future rewiring | Buffer or config keys |
 | Topology guard | All cells and outputs remain reachable from sensory cells | Removing viability test |
+| Survival analysis | Every resolved exploratory trial exposes start/resolution updates and decision evidence | Trial ledger keys |
 
 ## Notes
 

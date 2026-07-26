@@ -285,6 +285,7 @@ class ContinuousTrainer:
                 self.structural_config.probation_margin,
                 self.structural_config.growth_cost,
                 self.structural_config.min_endpoint_energy,
+                resolved_update=next_update,
             )
             self.model.probe_sources.copy_(
                 next_probe_sources(

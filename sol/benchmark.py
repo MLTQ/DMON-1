@@ -27,6 +27,7 @@ from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
 from .stability import (
     load_sol_evaluation_history,
+    summarize_exploratory_survival,
     summarize_stability,
 )
 from .structure import StructuralConfig, structural_summary
@@ -275,6 +276,11 @@ def _run_sol(
         ),
         "stability": summarize_stability(
             evaluation_history, args.max_final_regression_bpc
+        ),
+        "exploratory_survival": summarize_exploratory_survival(
+            evaluation_history,
+            trainer.structural_probation.trial_history,
+            args.max_final_regression_bpc,
         ),
     }
     _write_json(args.out_dir / "summary.json", summary)

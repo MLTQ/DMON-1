@@ -37,6 +37,8 @@ tensor shapes.
 - **Does**: Proves exploratory probation leaves incumbent anatomy and energy untouched
   during an ABBA candidate-on/incumbent-only traffic trial, balances observations, and
   grafts only after a positive within-organism reward difference.
+- **Does**: Requires each resolved exploratory trial to preserve its identity, traffic
+  evidence, decision update, outcome, and whole-body energy change in checkpoint state.
 - **Does**: Proves rejected exploratory candidates never mutate anatomy or spend growth
   energy, while shared body parameters continue learning during both traffic arms.
 - **Does**: Rechecks endpoint energy at the later commit boundary so an initially
@@ -111,6 +113,8 @@ tensor shapes.
   correct reset/shuffle penalties before a winner can be named.
 - **Does**: Distinguishes ordinary early learning from post-best collapse and deduplicates
   repeated evaluation updates after resume.
+- **Does**: Aligns each real exploratory intervention with validation before and after
+  it, excludes virtual controls, and distinguishes survived from unstable bodies.
 
 ## Contracts
 
