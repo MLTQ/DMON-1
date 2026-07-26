@@ -193,6 +193,9 @@ class LiveOrganism:
                         .mean()
                         .item()
                     ),
+                    "rewardBaseline": float(
+                        state.reward_baseline.mean().item()
+                    ),
                 },
                 "topology": {
                     "sources": self.loaded.model.sources.cpu().tolist(),

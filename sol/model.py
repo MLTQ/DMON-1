@@ -34,8 +34,9 @@ class SolConfig:
     sensory_trace_decay: float = 0.90
     stimulation_decay: float = 0.72
     reward_gain: float = 0.25
+    reward_baseline_decay: float = 0.99
     fast_weight_decay: float = 0.995
-    fast_plasticity_gain: float = 0.02
+    fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
 
     energy_start: float = 0.60
@@ -63,6 +64,7 @@ class SolConfig:
             "edge_eligibility_decay",
             "sensory_trace_decay",
             "stimulation_decay",
+            "reward_baseline_decay",
             "fast_weight_decay",
         ):
             value = getattr(self, name)
@@ -86,6 +88,7 @@ class FieldState:
     fast_weight: torch.Tensor
     sensory_trace: torch.Tensor
     reward: torch.Tensor
+    reward_baseline: torch.Tensor
 
     def detached(self) -> "FieldState":
         """Cut the reverse-mode graph without resetting the organism."""
@@ -99,6 +102,7 @@ class FieldState:
             fast_weight=self.fast_weight.detach(),
             sensory_trace=self.sensory_trace.detach(),
             reward=self.reward.detach(),
+            reward_baseline=self.reward_baseline.detach(),
         )
 
     def clone(self) -> "FieldState":
@@ -113,6 +117,7 @@ class FieldState:
             fast_weight=self.fast_weight.clone(),
             sensory_trace=self.sensory_trace.clone(),
             reward=self.reward.clone(),
+            reward_baseline=self.reward_baseline.clone(),
         )
 
 
@@ -252,6 +257,9 @@ class SparseAxonField(nn.Module):
             ),
             sensory_trace=torch.zeros(batch, self.cfg.channels, device=device),
             reward=torch.zeros(batch, device=device),
+            reward_baseline=torch.full(
+                (batch,), math.log(self.cfg.vocab_size), device=device
+            ),
         )
 
     def state_from_snapshot(
@@ -325,6 +333,27 @@ class SparseAxonField(nn.Module):
         )
         return cfg.fast_weight_limit * torch.tanh(
             drive / cfg.fast_weight_limit
+        )
+
+    def observe_surprise(
+        self,
+        state: FieldState,
+        surprise: torch.Tensor,
+    ) -> FieldState:
+        """Convert observed error to signed reward around recent expectation."""
+
+        if surprise.shape != state.reward_baseline.shape:
+            raise ValueError("surprise must match the state batch")
+        detached = surprise.detach()
+        reward = torch.tanh(state.reward_baseline - detached)
+        baseline = (
+            self.cfg.reward_baseline_decay * state.reward_baseline
+            + (1 - self.cfg.reward_baseline_decay) * detached
+        )
+        return replace(
+            state,
+            reward=reward,
+            reward_baseline=baseline,
         )
 
     def tick(
@@ -444,6 +473,7 @@ class SparseAxonField(nn.Module):
             fast_weight=fast_weight,
             sensory_trace=sensory_trace,
             reward=torch.zeros_like(reward),
+            reward_baseline=state.reward_baseline,
         )
         diagnostics = {
             "edge_flow": mean_flow,
@@ -511,9 +541,7 @@ class SparseAxonField(nn.Module):
                 surprise = F.cross_entropy(
                     current_logits, targets[:, index], reduction="none"
                 )
-                reward = torch.tanh(
-                    math.log(self.cfg.vocab_size) - surprise.detach()
-                )
-                state = replace(state, reward=reward)
+                state = self.observe_surprise(state, surprise)
+                reward = state.reward
 
         return torch.stack(logits, dim=1), state, trace

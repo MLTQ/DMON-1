@@ -20,7 +20,8 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 
 ### `LiveOrganism.snapshot`
 - **Does**: Returns energy, stimulation, cell/edge eligibility, directed sources, slow
-  signed edge weights, and per-stream fast weights for live visualization.
+  signed edge weights, per-stream fast weights, and the reward surprise baseline for
+  live visualization.
 
 ### HTTP handler
 - **Does**: Serves `GET /health`, `GET /snapshot`, and `POST /generate`.

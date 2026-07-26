@@ -29,7 +29,7 @@ Tests require delayed edge specificity, zero-reward invariance, boundedness, gra
 flow through fast efficacy, checkpoint persistence and backward compatibility, no
 metabolic energy creation, single reward consumption, and aligned state shuffling.
 
-The complete repository suite passes 32 tests. A 500-update deterministic micro-run
+The complete repository suite passes 34 tests. A 500-update deterministic micro-run
 remained finite while reducing loss from 3.093 to 0.001; mean fast efficacy ended at
 0.174 under a 0.25 absolute bound.
 
@@ -67,9 +67,14 @@ no-metabolism checkpoint remains better and stable.
 
 The revised local rule centers activity tags across each target's dendrite fan, making
 eligibility competitive rather than allowing mostly positive reward to potentiate all
-incoming edges together. The default gain is 0.02 and the fast-efficacy limit is 0.25.
+incoming edges together. The fast-efficacy limit is 0.25.
 A scaled `tanh` homeostat contracts efficacy smoothly near the bound instead of leaving
 many synapses pinned by a hard clamp.
+
+Each stream lane also retains a moving expectation of character surprise. Reward is
+signed relative to that baseline: better-than-expected events potentiate their tagged
+edges and worse-than-expected events depress them. The selected defaults are baseline
+decay 0.99 and plasticity gain 0.04.
 
 ## Matched CPU-scale Shakespeare comparison
 
@@ -94,6 +99,36 @@ same model, edge tags, reward path, and recurrent state policy while forcing fas
 efficacy to zero before every tick. Held-out BPC worsened from 2.907 to 2.990
 (+0.083). The trained organism therefore uses online synaptic memory directly; the gain
 is not only an incidental optimization effect.
+
+## Signed-reward replication and gain selection
+
+The first smooth result used reward relative to chance and proved that the pathway could
+help, but two additional seeds showed a seed-sensitive endpoint. Reward was therefore
+centered around each lane's recent surprise expectation and all models were retrained
+from scratch.
+
+At gain 0.02, signed fast memory improved final BPC on every 1,500-update seed:
+
+| Seed | No-fast best/final | Fast best/final | Final improvement |
+|---:|---:|---:|---:|
+| 7 | 3.002 / 3.021 | 2.980 / 2.988 | +0.033 |
+| 13 | 3.001 / 3.087 | 3.001 / 3.051 | +0.035 |
+| 21 | 2.979 / 3.046 | 2.948 / 3.000 | +0.047 |
+
+A seed-13 gain sweep selected 0.04 over 0.01, 0.02, and 0.08. Gain 0.08 learned faster
+early but overshot late; 0.04 retained zero saturation. Replicating 0.04:
+
+| Seed | No-fast best/final | Gain-0.04 best/final | Final improvement |
+|---:|---:|---:|---:|
+| 7 | 3.002 / 3.021 | 3.012 / 3.013 | +0.008 |
+| 13 | 3.001 / 3.087 | 2.957 / 3.033 | +0.054 |
+| 21 | 2.979 / 3.046 | 2.952 / 2.982 | +0.064 |
+
+Mean final improvement is 0.042 BPC. All three runs pass the stability guard, remain at
+zero saturation, and worsen when only fast efficacy is removed from their best
+checkpoints (+0.001, +0.004, and +0.001 BPC). The direct tick-time contribution is
+small but consistently positive; the larger training delta indicates that continuous
+fast state also shapes the slow learner's trajectory.
 
 This is positive evidence for event-specific fast synaptic credit at reduced scale, not
 yet a full S1 pass. The next required result is the same smooth rule at the original

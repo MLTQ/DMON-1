@@ -20,7 +20,7 @@ including controls that test whether persistent cellular state is doing useful w
   identical characters.
 - **Interacts with**: `SparseAxonField.tick` in `model.py`.
 - **Rationale**: Evaluation follows the same one-character stream and delayed-reward
-  semantics as training.
+  semantics and persistent surprise baseline as training.
 
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state

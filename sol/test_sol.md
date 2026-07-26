@@ -27,6 +27,8 @@ tensor shapes.
   pending reward without falling back to hard clipping.
 - **Does**: Proves a pending reward is consumed exactly once instead of being replayed
   during unstimulated or generated ticks.
+- **Does**: Proves reward is positive or negative relative to a checkpointed moving
+  expectation of surprise rather than permanently positive after beating chance.
 
 ### Credit-path test
 - **Does**: Proves exact loss gradients reach retained cell states and directed synapses.
@@ -39,7 +41,7 @@ tensor shapes.
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
   state, optimizer, vocabulary, and metadata.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
-  zero-valued additive state.
+  zero-valued additive state and a chance-level surprise baseline.
 - **Does**: Proves a frozen-connectome control neither changes edges nor becomes
   trainable after resume.
 - **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and

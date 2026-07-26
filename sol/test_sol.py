@@ -185,6 +185,23 @@ def test_pending_reward_is_consumed_exactly_once() -> None:
     assert torch.count_nonzero(after_quiet.reward).item() == 0
 
 
+def test_surprise_reward_is_signed_around_persistent_expectation() -> None:
+    model = _model(reward_baseline_decay=0.5)
+    state = model.initial_state(1)
+    baseline = state.reward_baseline.clone()
+
+    neutral = model.observe_surprise(state.clone(), baseline)
+    assert neutral.reward.item() == pytest.approx(0.0)
+
+    better = model.observe_surprise(state.clone(), baseline - 0.5)
+    worse = model.observe_surprise(state.clone(), baseline + 0.5)
+    assert better.reward.item() > 0
+    assert worse.reward.item() < 0
+    assert better.reward_baseline.item() == pytest.approx(
+        baseline.item() - 0.25
+    )
+
+
 def test_reward_plasticity_does_not_mint_energy() -> None:
     model = _model(stimulation_gain=0.0, reward_gain=1.0)
     state = model.initial_state(1)
@@ -256,6 +273,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
     assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
     assert torch.equal(resumed.state.fast_weight, trainer.state.fast_weight)
+    assert torch.equal(resumed.state.reward_baseline, trainer.state.reward_baseline)
 
 
 def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
@@ -272,10 +290,18 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     payload = torch.load(checkpoint, weights_only=False)
     del payload["trainer"]["field_state"]["edge_eligibility"]
     del payload["trainer"]["field_state"]["fast_weight"]
+    del payload["trainer"]["field_state"]["reward_baseline"]
     torch.save(payload, checkpoint)
     resumed, _ = load_checkpoint(checkpoint, text)
     assert torch.count_nonzero(resumed.state.edge_eligibility).item() == 0
     assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
+    assert torch.allclose(
+        resumed.state.reward_baseline,
+        torch.full_like(
+            resumed.state.reward_baseline,
+            torch.log(torch.tensor(float(len(vocabulary)))).item(),
+        ),
+    )
 
 
 def test_frozen_connectome_survives_training_and_resume(tmp_path: Path) -> None:
@@ -328,6 +354,7 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     snapshot = organism.snapshot()
     assert snapshot["metrics"]["edgeEligibility"] != 0
     assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
+    assert snapshot["metrics"]["rewardBaseline"] > 0
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
 
 

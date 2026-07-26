@@ -39,6 +39,9 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
 - **Reward contract**: A pending reward is consumed once. `forward_sequence` stores the
   newest score after each prediction, so the final score crosses an optimizer boundary
   exactly once while free generation cannot replay stale prompt reward.
+- **Reward baseline**: Each stream lane retains an exponential moving expectation of
+  surprise. Observed error becomes signed reward relative to that expectation, avoiding
+  permanently positive potentiation once the model merely beats chance.
 - **Ablation contract**: `allow_fast_plasticity=False` forces zero efficacy through the
   tick without disabling edge-tag measurement or the rest of the recurrent field.
 

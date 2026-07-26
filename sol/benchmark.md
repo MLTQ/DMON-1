@@ -24,6 +24,8 @@ with checkpointing and append-only metrics.
   sound plausible.
 - **Does**: `--fast-plasticity-gain` records and varies the reward-to-efficacy scale for
   matched gain sweeps without changing parameter count.
+- **Does**: `--reward-baseline-decay` records the time scale used to turn surprise into
+  signed advantage relative to each stream lane's recent expectation.
 
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean

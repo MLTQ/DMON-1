@@ -65,12 +65,15 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "stimulation_gain": 0.0,
     }
     reward: dict[str, float] = {
-        "fast_plasticity_gain": args.fast_plasticity_gain
+        "fast_plasticity_gain": args.fast_plasticity_gain,
+        "reward_baseline_decay": args.reward_baseline_decay,
     }
     if args.no_reward:
-        reward = {"reward_gain": 0.0, "fast_plasticity_gain": 0.0}
+        reward.update(
+            {"reward_gain": 0.0, "fast_plasticity_gain": 0.0}
+        )
     elif args.no_fast_plasticity:
-        reward = {"fast_plasticity_gain": 0.0}
+        reward["fast_plasticity_gain"] = 0.0
     return SolConfig(
         vocab_size=vocab_size,
         cells=args.cells,
@@ -474,7 +477,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sensory-cells", type=int, default=8)
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
-    parser.add_argument("--fast-plasticity-gain", type=float, default=0.02)
+    parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
+    parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
@@ -514,6 +518,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--updates must be positive")
     if args.fast_plasticity_gain < 0:
         parser.error("--fast-plasticity-gain must be non-negative")
+    if not 0 <= args.reward_baseline_decay < 1:
+        parser.error("--reward-baseline-decay must be in [0, 1)")
     if args.max_final_regression_bpc < 0:
         parser.error("--max-final-regression-bpc must be non-negative")
     for name in ("log_every", "eval_every", "checkpoint_every"):

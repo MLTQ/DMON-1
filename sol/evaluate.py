@@ -115,8 +115,7 @@ def evaluate_sol(
             allow_fast_plasticity=not zero_fast_efficacy,
         )
         surprise = F.cross_entropy(logits, target, reduction="none")
-        reward = torch.tanh(math.log(model.cfg.vocab_size) - surprise)
-        state = replace(state, reward=reward)
+        state = model.observe_surprise(state, surprise)
         if shuffle_cells:
             state = _shuffle_cell_state(state, permutation)
 
