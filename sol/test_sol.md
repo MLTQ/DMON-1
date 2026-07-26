@@ -21,6 +21,8 @@ tensor shapes.
 - **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
   create fast efficacy, fast weights remain bounded and differentiable, and plasticity
   cannot mint metabolic energy.
+- **Does**: Proves a pending reward is consumed exactly once instead of being replayed
+  during unstimulated or generated ticks.
 
 ### Credit-path test
 - **Does**: Proves exact loss gradients reach retained cell states and directed synapses.

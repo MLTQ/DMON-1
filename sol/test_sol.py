@@ -146,6 +146,21 @@ def test_fast_synapses_are_reward_dependent_bounded_and_differentiable() -> None
     assert gradient_state.fast_weight.grad.abs().sum().item() > 0
 
 
+def test_pending_reward_is_consumed_exactly_once() -> None:
+    model = _model(reward_gain=0.0)
+    state = model.initial_state(1)
+    state.edge_eligibility.fill_(1.0)
+    state.reward.fill_(1.0)
+    _, after_reward, _ = model.tick(state, token=None)
+    _, after_quiet, _ = model.tick(after_reward, token=None)
+    assert torch.count_nonzero(after_reward.fast_weight).item() > 0
+    assert torch.allclose(
+        after_quiet.fast_weight,
+        model.cfg.fast_weight_decay * after_reward.fast_weight,
+    )
+    assert torch.count_nonzero(after_quiet.reward).item() == 0
+
+
 def test_reward_plasticity_does_not_mint_energy() -> None:
     model = _model(stimulation_gain=0.0, reward_gain=1.0)
     state = model.initial_state(1)

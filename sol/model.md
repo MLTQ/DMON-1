@@ -36,6 +36,9 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
   previously tagged dendrites, updates energy, and emits next-character logits.
 - **Rationale**: `token=None` remains a live interval and proves energy depletion without
   stimulation.
+- **Reward contract**: A pending reward is consumed once. `forward_sequence` stores the
+  newest score after each prediction, so the final score crosses an optimizer boundary
+  exactly once while free generation cannot replay stale prompt reward.
 
 ### `forward_sequence`
 - **Does**: Runs truncated differentiable windows without resetting field state.

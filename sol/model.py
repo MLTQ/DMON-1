@@ -415,7 +415,7 @@ class SparseAxonField(nn.Module):
             edge_eligibility=edge_eligibility,
             fast_weight=fast_weight,
             sensory_trace=sensory_trace,
-            reward=reward,
+            reward=torch.zeros_like(reward),
         )
         diagnostics = {
             "edge_flow": mean_flow,
