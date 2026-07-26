@@ -135,13 +135,42 @@ yet a full S1 pass. The next required result is the same smooth rule at the orig
 64×64, 2.56-million-character GPU budget. Axon growth remains blocked until that
 comparison is stable and beneficial.
 
+## Full-scale GPU confirmation
+
+The selected rule and a centered-reward no-fast control were trained from scratch at the
+original 64-cell, 64-channel budget: 5,000 updates × 16 lanes × 32 characters =
+2.56 million training characters. Both used seed 7, eight dendrites, three message
+steps, and no metabolism so the S0 capability winner remained the exact comparison.
+The candidate ran on the RTX 4090 and the control ran independently on the RTX 2070
+Super.
+
+| Variant | Best BPC | Final BPC | Worst post-best regression | Final saturation |
+|---|---:|---:|---:|---:|
+| Centered reward, no fast efficacy | 2.44185 | **2.53440** | +0.10863 | 0% |
+| Centered reward, smooth fast efficacy | **2.43925** | 2.55127 | +0.15154 | **0%** |
+
+Both uninterrupted runs pass the 0.5-BPC stability guard. The fast candidate improves
+best BPC by 0.00259 over its matched control and by 0.01163 over the prior 2.45088-BPC
+live checkpoint. Both candidates reach their best at update 3,750.
+
+At the fast candidate's best evaluation, forcing only fast efficacy to zero worsens BPC
+from 2.43925 to 2.44200 (+0.00275). The online synaptic state therefore carries a small
+amount of predictive information at the winning checkpoint. Its contribution changes
+sign across the full training history, however, and the candidate finishes 0.01687 BPC
+worse than the no-fast control. This is a narrow formal S1 pass, not evidence that the
+current reward rule is solved: it earns guarded checkpoint promotion and unblocks a
+first axon-growth experiment, while further credit-rule work must target a larger and
+more consistent endpoint benefit.
+
 ## Live checkpoint policy
 
 Promotion now audits the complete validation history. A candidate is excluded when its
 final or worst post-best BPC regresses by more than 0.5. Applied to the real artifacts:
 
-- The S0 no-metabolism live winner is stable with 0.143 worst post-best regression.
+- The smooth centered-reward candidate is stable with 0.152 worst post-best regression.
+- Its 2.439-BPC best checkpoint ranks ahead of the 2.442 matched no-fast control and
+  the 2.451 S0 no-metabolism checkpoint.
 - High-gain fast memory with metabolism is rejected at 9.748 regression.
 - High-gain fast memory without metabolism is rejected at 3.948 regression.
 
-The local UI therefore continues to use the stable 2.451-BPC S0 checkpoint.
+The local UI now uses the stable smooth fast-memory checkpoint from update 3,750.
