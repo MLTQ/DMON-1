@@ -41,6 +41,7 @@ python -m sol.benchmark --model gru --out-dir sol/runs/gru-control
 python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-control
 python -m sol.benchmark --model sol --freeze-edges --out-dir sol/runs/fixed-edge-control
 python -m sol.benchmark --model sol --no-metabolism --out-dir sol/runs/capability-control
+python -m sol.benchmark --model sol --no-reward --out-dir sol/runs/reward-control
 python -m sol.serve --checkpoint sol/runs/sol-main/best.pt
 python -m sol.report \
   --run sol=sol/runs/sol-main \

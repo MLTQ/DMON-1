@@ -59,6 +59,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "activity_cost": 0.0,
         "stimulation_gain": 0.0,
     }
+    reward = {} if not args.no_reward else {"reward_gain": 0.0}
     return SolConfig(
         vocab_size=vocab_size,
         cells=args.cells,
@@ -69,6 +70,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         message_steps=args.message_steps,
         topology_seed=args.seed,
         **metabolic,
+        **reward,
     )
 
 
@@ -469,6 +471,11 @@ def parse_args() -> argparse.Namespace:
         "--no-metabolism",
         action="store_true",
         help="Hold energy at one to isolate prediction capability from economy",
+    )
+    parser.add_argument(
+        "--no-reward",
+        action="store_true",
+        help="Disable reward-modulated eligibility feedback",
     )
     parser.add_argument("--prompt", default="ROMEO:")
     parser.add_argument("--generate", type=int, default=240)

@@ -16,8 +16,11 @@ with checkpointing and append-only metrics.
 ### Scientific controls
 - **Does**: `--freeze-edges` trains an otherwise identical organism without modifying
   its directed edge weights or biases; `--no-metabolism` holds energy at one.
+- **Does**: `--no-reward` sets reward gain to zero while leaving the event trace
+  computation intact.
 - **Rationale**: Learned morphology and metabolic modulation must earn their claims
-  against controls rather than ride on the shared cell rule.
+  against controls rather than ride on the shared cell rule; delayed eligibility
+  feedback must likewise improve prediction rather than merely sound plausible.
 
 ### `_run_gru`
 - **Does**: Trains a parameter-matched GRU with the same batch lanes, chunk length,
