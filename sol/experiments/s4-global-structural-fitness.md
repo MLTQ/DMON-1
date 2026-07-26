@@ -80,3 +80,43 @@ must:
    paired deficit.
 
 No live promotion follows from best BPC alone.
+
+## Full-scale result
+
+Both organisms completed stably with full reachability. The global-fitness arm installed
+15 connections: every complete confirmation cycle still found at least one target whose
+EMA fitness was positive. The zero-margin sign gate therefore provided no decision-level
+selectivity relative to S3.
+
+| Statistic | Global-fitness growth | Probes only | Growth − control |
+|---|---:|---:|---:|
+| Final BPC | 2.60450 | 2.50610 | +0.09840 |
+| Mean BPC, all 20 paired evaluations | 2.71155 | 2.69246 | +0.01910 |
+| Mean BPC, updates 2500–5000 | 2.59171 | 2.56235 | +0.02936 |
+| Mean BPC, updates 3750–5000 | 2.55713 | 2.52665 | +0.03048 |
+
+Lower is better. Growth won 5 of 20 checkpoints, 1 of 11 in the second half, and 1 of
+the final 6. The paired difference ranged from 0.02505 BPC better to 0.09840 worse.
+
+The final learned anatomy was functional: birth-topology ablation worsened growth from
+2.60450 to 2.63015 (+0.02565 BPC), and the final-six mean morphology penalty was
++0.03400. Functional anatomy again failed to imply a better organism.
+
+## Verdict
+
+The first-order global signal is measurable and useful as telemetry, but positive sign
+alone is neither scarce nor predictive enough in a 64-target search. It sometimes avoids
+an acute harmful graft—S4's update-2500 anatomy was beneficial where S3's was directly
+harmful—but produces a worse overall and late developmental trajectory.
+
+S4 fails both explicit gates:
+
+- it rejects zero full confirmation cycles and matches S3's 15 rewrites;
+- it loses second-half and final-six mean BPC by larger margins than S3.
+
+No checkpoint is promoted. A further pre-graft proxy is not justified by these results.
+The next experiment should make grafts reversible: preserve the incumbent source during
+a bounded post-graft probation, allow the whole organism to co-adapt under ordinary
+traffic and learning, then retain or roll back the anatomical change using its observed
+prequential fitness. This directly measures the body-with-organ developmental response
+the pre-graft local and gradient proxies failed to predict.
