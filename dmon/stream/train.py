@@ -65,6 +65,9 @@ def train_stream(
     mirror_len: int,
     log: int = 1000,
     eval_ticks: int = 2000,
+    eval_every: int = 0,
+    ckpt: Path | None = None,
+    ckpt_every: int = 0,
 ):
     dev = torch.device(device)
     model = model.to(dev)
@@ -75,6 +78,13 @@ def train_stream(
     state = model.blank_state(batch, dev)
 
     running, seen, history_log = 0.0, 0, []
+    chars_per_tick = batch
+
+    def _snapshot(tick):
+        if ckpt is None:
+            return
+        ckpt.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"tick": tick, "state": model.state_dict(), "log": history_log}, ckpt)
     t0 = time.time()
     loss_acc = 0.0
 
@@ -101,13 +111,26 @@ def train_stream(
 
         if (t + 1) % log == 0:
             bpc = (running / seen) * LOG2E
-            history_log.append({"tick": t + 1, "train_bpc": bpc})
+            ep = (t + 1) * chars_per_tick / 1_003_854
+            rec = {"tick": t + 1, "train_bpc": bpc, "epochs": ep}
             print(
-                f"[{name:9s} {t + 1:7d}] train_bpc={bpc:6.3f}  "
-                f"({(t + 1) / (time.time() - t0):7.1f} tick/s)"
+                f"[{name:9s} {t + 1:8d}] ep={ep:6.1f} train_bpc={bpc:6.3f}  "
+                f"({(t + 1) / (time.time() - t0):6.1f} tick/s)"
             )
             running, seen = 0.0, 0
+            # Held-out eval on a schedule, not only at the end. A 15-hour run whose
+            # only measurement is its last line cannot be diagnosed, cannot be stopped
+            # early on a plateau, and cannot show whether a late-emerging effect —
+            # which is precisely what this run exists to look for — ever appeared.
+            if eval_every and (t + 1) % eval_every == 0:
+                ev = evaluate(model, {"batch": batch}, eval_ticks, mirror_len, device)
+                rec["eval_bpc"] = ev
+                print(f"[{name:9s} {t + 1:8d}] HELD-OUT bpc={ev:.4f}")
+            history_log.append(rec)
+        if ckpt_every and (t + 1) % ckpt_every == 0:
+            _snapshot(t + 1)
 
+    _snapshot(ticks)
     eval_bpc = evaluate(model, {"batch": batch}, eval_ticks, mirror_len, device)
     print(f"[{name:9s}  final ] held-out bpc = {eval_bpc:.3f}")
     return {"name": name, "params": model.param_count(), "eval_bpc": eval_bpc,
@@ -129,6 +152,9 @@ def main():
     p.add_argument("--eval-ticks", type=int, default=2000)
     p.add_argument("--only", default=None,
                    choices=["lattice", "gru", "inert", "transformer"])
+    p.add_argument("--eval-every", type=int, default=0)
+    p.add_argument("--ckpt", type=Path, default=None)
+    p.add_argument("--ckpt-every", type=int, default=0)
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = p.parse_args()
@@ -159,7 +185,9 @@ def main():
     for name, model in runs:
         results.append(
             train_stream(model, name, a.ticks, a.window, a.batch, a.lr, a.device,
-                         a.mirror_len, a.log, a.eval_ticks)
+                         a.mirror_len, a.log, a.eval_ticks, a.eval_every,
+                         (a.ckpt.with_name(a.ckpt.stem + f"_{name}.pt") if a.ckpt else None),
+                         a.ckpt_every)
         )
 
     print("\n=== S0: held-out bits per character ===")
