@@ -34,7 +34,8 @@ causally measured exploratory axon probes.
 
 ### Structural buffers and `load_compatible_state_dict`
 - **Does**: Persist current candidate sources, incumbent/candidate credit, edge age, and
-  total rewrites with the model while upgrading older checkpoints additively.
+  per-candidate confirmation streaks, and total rewrites with the model while upgrading
+  older checkpoints additively.
 - **Interacts with**: `apply_structural_phase` in `structure.py`.
 
 ### `birth_sources`

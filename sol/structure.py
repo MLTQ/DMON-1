@@ -25,6 +25,7 @@ class StructuralConfig:
     interval: int = 100
     warmup_updates: int = 500
     replacements_per_phase: int = 1
+    confirmation_phases: int = 1
     credit_decay: float = 0.99
     credit_margin: float = 1e-3
     min_edge_age: int = 250
@@ -38,6 +39,8 @@ class StructuralConfig:
             raise ValueError("structural warmup must be non-negative")
         if self.replacements_per_phase < 1:
             raise ValueError("replacements_per_phase must be positive")
+        if self.confirmation_phases < 1:
+            raise ValueError("confirmation_phases must be positive")
         if not 0 <= self.credit_decay < 1:
             raise ValueError("structural credit decay must be in [0, 1)")
         if self.credit_margin < 0:
@@ -209,29 +212,54 @@ def apply_structural_phase(
         return StructuralUpdate(0, total, 0.0, 0)
 
     proposals: list[tuple[float, int, int, int, float]] = []
-    if config.allow_rewiring:
-        for target in range(model.cfg.cells):
-            mature = model.structural_edge_age[target] >= config.min_edge_age
-            if not bool(mature.any()):
-                continue
-            eligible_slots = torch.nonzero(mature, as_tuple=False).flatten()
-            eligible_credit = model.structural_edge_credit[target, eligible_slots]
-            position = int(torch.argmin(eligible_credit).item())
-            slot = int(eligible_slots[position].item())
-            edge_credit = float(
-                model.structural_edge_credit[target, slot].item()
-            )
-            probe_credit = float(model.structural_probe_credit[target].item())
-            if probe_credit <= 0:
-                continue
-            advantage = probe_credit - edge_credit
+    observed_advantages: list[float] = []
+    for target in range(model.cfg.cells):
+        mature = model.structural_edge_age[target] >= config.min_edge_age
+        if not bool(mature.any()):
+            model.structural_probe_confirmations[target] = 0
+            continue
+        eligible_slots = torch.nonzero(mature, as_tuple=False).flatten()
+        eligible_credit = model.structural_edge_credit[target, eligible_slots]
+        position = int(torch.argmin(eligible_credit).item())
+        slot = int(eligible_slots[position].item())
+        edge_credit = float(model.structural_edge_credit[target, slot].item())
+        probe_credit = float(model.structural_probe_credit[target].item())
+        advantage = probe_credit - edge_credit
+        observed_advantages.append(advantage)
+        if probe_credit > 0 and advantage > config.credit_margin:
+            model.structural_probe_confirmations[target].add_(1)
+        else:
+            model.structural_probe_confirmations[target] = 0
+
+        if (
+            config.allow_rewiring
+            and int(model.structural_probe_confirmations[target].item())
+            >= config.confirmation_phases
+        ):
             candidate = int(model.probe_sources[target].item())
             proposals.append(
                 (advantage, target, slot, candidate, probe_credit)
             )
 
     proposals.sort(key=lambda value: (-value[0], value[1], value[2]))
-    best_advantage = proposals[0][0] if proposals else 0.0
+    best_advantage = (
+        max(observed_advantages) if observed_advantages else 0.0
+    )
+    first_phase_update = max(
+        config.interval,
+        (
+            (config.warmup_updates + config.interval - 1)
+            // config.interval
+            * config.interval
+        ),
+    )
+    phase_number = (
+        (update - first_phase_update) // config.interval + 1
+    )
+    decision_due = phase_number % config.confirmation_phases == 0
+    if not decision_due:
+        return StructuralUpdate(0, total, best_advantage, 0)
+
     rewired = 0
     rejected_for_reachability = 0
     for advantage, target, slot, candidate, probe_credit in proposals:
@@ -272,6 +300,7 @@ def apply_structural_phase(
         next_probe_sources(model.sources, model.probe_sources)
     )
     model.structural_probe_credit.zero_()
+    model.structural_probe_confirmations.zero_()
     state.probe_eligibility.zero_()
     return StructuralUpdate(
         rewired_edges=rewired,
@@ -295,6 +324,9 @@ def structural_summary(
         ),
         "mean_probe_credit": float(
             model.structural_probe_credit.mean().item()
+        ),
+        "max_probe_confirmations": int(
+            model.structural_probe_confirmations.max().item()
         ),
         "mean_edge_age": float(model.structural_edge_age.float().mean().item()),
         "probe_sources": model.probe_sources.detach().cpu().tolist(),

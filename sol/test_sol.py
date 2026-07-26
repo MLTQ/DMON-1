@@ -359,6 +359,122 @@ def test_probes_only_control_rotates_without_rewiring() -> None:
     assert metrics.total_rewires == 0
 
 
+def test_structural_candidate_requires_consecutive_confirmations() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        replacements_per_phase=1,
+        confirmation_phases=3,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+
+    first = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert first.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
+    assert torch.all(model.structural_probe_confirmations == 1)
+
+    model.structural_probe_credit.fill_(1.0)
+    second = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert second.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
+    assert torch.all(model.structural_probe_confirmations == 2)
+
+    model.structural_probe_credit.fill_(1.0)
+    third = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=3
+    )
+    assert third.rewired_edges == 1
+    assert not torch.equal(model.sources, sources)
+    assert not torch.equal(model.probe_sources, probes)
+    assert torch.count_nonzero(
+        model.structural_probe_confirmations
+    ).item() == 0
+
+
+def test_structural_confirmation_streak_resets_on_negative_phase() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=3,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+
+    model.structural_probe_credit.fill_(1.0)
+    apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert torch.all(model.structural_probe_confirmations == 1)
+
+    model.structural_probe_credit.fill_(-1.0)
+    apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert torch.count_nonzero(
+        model.structural_probe_confirmations
+    ).item() == 0
+
+    model.structural_probe_credit.fill_(1.0)
+    third = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=3
+    )
+    assert third.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert not torch.equal(model.probe_sources, probes)
+
+
 def test_harmful_structural_probe_cannot_rewire() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -479,6 +595,10 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
         trainer.model.structural_probe_credit,
     )
     assert torch.equal(
+        resumed.model.structural_probe_confirmations,
+        trainer.model.structural_probe_confirmations,
+    )
+    assert torch.equal(
         resumed.model.structural_edge_age,
         trainer.model.structural_edge_age,
     )
@@ -507,6 +627,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
         "probe_sources",
         "structural_edge_credit",
         "structural_probe_credit",
+        "structural_probe_confirmations",
         "structural_edge_age",
         "total_rewires",
     ):

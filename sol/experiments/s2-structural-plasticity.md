@@ -84,9 +84,9 @@ claim.
 
 ## Full-scale gate
 
-The first GPU comparison will use 64 cells/channels, eight dendrites, 5,000 updates,
+The first GPU comparison used 64 cells/channels, eight dendrites, 5,000 updates,
 16 lanes × 32 characters, seed 7, no metabolism, no fast efficacy, and identical probes
-on both arms. The growing arm must:
+on both arms. The growing arm had to:
 
 1. complete with finite metrics and full output reachability;
 2. perform nonzero but bounded rewrites;
@@ -97,3 +97,48 @@ on both arms. The growing arm must:
 5. pass the completed-run stability guard.
 
 No live checkpoint promotion follows from morphology alone.
+
+## Full-scale exploratory-traffic result
+
+Both organisms completed stably with complete sensory and output reachability. The
+probes-only control continuously rotated the same candidates and trained every ordinary
+weight and persistent state, but never installed a candidate into permanent topology.
+The growing organism installed 46 rewrites across 46 eligible post-warmup phases, or
+8.98% of its 512 fixed source slots.
+
+| Statistic | Growing anatomy | Probes only | Growth − control |
+|---|---:|---:|---:|
+| Best BPC | 2.51217 | 2.47096 | +0.04122 |
+| Final BPC | 2.53904 | 2.55185 | −0.01281 |
+| Mean BPC, all 20 paired evaluations | 2.71039 | 2.69758 | +0.01281 |
+| Mean BPC, updates 2500–5000 | 2.59221 | 2.57194 | +0.02027 |
+| Mean BPC, updates 3750–5000 | 2.55726 | 2.54362 | +0.01364 |
+
+Lower is better. Growth won 8 of 20 paired checkpoints, 3 of 11 checkpoints in the
+second half, and 2 of the final 6. Its paired advantage ranged from 0.05224 BPC better
+to 0.06891 worse. The favorable final checkpoint therefore does not satisfy the
+predeclared capability gate.
+
+The causal morphology intervention tells a different and important story. Replacing
+only the growing model's learned source table with its deterministic birth topology
+worsened final BPC from 2.53904 to 2.80070. The mean ablation penalty was 0.22423 BPC
+over the second half and 0.26035 over the final six evaluations. By contrast, the
+probes-only control's birth-topology evaluation was exactly identical to its persistent
+evaluation.
+
+## Interpretation
+
+Continuous exploratory traffic can be consolidated into anatomy that the neural field
+uses deeply and increasingly relies upon. This is not a frozen-organ comparison: both
+arms remain stimulated, recurrent, reward-addressed, and fully trainable throughout.
+
+The first consolidation policy nevertheless fails as a fitness rule. It accepted a
+rewrite in all 46 eligible phases and rejected none, so the 0.001 instantaneous credit
+margin provided no practical selectivity. The model repeatedly co-adapted to consequential
+new wiring, but its held-out language performance was worse on average than exploration
+without installation.
+
+The next structural experiment should retain continuous probes while holding each
+candidate across multiple structural phases and requiring repeated positive evidence
+before installation. That tests selective consolidation rather than increasing
+exploration or rewrite volume. The current live checkpoint is unchanged.

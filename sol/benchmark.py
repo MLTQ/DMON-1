@@ -127,6 +127,7 @@ def _run_sol(
                 interval=args.structural_interval,
                 warmup_updates=args.structural_warmup,
                 replacements_per_phase=args.structural_replacements,
+                confirmation_phases=args.structural_confirmation_phases,
                 credit_decay=args.structural_credit_decay,
                 credit_margin=args.structural_credit_margin,
                 min_edge_age=args.structural_min_edge_age,
@@ -507,6 +508,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--structural-interval", type=int, default=100)
     parser.add_argument("--structural-warmup", type=int, default=500)
     parser.add_argument("--structural-replacements", type=int, default=1)
+    parser.add_argument(
+        "--structural-confirmation-phases", type=int, default=1
+    )
     parser.add_argument("--structural-credit-decay", type=float, default=0.99)
     parser.add_argument("--structural-credit-margin", type=float, default=1e-3)
     parser.add_argument("--structural-min-edge-age", type=int, default=250)
@@ -589,6 +593,7 @@ def parse_args() -> argparse.Namespace:
     for name in (
         "structural_interval",
         "structural_replacements",
+        "structural_confirmation_phases",
     ):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")

@@ -10,8 +10,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 
 ### `StructuralConfig`
 - **Does**: Defines phase cadence, credit memory, replacement budget, edge maturity,
-  improvement margin, endpoint energy cost, and whether matched probes may actually
-  rewrite topology.
+  improvement margin, required consecutive confirmation phases, endpoint energy cost,
+  and whether matched probes may actually rewrite topology.
 - **Interacts with**: `ContinuousTrainer` in `train.py`.
 
 ### `next_probe_sources`
@@ -28,7 +28,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 
 ### `apply_structural_phase`
 - **Does**: Replaces at most a bounded number of mature low-credit edges when a probe is
-  better, both endpoints can pay, and complete sensory/output reachability survives.
+  better across every required confirmation phase, both endpoints can pay, and complete
+  sensory/output reachability survives.
 - **Does**: Initializes the reused slow weight to the probe's approximate message
   coefficient, while resetting that slot's bias, optimizer moments, eligibility, and
   fast efficacy before rotating probes.
@@ -52,11 +53,13 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 ## Notes
 
 - The probes-only control accumulates and rotates the same candidates on the same
-  schedule while leaving `sources` unchanged.
+  schedule, including the same multi-phase hold time, while leaving `sources` unchanged.
 - Probe credit comes from an explicit with/without-probe cell-rule counterfactual in
   `model.py`; it is not inferred from geometric proximity.
 - Structural evidence retains the sign of reward times eligibility; a large harmful
   intervention cannot qualify merely because its magnitude is large.
 - A candidate must retain positive credit and clear a nonzero advantage margin before
-  it can replace even the target's worst mature incumbent.
+  it earns one confirmation. It must do so in every consecutive confirmation phase
+  before it can replace even the target's worst mature incumbent; one adverse phase
+  resets the streak.
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.

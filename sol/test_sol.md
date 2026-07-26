@@ -18,6 +18,9 @@ tensor shapes.
   untouched-slot parameter/optimizer integrity.
 - **Does**: Proves the probes-only control rotates candidates on schedule while leaving
   the authoritative topology and rewrite count unchanged.
+- **Does**: Holds matched probes across multiple reward windows, requires consecutive
+  positive confirmations before installation, and resets a candidate's streak after
+  adverse evidence.
 - **Does**: Proves a causally harmful candidate cannot replace even a worse incumbent
   merely because its credit magnitude is large.
 
@@ -49,7 +52,8 @@ tensor shapes.
 
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
-  state, optimizer, vocabulary, structural policy/buffers, and metadata.
+  state, optimizer, vocabulary, structural policy/credit/confirmation buffers, and
+  metadata.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

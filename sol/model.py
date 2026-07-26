@@ -239,6 +239,10 @@ class SparseAxonField(nn.Module):
             "structural_probe_credit", torch.zeros(n)
         )
         self.register_buffer(
+            "structural_probe_confirmations",
+            torch.zeros(n, dtype=torch.long),
+        )
+        self.register_buffer(
             "structural_edge_age", torch.zeros(n, k, dtype=torch.long)
         )
         self.register_buffer(
@@ -351,6 +355,7 @@ class SparseAxonField(nn.Module):
             "probe_sources",
             "structural_edge_credit",
             "structural_probe_credit",
+            "structural_probe_confirmations",
             "structural_edge_age",
             "total_rewires",
         )

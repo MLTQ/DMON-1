@@ -30,7 +30,8 @@ with checkpointing and append-only metrics.
   `--structural-probes-only` supplies the parameter- and intervention-matched
   fixed-topology control with identical probe accumulation and rotation.
 - **Does**: Structural flags record probe gain, phase cadence, replacement budget,
-  credit decay/margin, maturity, and endpoint energy cost.
+  consecutive confirmation phases, credit decay/margin, maturity, and endpoint energy
+  cost.
 - **Rationale**: Rewiring must beat the same causal probes without topology mutation,
   rather than receiving free exploratory traffic unavailable to control.
 
