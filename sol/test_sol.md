@@ -51,6 +51,9 @@ tensor shapes.
 ### Metabolism and eligibility tests
 - **Does**: Proves unstimulated energy depletion and delayed reward dependence on a
   remembered event trace.
+- **Does**: Proves output reward launches a persistent credit wave that moves against
+  signed target-owned axons to their named sources, affects only cells with remembered
+  eligibility, cannot appear from zero reward, and adds no parameters.
 - **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
   create fast efficacy, fast weights remain bounded and differentiable, and plasticity
   cannot mint metabolic energy.
@@ -72,8 +75,8 @@ tensor shapes.
 
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
-  state, optimizer, vocabulary, structural policy/credit/global-fitness/confirmation
-  buffers, and metadata.
+  state including backward credit, optimizer, vocabulary, structural
+  policy/credit/global-fitness/confirmation buffers, and metadata.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
 - **Does**: Resumes midway through an exploratory ABBA trial with the same next traffic
@@ -99,8 +102,8 @@ tensor shapes.
 - **Does**: Restores deterministic birth sources for one held-out pass and proves both
   source/probe tables return bitwise to their live values afterward.
 - **Does**: Requires edge eligibility and fast-weight saturation telemetry in training,
-  held-out evaluation, and the local live bridge together with probe and rewrite
-  telemetry.
+  held-out evaluation, and the local live bridge together with probe, backward-credit,
+  and rewrite telemetry.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.
 
 ### Report guard test

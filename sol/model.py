@@ -35,6 +35,8 @@ class SolConfig:
     stimulation_decay: float = 0.72
     reward_gain: float = 0.25
     reward_baseline_decay: float = 0.99
+    backward_credit_gain: float = 0.0
+    backward_credit_decay: float = 0.80
     fast_weight_decay: float = 0.995
     fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
@@ -66,6 +68,7 @@ class SolConfig:
             "sensory_trace_decay",
             "stimulation_decay",
             "reward_baseline_decay",
+            "backward_credit_decay",
             "fast_weight_decay",
         ):
             value = getattr(self, name)
@@ -73,6 +76,7 @@ class SolConfig:
                 raise ValueError(f"{name} must be in [0, 1)")
         if (
             self.reward_gain < 0
+            or self.backward_credit_gain < 0
             or self.fast_plasticity_gain < 0
             or self.structural_probe_gain < 0
         ):
@@ -95,6 +99,7 @@ class FieldState:
     energy: torch.Tensor
     stimulation: torch.Tensor
     eligibility: torch.Tensor
+    backward_credit: torch.Tensor
     edge_eligibility: torch.Tensor
     probe_eligibility: torch.Tensor
     fast_weight: torch.Tensor
@@ -110,6 +115,7 @@ class FieldState:
             energy=self.energy.detach(),
             stimulation=self.stimulation.detach(),
             eligibility=self.eligibility.detach(),
+            backward_credit=self.backward_credit.detach(),
             edge_eligibility=self.edge_eligibility.detach(),
             probe_eligibility=self.probe_eligibility.detach(),
             fast_weight=self.fast_weight.detach(),
@@ -126,6 +132,7 @@ class FieldState:
             energy=self.energy.clone(),
             stimulation=self.stimulation.clone(),
             eligibility=self.eligibility.clone(),
+            backward_credit=self.backward_credit.clone(),
             edge_eligibility=self.edge_eligibility.clone(),
             probe_eligibility=self.probe_eligibility.clone(),
             fast_weight=self.fast_weight.clone(),
@@ -143,6 +150,7 @@ class FieldTrace:
     edge_flow: list[torch.Tensor]
     novelty: list[torch.Tensor]
     mean_energy: list[torch.Tensor]
+    mean_backward_credit: list[torch.Tensor]
     mean_fast_weight: list[torch.Tensor]
     mean_edge_eligibility: list[torch.Tensor]
     fast_weight_saturation: list[torch.Tensor]
@@ -321,6 +329,9 @@ class SparseAxonField(nn.Module):
             eligibility=torch.zeros(
                 batch, self.cfg.cells, self.cfg.channels, device=device
             ),
+            backward_credit=torch.zeros(
+                batch, self.cfg.cells, device=device
+            ),
             edge_eligibility=torch.zeros(
                 batch, self.cfg.cells, self.cfg.dendrites, device=device
             ),
@@ -398,7 +409,12 @@ class SparseAxonField(nn.Module):
         hidden: torch.Tensor,
         stimulation: torch.Tensor,
         fast_weight: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """Read each target's named dendrites and return message, flow, stimulation."""
 
         source_hidden = hidden[:, self.sources]  # (B, target, dendrite, channel)
@@ -418,7 +434,43 @@ class SparseAxonField(nn.Module):
         flow = coefficient.abs()
         source_stimulation = stimulation[:, self.sources]
         propagated = (flow * source_stimulation).sum(dim=2)
-        return incoming, flow, propagated
+        return incoming, flow, propagated, coefficient
+
+    def _transport_backward_credit(
+        self,
+        credit: torch.Tensor,
+        coefficient: torch.Tensor,
+    ) -> torch.Tensor:
+        """Send target-owned credit to named sources along signed axons."""
+
+        batch = credit.shape[0]
+        if credit.shape != (batch, self.cfg.cells):
+            raise ValueError(
+                "backward credit must have shape (batch, cells)"
+            )
+        expected = (
+            batch,
+            self.cfg.cells,
+            self.cfg.dendrites,
+        )
+        if coefficient.shape != expected:
+            raise ValueError(
+                "message coefficient must have shape "
+                "(batch, cells, dendrites)"
+            )
+        contribution = (
+            coefficient * credit.unsqueeze(2)
+        ).flatten(1, 2)
+        source_index = self.sources.flatten().view(1, -1).expand(
+            batch, -1
+        )
+        transported = torch.zeros_like(credit)
+        transported.scatter_add_(
+            1,
+            source_index,
+            contribution,
+        )
+        return transported / math.sqrt(self.cfg.dendrites)
 
     def _probe_message(
         self,
@@ -531,6 +583,7 @@ class SparseAxonField(nn.Module):
         energy = state.energy
         stimulation = state.stimulation
         eligibility = state.eligibility
+        backward_credit = state.backward_credit
         edge_eligibility = state.edge_eligibility
         probe_eligibility = state.probe_eligibility
         structural_edge_evidence = (
@@ -552,10 +605,21 @@ class SparseAxonField(nn.Module):
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
         mean_probe_flow = state.energy.new_zeros(cfg.cells)
         final_probe_effect = torch.zeros_like(hidden)
+        if cfg.backward_credit_gain > 0:
+            output_injection = reward[:, None] / math.sqrt(
+                cfg.output_cells
+            )
+            backward_credit = backward_credit.clone()
+            backward_credit[:, self.output_indices] = (
+                backward_credit[:, self.output_indices]
+                + output_injection
+            )
+        else:
+            backward_credit = torch.zeros_like(backward_credit)
 
         for _ in range(cfg.message_steps):
             source_hidden = hidden[:, self.sources]
-            incoming, flow, propagated = self._messages(
+            incoming, flow, propagated, coefficient = self._messages(
                 hidden, stimulation, fast_weight
             )
             probe_message, probe_flow, probe_source_hidden = (
@@ -567,6 +631,9 @@ class SparseAxonField(nn.Module):
             ).clamp(0.0, 1.0)
             reward_drive = (
                 cfg.reward_gain * reward[:, None, None] * eligibility
+                + cfg.backward_credit_gain
+                * backward_credit[:, :, None]
+                * eligibility
             )
             rule_input = torch.cat(
                 (
@@ -637,6 +704,15 @@ class SparseAxonField(nn.Module):
                 - cfg.activity_cost * activity
                 + cfg.stimulation_gain * stimulation
             ).clamp(0.0, 1.0)
+            if cfg.backward_credit_gain > 0:
+                transported_credit = self._transport_backward_credit(
+                    backward_credit,
+                    coefficient,
+                )
+                backward_credit = torch.tanh(
+                    cfg.backward_credit_decay * backward_credit
+                    + transported_credit
+                )
             hidden = updated
             mean_flow = mean_flow + flow.mean(dim=0) / cfg.message_steps
             mean_probe_flow = (
@@ -654,6 +730,7 @@ class SparseAxonField(nn.Module):
             energy=energy,
             stimulation=stimulation,
             eligibility=eligibility,
+            backward_credit=backward_credit,
             edge_eligibility=edge_eligibility,
             probe_eligibility=probe_eligibility,
             fast_weight=fast_weight,
@@ -665,6 +742,7 @@ class SparseAxonField(nn.Module):
             "edge_flow": mean_flow,
             "novelty": novelty,
             "mean_energy": energy.mean(dim=1),
+            "mean_backward_credit": backward_credit.abs().mean(dim=1),
             "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
             "mean_edge_eligibility": edge_eligibility.abs().mean(
                 dim=(1, 2)
@@ -711,7 +789,7 @@ class SparseAxonField(nn.Module):
 
         logits: list[torch.Tensor] = []
         trace = FieldTrace(
-            [], [], [], [], [], [], [], [], [], [], [], [], []
+            [], [], [], [], [], [], [], [], [], [], [], [], [], []
         )
         reward = state.reward
 
@@ -728,6 +806,9 @@ class SparseAxonField(nn.Module):
             trace.edge_flow.append(diag["edge_flow"])
             trace.novelty.append(diag["novelty"])
             trace.mean_energy.append(diag["mean_energy"])
+            trace.mean_backward_credit.append(
+                diag["mean_backward_credit"]
+            )
             trace.mean_fast_weight.append(diag["mean_fast_weight"])
             trace.mean_edge_eligibility.append(
                 diag["mean_edge_eligibility"]

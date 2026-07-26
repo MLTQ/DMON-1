@@ -28,6 +28,7 @@ class TrainMetrics:
     loss: float
     perplexity: float
     mean_energy: float
+    mean_backward_credit: float
     mean_novelty: float
     cell_credit: float
     edge_credit: float
@@ -336,6 +337,9 @@ class ContinuousTrainer:
         )
         self.updates = next_update
         mean_energy = torch.stack(trace.mean_energy).mean().item()
+        mean_backward_credit = torch.stack(
+            trace.mean_backward_credit
+        ).mean().item()
         mean_novelty = torch.stack(trace.novelty).mean().item()
         mean_fast_weight = torch.stack(trace.mean_fast_weight).mean().item()
         mean_edge_eligibility = torch.stack(
@@ -353,6 +357,7 @@ class ContinuousTrainer:
             loss=value,
             perplexity=math.exp(min(20.0, value)),
             mean_energy=mean_energy,
+            mean_backward_credit=mean_backward_credit,
             mean_novelty=mean_novelty,
             cell_credit=cell_credit,
             edge_credit=edge_credit,
@@ -464,6 +469,17 @@ def main() -> None:
     parser.add_argument("--channels", type=int, default=32)
     parser.add_argument("--dendrites", type=int, default=4)
     parser.add_argument("--message-steps", type=int, default=3)
+    parser.add_argument("--cell-reward-gain", type=float, default=0.25)
+    parser.add_argument(
+        "--backward-credit-gain",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--backward-credit-decay",
+        type=float,
+        default=0.80,
+    )
     parser.add_argument("--lr", type=float, default=3e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-every", type=int, default=25)
@@ -484,6 +500,9 @@ def main() -> None:
         dendrites=args.dendrites,
         message_steps=args.message_steps,
         topology_seed=args.seed,
+        reward_gain=args.cell_reward_gain,
+        backward_credit_gain=args.backward_credit_gain,
+        backward_credit_decay=args.backward_credit_decay,
     )
     model = SparseAxonField(cfg)
     trainer = ContinuousTrainer(

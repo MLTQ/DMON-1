@@ -167,6 +167,9 @@ class LiveOrganism:
                     "probeEligibility": float(
                         state.probe_eligibility.abs().mean().item()
                     ),
+                    "backwardCredit": float(
+                        state.backward_credit.abs().mean().item()
+                    ),
                     "structuralRewires": int(
                         model.total_rewires.item()
                     ),
@@ -192,6 +195,9 @@ class LiveOrganism:
                     "energy": float(state.energy.mean().item()),
                     "stimulation": float(state.stimulation.mean().item()),
                     "eligibility": float(state.eligibility.abs().mean().item()),
+                    "backwardCredit": float(
+                        state.backward_credit.abs().mean().item()
+                    ),
                     "edgeEligibility": float(
                         state.edge_eligibility.abs().mean().item()
                     ),

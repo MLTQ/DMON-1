@@ -24,6 +24,9 @@ probabilities out. It is not a transformer imitation.
 - Persistent eligibility traces remember which cells participated in preceding events;
   delayed scalar reward modulates those traces on the following tick, including across
   optimizer boundaries.
+- An optional persistent credit wave enters output cells and travels backward through
+  the signed directed axons, meeting event eligibility at upstream cells without
+  introducing a separate teaching network.
 - One weak exploratory source per target is measured by running the shared cell rule
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is

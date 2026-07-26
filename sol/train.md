@@ -10,7 +10,8 @@ one-character-at-a-time organism path used during training.
 ### `TrainMetrics`
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
-  bounded rewiring counts, including mean first-order probe fitness.
+  bounded rewiring counts, including mean first-order probe fitness and persistent
+  backward-credit magnitude.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
   accumulated prequential improvement, raw advantage, and developmental baseline.
 - **Does**: Reports exploratory-traffic arm exposure, per-arm observations and reward,
@@ -36,6 +37,9 @@ one-character-at-a-time organism path used during training.
 - **Developmental baseline**: Tracks signed reward outside and during probation with a
   checkpointed EMA. A graft is judged by improvement over the body's pre-graft trend,
   not by reward that ordinary learning would have produced anyway.
+- **Backward credit**: Optionally replaces or supplements direct scalar cell reward with
+  an output-originating wave transported against signed axons. The wave remains in
+  `FieldState`; exact BPTT and one-shot scalar fast-synapse reward continue unchanged.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,

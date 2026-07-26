@@ -26,6 +26,11 @@ with checkpointing and append-only metrics.
   matched gain sweeps without changing parameter count.
 - **Does**: `--reward-baseline-decay` records the time scale used to turn surprise into
   signed advantage relative to each stream lane's recent expectation.
+- **Does**: `--cell-reward-gain` and `--backward-credit-gain` separate the existing
+  global cell reward from an output-originating credit wave that travels against signed
+  axons. `--backward-credit-decay` controls its cross-token memory.
+- **Rationale**: Direct reward, reverse transport, and their combination must be compared
+  explicitly rather than silently changing the organism's learning rule.
 - **Does**: `--structural-plasticity` runs bounded between-window grow/prune phases;
   `--structural-probes-only` supplies the parameter- and intervention-matched
   fixed-topology control with identical probe accumulation and rotation.

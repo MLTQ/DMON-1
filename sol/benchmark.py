@@ -66,8 +66,11 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "stimulation_gain": 0.0,
     }
     reward: dict[str, float] = {
+        "reward_gain": args.cell_reward_gain,
         "fast_plasticity_gain": args.fast_plasticity_gain,
         "reward_baseline_decay": args.reward_baseline_decay,
+        "backward_credit_gain": args.backward_credit_gain,
+        "backward_credit_decay": args.backward_credit_decay,
         "structural_probe_gain": (
             args.structural_probe_gain
             if args.structural_plasticity or args.structural_probes_only
@@ -76,7 +79,11 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
     }
     if args.no_reward:
         reward.update(
-            {"reward_gain": 0.0, "fast_plasticity_gain": 0.0}
+            {
+                "reward_gain": 0.0,
+                "backward_credit_gain": 0.0,
+                "fast_plasticity_gain": 0.0,
+            }
         )
     elif args.no_fast_plasticity:
         reward["fast_plasticity_gain"] = 0.0
@@ -516,6 +523,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sensory-cells", type=int, default=8)
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
+    parser.add_argument("--cell-reward-gain", type=float, default=0.25)
+    parser.add_argument("--backward-credit-gain", type=float, default=0.0)
+    parser.add_argument(
+        "--backward-credit-decay",
+        type=float,
+        default=0.80,
+    )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--structural-probe-gain", type=float, default=0.03)
@@ -604,6 +618,12 @@ def parse_args() -> argparse.Namespace:
         parser.error("--updates must be positive")
     if args.fast_plasticity_gain < 0:
         parser.error("--fast-plasticity-gain must be non-negative")
+    if args.cell_reward_gain < 0:
+        parser.error("--cell-reward-gain must be non-negative")
+    if args.backward_credit_gain < 0:
+        parser.error("--backward-credit-gain must be non-negative")
+    if not 0 <= args.backward_credit_decay < 1:
+        parser.error("--backward-credit-decay must be in [0, 1)")
     if args.structural_probe_gain <= 0 and (
         args.structural_plasticity or args.structural_probes_only
     ):

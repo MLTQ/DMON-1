@@ -21,6 +21,7 @@ class EvaluationMetrics:
     accuracy: float
     tokens: int
     mean_energy: float
+    mean_backward_credit: float
     mean_novelty: float
     mean_edge_flow: float
     mean_fast_weight: float
@@ -43,6 +44,7 @@ def _shuffle_cell_state(state: FieldState, permutation: torch.Tensor) -> FieldSt
         energy=state.energy[:, permutation],
         stimulation=state.stimulation[:, permutation],
         eligibility=state.eligibility[:, permutation],
+        backward_credit=state.backward_credit[:, permutation],
         edge_eligibility=state.edge_eligibility[:, permutation],
         probe_eligibility=state.probe_eligibility[:, permutation],
         fast_weight=state.fast_weight[:, permutation],
@@ -99,6 +101,7 @@ def evaluate_sol(
     total_loss = 0.0
     correct = 0
     energies: list[float] = []
+    backward_credits: list[float] = []
     novelties: list[float] = []
     edge_flows: list[float] = []
     fast_weights: list[float] = []
@@ -130,6 +133,11 @@ def evaluate_sol(
             total_loss += float(surprise.item())
             correct += int(logits.argmax(dim=-1).item() == target.item())
             energies.append(float(diagnostics["mean_energy"].mean().item()))
+            backward_credits.append(
+                float(
+                    diagnostics["mean_backward_credit"].mean().item()
+                )
+            )
             novelties.append(float(diagnostics["novelty"].mean().item()))
             edge_flows.append(float(diagnostics["edge_flow"].mean().item()))
             fast_weights.append(
@@ -163,6 +171,9 @@ def evaluate_sol(
         accuracy=correct / scored_tokens,
         tokens=scored_tokens,
         mean_energy=sum(energies) / scored_tokens,
+        mean_backward_credit=(
+            sum(backward_credits) / scored_tokens
+        ),
         mean_novelty=sum(novelties) / scored_tokens,
         mean_edge_flow=sum(edge_flows) / scored_tokens,
         mean_fast_weight=sum(fast_weights) / scored_tokens,

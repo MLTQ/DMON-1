@@ -10,14 +10,15 @@ causally measured exploratory axon probes.
 ## Components
 
 ### `SolConfig`
-- **Does**: Holds field size, directed topology, recurrence, eligibility, and energy
-  constants.
+- **Does**: Holds field size, directed topology, recurrence, eligibility, energy, and
+  optional backward-credit transport constants.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
-  delayed reward, per-edge and candidate-probe eligibility, and per-stream fast weights
-  across every character and optimizer window.
+  delayed reward, persistent output-originating backward credit, per-edge and
+  candidate-probe eligibility, and per-stream fast weights across every character and
+  optimizer window.
 - **Rationale**: Detaching a graph must not reset the organism.
 - **Compatibility**: `state_from_snapshot` initializes additive plasticity fields to
   zero when loading checkpoints made before fast synaptic or structural memory existed.
@@ -56,6 +57,12 @@ causally measured exploratory axon probes.
 - **Rationale**: Growth evidence comes from an intervention, not geometric proximity or
   an all-to-all correlation.
 
+### `_transport_backward_credit`
+- **Does**: Scatter-adds target credit to each target's named sources using the signed
+  coefficient of the corresponding forward axon.
+- **Rationale**: Reward can travel against the directed causal path without inventing a
+  second all-to-all teaching network.
+
 ### `tick`
 - **Does**: Consumes one optional streamed character, performs recurrent graph updates,
   tags individual dendrites and causal probes from local activity, applies delayed
@@ -68,6 +75,9 @@ causally measured exploratory axon probes.
 - **Reward baseline**: Each stream lane retains an exponential moving expectation of
   surprise. Observed error becomes signed reward relative to that expectation, avoiding
   permanently positive potentiation once the model merely beats chance.
+- **Backward credit**: When enabled, pending scalar reward enters output cells once,
+  propagates toward source cells against signed axons, persists across stream windows,
+  and affects a cell only where it meets that cell's remembered eligibility.
 - **Ablation contract**: `allow_fast_plasticity=False` forces zero efficacy through the
   tick without disabling edge-tag measurement or the rest of the recurrent field.
 
@@ -101,5 +111,8 @@ causally measured exploratory axon probes.
   remain nearly linear, while values approaching the bound receive increasing
   contraction instead of accumulating as clipped, effectively frozen synapses.
 - Energy currently modulates computation but does not kill or reproduce cells.
+- Backward credit is parameter-neutral and disabled by default for checkpoint
+  compatibility. It supplements or replaces the direct broadcast reward according to
+  explicit gains.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

@@ -114,6 +114,104 @@ def test_delayed_reward_acts_through_event_eligibility() -> None:
     )
 
 
+def test_backward_credit_moves_from_targets_to_named_sources() -> None:
+    model = _model(backward_credit_gain=1.0)
+    control = _model(backward_credit_gain=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    credit = torch.zeros(1, model.cfg.cells)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    credit[0, target] = 1.0
+    coefficient[0, target, slot] = 0.5
+
+    transported = model._transport_backward_credit(
+        credit,
+        coefficient,
+    )
+    expected = 0.5 / math.sqrt(model.cfg.dendrites)
+    assert transported[0, source].item() == pytest.approx(expected)
+    transported[0, source] = 0
+    assert torch.count_nonzero(transported).item() == 0
+
+
+def test_output_reward_launches_persistent_backward_credit() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+        backward_credit_decay=0.5,
+        message_steps=1,
+    )
+    state = model.initial_state(1)
+    _, after_reward, diagnostics = model.tick(
+        state,
+        token=None,
+        reward=torch.ones(1),
+    )
+    assert after_reward.backward_credit.abs().sum().item() > 0
+    assert diagnostics["mean_backward_credit"].item() > 0
+
+    _, after_quiet, _ = model.tick(
+        after_reward,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert after_quiet.backward_credit.abs().sum().item() > 0
+
+
+def test_backward_credit_meets_event_specific_cell_memory() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+        backward_credit_decay=0.0,
+        message_steps=1,
+    )
+    base = model.initial_state(1)
+    base.backward_credit[:, 3] = 1.0
+    tagged = base.clone()
+    tagged.eligibility[:, 3] = 1.0
+
+    _, untagged_next, _ = model.tick(
+        base,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, tagged_next, _ = model.tick(
+        tagged,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert not torch.allclose(
+        untagged_next.hidden[:, 3],
+        tagged_next.hidden[:, 3],
+    )
+
+
+def test_zero_reward_cannot_create_backward_credit() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+    )
+    state = model.initial_state(1)
+    _, next_state, _ = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert torch.count_nonzero(next_state.backward_credit).item() == 0
+
+
 def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
     model = _model(reward_gain=0.0, fast_weight_decay=0.0)
     state = model.initial_state(1)
@@ -1129,6 +1227,8 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
         _model(
             vocab_size=len(vocabulary),
             structural_probe_gain=0.03,
+            reward_gain=0.0,
+            backward_credit_gain=0.25,
         ),
         text,
         vocabulary,
@@ -1155,6 +1255,10 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert resumed.stream.position == trainer.stream.position
     assert actual.loss == expected.loss
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert torch.equal(
+        resumed.state.backward_credit,
+        trainer.state.backward_credit,
+    )
     assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
     assert torch.equal(resumed.state.probe_eligibility, trainer.state.probe_eligibility)
     assert torch.equal(resumed.state.fast_weight, trainer.state.fast_weight)
@@ -1336,6 +1440,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["probe_eligibility"]
     del payload["trainer"]["field_state"]["fast_weight"]
     del payload["trainer"]["field_state"]["reward_baseline"]
+    del payload["trainer"]["field_state"]["backward_credit"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
     del payload["trainer"]["structural_config"]
     del payload["trainer"]["structural_probation"]
@@ -1355,6 +1460,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     assert torch.count_nonzero(resumed.state.edge_eligibility).item() == 0
     assert torch.count_nonzero(resumed.state.probe_eligibility).item() == 0
     assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
+    assert torch.count_nonzero(resumed.state.backward_credit).item() == 0
     assert torch.count_nonzero(
         resumed.model.structural_edge_credit
     ).item() == 0
@@ -1419,6 +1525,7 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert snapshot["metrics"]["edgeEligibility"] != 0
     assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
     assert snapshot["metrics"]["rewardBaseline"] > 0
+    assert "backwardCredit" in snapshot["metrics"]
     assert snapshot["metrics"]["structuralRewires"] == 0
     assert "probeSources" in snapshot["topology"]
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
@@ -1555,6 +1662,10 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     assert all("mean_edge_eligibility" in value for value in metrics.values())
     assert all("fast_weight_saturation" in value for value in metrics.values())
     assert all("mean_probe_flow" in value for value in metrics.values())
+    assert all(
+        "mean_backward_credit" in value
+        for value in metrics.values()
+    )
     assert all("total_rewires" in value for value in metrics.values())
     assert metrics["zero_fast_efficacy"]["mean_fast_weight"] == 0
     sweep = evaluate_warmup_sweep(
@@ -1594,6 +1705,7 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     state.edge_eligibility[:, :, 0] = markers
     state.fast_weight[:, :, 0] = markers + 100
     state.probe_eligibility[:] = markers
+    state.backward_credit[:] = markers
     permutation = torch.arange(model.cfg.cells - 1, -1, -1)
     shuffled = _shuffle_cell_state(state, permutation)
     assert torch.equal(
@@ -1605,6 +1717,9 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     )
     assert torch.equal(
         shuffled.probe_eligibility, markers[permutation].unsqueeze(0)
+    )
+    assert torch.equal(
+        shuffled.backward_credit, markers[permutation].unsqueeze(0)
     )
 
 
