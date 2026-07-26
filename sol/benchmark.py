@@ -25,6 +25,10 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .schedule import (
+    cosine_decay_learning_rate,
+    set_optimizer_learning_rate,
+)
 from .stability import (
     load_sol_evaluation_history,
     summarize_exploratory_survival,
@@ -57,6 +61,47 @@ def _split_corpus(path: Path, fraction: float = 0.9) -> tuple[str, str]:
         raise ValueError("benchmark corpus must contain at least 100 characters")
     split = int(len(text) * fraction)
     return text[:split], text[split:]
+
+
+def _optimization_config(
+    args: argparse.Namespace,
+    base_learning_rate: float | None = None,
+) -> dict[str, float | int]:
+    """Return the optimizer policy recorded with checkpoints and summaries."""
+
+    return {
+        "base_learning_rate": (
+            args.learning_rate
+            if base_learning_rate is None
+            else base_learning_rate
+        ),
+        "learning_rate_decay_start": args.learning_rate_decay_start,
+        "learning_rate_decay_end": args.learning_rate_decay_end,
+        "minimum_learning_rate_ratio": args.minimum_learning_rate_ratio,
+    }
+
+
+def _set_learning_rate_for_update(
+    optimizer: torch.optim.Optimizer,
+    args: argparse.Namespace,
+    update: int,
+    base_learning_rate: float | None = None,
+) -> float:
+    """Apply the deterministic learning rate for the upcoming update."""
+
+    learning_rate = cosine_decay_learning_rate(
+        (
+            args.learning_rate
+            if base_learning_rate is None
+            else base_learning_rate
+        ),
+        update,
+        args.learning_rate_decay_start,
+        args.learning_rate_decay_end,
+        args.minimum_learning_rate_ratio,
+    )
+    set_optimizer_learning_rate(optimizer, learning_rate)
+    return learning_rate
 
 
 def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
@@ -187,6 +232,12 @@ def _run_sol(
     )
 
     while trainer.updates < args.updates:
+        learning_rate = _set_learning_rate_for_update(
+            trainer.optimizer,
+            args,
+            trainer.updates + 1,
+            trainer.learning_rate,
+        )
         metrics = trainer.step()
         update = trainer.updates
         if update == 1 or update % args.log_every == 0:
@@ -200,6 +251,7 @@ def _run_sol(
                     (update * args.batch * args.chunk)
                     / max(elapsed, 1e-9)
                 ),
+                "learning_rate": learning_rate,
                 **asdict(metrics),
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", row)
@@ -254,6 +306,9 @@ def _run_sol(
                         "best_bpc": best_bpc,
                         "evaluation": last_eval,
                         "sample": sample,
+                        "optimization": _optimization_config(
+                            args, trainer.learning_rate
+                        ),
                     },
                 )
 
@@ -265,6 +320,9 @@ def _run_sol(
                     "model": "sol",
                     "best_bpc": best_bpc,
                     "evaluation": last_eval,
+                    "optimization": _optimization_config(
+                        args, trainer.learning_rate
+                    ),
                 },
             )
 
@@ -276,6 +334,7 @@ def _run_sol(
         "best_bpc": best_bpc,
         "evaluation": last_eval,
         "config": asdict(trainer.model.cfg),
+        "optimization": _optimization_config(args, trainer.learning_rate),
         "frozen_parameters": list(trainer.frozen_parameters),
         "topology": analyze_topology(
             trainer.model.sources,
@@ -327,6 +386,11 @@ def _run_gru(
         f"target={target_parameters:,} device={device}"
     )
     for update in range(1, args.updates + 1):
+        learning_rate = _set_learning_rate_for_update(
+            optimizer,
+            args,
+            update,
+        )
         inputs, targets = stream.next(args.chunk)
         optimizer.zero_grad(set_to_none=True)
         logits, state = model(inputs, state.detach())
@@ -348,6 +412,7 @@ def _run_gru(
                 ),
                 "loss": float(loss.item()),
                 "bits_per_character": float(loss.item()) / math.log(2.0),
+                "learning_rate": learning_rate,
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", row)
             print(
@@ -387,6 +452,7 @@ def _run_gru(
         "updates": args.updates,
         "best_bpc": best_bpc,
         "evaluation": last_eval,
+        "optimization": _optimization_config(args),
     }
     _write_json(args.out_dir / "summary.json", summary)
     temporary = args.out_dir / "latest.pt.tmp"
@@ -445,6 +511,11 @@ def _run_transformer(
         f"device={device}"
     )
     for update in range(1, args.updates + 1):
+        learning_rate = _set_learning_rate_for_update(
+            optimizer,
+            args,
+            update,
+        )
         inputs, targets = stream.next(args.chunk)
         optimizer.zero_grad(set_to_none=True)
         logits, state = model(inputs, state)
@@ -465,6 +536,7 @@ def _run_transformer(
                 ),
                 "loss": float(loss.item()),
                 "bits_per_character": float(loss.item()) / math.log(2.0),
+                "learning_rate": learning_rate,
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", row)
             print(
@@ -507,6 +579,7 @@ def _run_transformer(
         "updates": args.updates,
         "best_bpc": best_bpc,
         "evaluation": last_eval,
+        "optimization": _optimization_config(args),
     }
     _write_json(args.out_dir / "summary.json", summary)
     temporary = args.out_dir / "latest.pt.tmp"
@@ -536,6 +609,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--chunk", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
+    parser.add_argument(
+        "--learning-rate-decay-start",
+        type=int,
+        default=0,
+        help="hold the base rate through this update; zero end disables decay",
+    )
+    parser.add_argument(
+        "--learning-rate-decay-end",
+        type=int,
+        default=0,
+        help="reach the minimum learning rate at this update",
+    )
+    parser.add_argument(
+        "--minimum-learning-rate-ratio",
+        type=float,
+        default=0.1,
+    )
     parser.add_argument("--cells", type=int, default=64)
     parser.add_argument("--channels", type=int, default=64)
     parser.add_argument("--dendrites", type=int, default=8)
@@ -640,6 +730,24 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.updates < 1:
         parser.error("--updates must be positive")
+    if args.learning_rate <= 0:
+        parser.error("--learning-rate must be positive")
+    if (
+        args.learning_rate_decay_start < 0
+        or args.learning_rate_decay_end < 0
+    ):
+        parser.error("learning-rate decay boundaries must be non-negative")
+    if (
+        args.learning_rate_decay_end != 0
+        and args.learning_rate_decay_end
+        <= args.learning_rate_decay_start
+    ):
+        parser.error(
+            "--learning-rate-decay-end must exceed "
+            "--learning-rate-decay-start"
+        )
+    if not 0 <= args.minimum_learning_rate_ratio <= 1:
+        parser.error("--minimum-learning-rate-ratio must be in [0, 1]")
     if args.fast_plasticity_gain < 0:
         parser.error("--fast-plasticity-gain must be non-negative")
     if args.cell_reward_gain < 0:

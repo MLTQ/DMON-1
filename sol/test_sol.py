@@ -28,6 +28,10 @@ from .evaluate import (
 from .model import SolConfig, SparseAxonField
 from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
+from .schedule import (
+    cosine_decay_learning_rate,
+    set_optimizer_learning_rate,
+)
 from .serve import LiveOrganism
 from .stability import (
     summarize_exploratory_survival,
@@ -82,6 +86,38 @@ def test_stream_windows_are_adjacent_not_reset() -> None:
     first_x, first_y = stream.next(2)
     second_x, _ = stream.next(2)
     assert torch.equal(first_y[:, -1], second_x[:, 0])
+
+
+def test_learning_rate_decay_is_absolute_bounded_and_optional() -> None:
+    base = 3e-3
+    assert cosine_decay_learning_rate(base, 1) == base
+    assert cosine_decay_learning_rate(base, 400, 400, 800, 0.1) == base
+    midpoint = cosine_decay_learning_rate(base, 600, 400, 800, 0.1)
+    assert midpoint == pytest.approx(base * 0.55)
+    assert cosine_decay_learning_rate(
+        base, 800, 400, 800, 0.1
+    ) == pytest.approx(base * 0.1)
+    assert cosine_decay_learning_rate(
+        base, 1200, 400, 800, 0.1
+    ) == pytest.approx(base * 0.1)
+
+    parameter = torch.nn.Parameter(torch.ones(()))
+    optimizer = torch.optim.AdamW([parameter], lr=base)
+    set_optimizer_learning_rate(optimizer, midpoint)
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(midpoint)
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "ratio"),
+    [(-1, 0, 0.1), (4, 3, 0.1), (0, 4, -0.1), (0, 4, 1.1)],
+)
+def test_learning_rate_decay_rejects_invalid_policy(
+    start: int,
+    end: int,
+    ratio: float,
+) -> None:
+    with pytest.raises(ValueError):
+        cosine_decay_learning_rate(3e-3, 1, start, end, ratio)
 
 
 def test_history_changes_prediction_for_the_same_character() -> None:

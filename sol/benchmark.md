@@ -62,6 +62,18 @@ with checkpointing and append-only metrics.
 - **Rationale**: The fixed-topology run remains a diagnostic, but it is not the primary
   survival measure for a body that co-develops with its organ.
 
+### Optimizer schedule
+- **Does**: `--learning-rate-decay-start`, `--learning-rate-decay-end`, and
+  `--minimum-learning-rate-ratio` optionally hold the base learning rate before a
+  parameter-free cosine decay shared by SOL, GRU, and transformer.
+- **Does**: Applies the rate for the upcoming absolute update, records it in train rows,
+  summaries, and SOL checkpoint metadata, and therefore preserves schedule phase across
+  resume.
+- **Compatibility**: A resumed SOL organism retains the checkpoint's base learning rate;
+  the ordinary `--learning-rate` argument does not silently rewrite its optimizer policy.
+- **Rationale**: Repeated late-checkpoint regression should be tested as an optimization
+  failure independently of metabolism, morphology, or parameter count.
+
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean
   sensory-to-output distance plus structural rewrite/credit telemetry in every SOL
@@ -104,6 +116,7 @@ with checkpointing and append-only metrics.
 | Scientific report | Both models see the first 90% for training and final 10% for validation | Split semantics |
 | `promote.py` | SOL summaries and JSONL history expose completed-run stability | Stability fields or evaluation rows |
 | S6 analysis | Summary includes the full traffic ledger and decision-aligned survival | `exploratory_survival` schema |
+| Schedule experiments | Disabled decay reproduces the historical constant rate | Schedule defaults or update indexing |
 
 ## Notes
 

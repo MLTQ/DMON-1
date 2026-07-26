@@ -49,6 +49,9 @@ tensor shapes.
 ### Stream and persistence tests
 - **Does**: Proves optimizer windows are adjacent and prior characters affect later
   predictions.
+- **Does**: Proves optional cosine learning-rate decay is disabled by default, uses
+  absolute update boundaries, reaches its configured floor, updates every optimizer
+  group, and rejects malformed policies.
 
 ### Metabolism and eligibility tests
 - **Does**: Proves unstimulated energy depletion and delayed reward dependence on a
