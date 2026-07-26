@@ -116,15 +116,23 @@ class StreamingLattice(nn.Module):
         # lattice scores. Adjacency keeps latency at one micro-step without handing the
         # readout the answer.
         self.out_slice = (slice(y0, y0 + p), slice(x0 + p, x0 + 2 * p))
+        # mirror_len=0 removes the mirror entirely. That is a real configuration, not a
+        # degenerate one: a perfect N-token buffer handed to the creature removes any
+        # pressure to develop working memory, the same way the sample pool removed
+        # pressure to grow from a seed and a co-located readout removed pressure to use
+        # the lattice. The mirror's other role — supplying targets — is handled outside
+        # the lattice by the stream, so dropping it costs nothing for learning.
         my = max(0, y0 - 2)
         mx0 = max(0, s // 2 - self.cfg.mirror_len // 2)
         self.mirror_slice = (slice(my, my + 1), slice(mx0, mx0 + self.cfg.mirror_len))
+        self.has_mirror = self.cfg.mirror_len > 0
 
         # Cells the stream drives. The rule may READ these — they are perceived like any
         # other cell — but may not WRITE them.
         driven = torch.zeros(1, 1, s, s)
         driven[:, :, self.in_slice[0], self.in_slice[1]] = 1.0
-        driven[:, :, self.mirror_slice[0], self.mirror_slice[1]] = 1.0
+        if self.has_mirror:
+            driven[:, :, self.mirror_slice[0], self.mirror_slice[1]] = 1.0
         self.register_buffer("driven", driven)
 
         # Guard, not a comment: if the readout can see stream-driven cells, the model
@@ -194,7 +202,9 @@ class StreamingLattice(nn.Module):
         updated by the rule — see the module docstring on why that is load-bearing
         rather than tidy.
         """
-        e = self.embed(history)  # (B, L, C)
+        if not self.has_mirror:
+            return x
+        e = self.embed(history[:, : self.cfg.mirror_len])  # (B, L, C)
         x = x.clone()
         x[:, :, self.mirror_slice[0], self.mirror_slice[1]] = (
             e.permute(0, 2, 1).unsqueeze(2).detach()
