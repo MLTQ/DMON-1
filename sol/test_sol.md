@@ -37,6 +37,10 @@ tensor shapes.
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU
   and causal-transformer controls are stateful and genuinely parameter matched.
 
+### Report guard test
+- **Does**: Requires finite completed summaries, matched parameter/update budgets, and
+  correct reset/shuffle penalties before a winner can be named.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |

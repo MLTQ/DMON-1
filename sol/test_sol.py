@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
 import torch
 from torch.nn import functional as F
 
@@ -19,6 +21,7 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .train import ContinuousTrainer
@@ -248,3 +251,52 @@ def test_transformer_control_is_causal_matched_and_stateful() -> None:
     )
     assert metrics["tokens"] == 12
     assert metrics["bits_per_character"] > 0
+
+
+def test_report_guards_budgets_and_measures_state_penalties(
+    tmp_path: Path,
+) -> None:
+    sol_dir = tmp_path / "sol"
+    gru_dir = tmp_path / "gru"
+    sol_dir.mkdir()
+    gru_dir.mkdir()
+    (sol_dir / "summary.json").write_text(
+        """{
+          "model": "sol",
+          "parameters": 1000,
+          "updates": 20,
+          "best_bpc": 2.4,
+          "evaluation": {
+            "persistent": {"bits_per_character": 2.5},
+            "reset_each_token": {"bits_per_character": 4.0},
+            "shuffled_cells": {"bits_per_character": 3.3}
+          }
+        }""",
+        encoding="utf-8",
+    )
+    (gru_dir / "summary.json").write_text(
+        """{
+          "model": "gru",
+          "parameters": 1020,
+          "updates": 20,
+          "best_bpc": 2.2,
+          "evaluation": {"bits_per_character": 2.3}
+        }""",
+        encoding="utf-8",
+    )
+    comparison = compare_runs(
+        [load_run("sol", sol_dir), load_run("gru", gru_dir)]
+    )
+    assert comparison["winner"] == "gru"
+    assert comparison["rows"][0]["reset_penalty_bpc"] == 1.5
+    assert "| sol |" in markdown_report(comparison)
+
+    mismatched = json.loads((gru_dir / "summary.json").read_text())
+    mismatched["parameters"] = 2000
+    (gru_dir / "summary.json").write_text(
+        json.dumps(mismatched), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="parameter ratio"):
+        compare_runs(
+            [load_run("sol", sol_dir), load_run("gru", gru_dir)]
+        )
