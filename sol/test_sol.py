@@ -19,7 +19,7 @@ from .baselines import (
     match_transformer_hidden_size,
 )
 from .checkpoint import load_checkpoint, save_checkpoint
-from .evaluate import evaluate_state_ablations
+from .evaluate import evaluate_state_ablations, evaluate_warmup_sweep
 from .model import SolConfig, SparseAxonField
 from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
@@ -269,6 +269,16 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     assert set(metrics) == {"persistent", "reset_each_token", "shuffled_cells"}
     assert all(value["tokens"] == 12 for value in metrics.values())
     assert all(value["bits_per_character"] > 0 for value in metrics.values())
+    sweep = evaluate_warmup_sweep(
+        model,
+        vocabulary,
+        text,
+        [0, 2, 4],
+        tokens=12,
+        score_start=8,
+    )
+    assert set(sweep) == {"0", "2", "4"}
+    assert all(value["tokens"] == 12 for value in sweep.values())
 
 
 def test_gru_control_matches_budget_and_scores_stream() -> None:

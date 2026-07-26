@@ -48,6 +48,7 @@ def evaluate_sol(
     device: torch.device | str = "cpu",
     tokens: int = 2048,
     warmup: int = 256,
+    score_start: int | None = None,
     reset_each_token: bool = False,
     shuffle_cells: bool = False,
 ) -> EvaluationMetrics:
@@ -61,8 +62,21 @@ def evaluate_sol(
     available = encoded.numel() - 1
     if available < 1:
         raise ValueError("evaluation text must contain at least two characters")
-    scored_tokens = min(tokens, max(1, available - min(warmup, available - 1)))
-    warmup = min(warmup, available - scored_tokens)
+    if score_start is None:
+        scored_tokens = min(
+            tokens, max(1, available - min(warmup, available - 1))
+        )
+        warmup = min(warmup, available - scored_tokens)
+        score_start = warmup
+    else:
+        if not 0 <= score_start < available:
+            raise ValueError("score_start must identify a predictable character")
+        scored_tokens = min(tokens, available - score_start)
+        warmup = min(warmup, score_start)
+    warm_start = score_start - warmup
+    segment = encoded[
+        warm_start : score_start + scored_tokens + 1
+    ]
     device = torch.device(device)
     state = model.initial_state(1, device)
     permutation = torch.randperm(
@@ -80,8 +94,8 @@ def evaluate_sol(
     for index in range(warmup + scored_tokens):
         if reset_each_token:
             state = model.initial_state(1, device)
-        token = encoded[index : index + 1]
-        target = encoded[index + 1 : index + 2]
+        token = segment[index : index + 1]
+        target = segment[index + 1 : index + 2]
         logits, state, diagnostics = model.tick(state, token)
         surprise = F.cross_entropy(logits, target, reduction="none")
         reward = torch.tanh(math.log(model.cfg.vocab_size) - surprise)
@@ -118,6 +132,7 @@ def evaluate_state_ablations(
     device: torch.device | str = "cpu",
     tokens: int = 2048,
     warmup: int = 256,
+    score_start: int | None = None,
 ) -> dict[str, dict[str, float | int]]:
     """Compare intact persistence against reset and cell-identity disruption."""
 
@@ -134,7 +149,44 @@ def evaluate_state_ablations(
             device=device,
             tokens=tokens,
             warmup=warmup,
+            score_start=score_start,
             **options,
         ).to_dict()
         for name, options in policies.items()
+    }
+
+
+def evaluate_warmup_sweep(
+    model: SparseAxonField,
+    vocabulary: CharacterVocabulary,
+    text: str,
+    warmups: list[int],
+    *,
+    device: torch.device | str = "cpu",
+    tokens: int = 2048,
+    score_start: int | None = None,
+) -> dict[str, dict[str, float | int]]:
+    """Score one fixed held-out window after different state warmup lengths."""
+
+    if not warmups:
+        raise ValueError("at least one warmup is required")
+    if any(warmup < 0 for warmup in warmups):
+        raise ValueError("warmups must be non-negative")
+    if len(set(warmups)) != len(warmups):
+        raise ValueError("warmups must be unique")
+    if score_start is None:
+        score_start = max(warmups)
+    if score_start < max(warmups):
+        raise ValueError("score_start must accommodate every warmup")
+    return {
+        str(warmup): evaluate_sol(
+            model,
+            vocabulary,
+            text,
+            device=device,
+            tokens=tokens,
+            warmup=warmup,
+            score_start=score_start,
+        ).to_dict()
+        for warmup in warmups
     }

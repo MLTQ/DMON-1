@@ -15,6 +15,8 @@ including controls that test whether persistent cellular state is doing useful w
 ### `evaluate_sol`
 - **Does**: Warms a fresh organism on held-out text and scores the following contiguous
   characters without updating weights.
+- **Does**: An optional `score_start` anchors evaluation so different warmups predict
+  identical characters.
 - **Interacts with**: `SparseAxonField.tick` in `model.py`.
 - **Rationale**: Evaluation follows the same one-character stream and delayed-reward
   semantics as training.
@@ -24,9 +26,15 @@ including controls that test whether persistent cellular state is doing useful w
   shuffling.
 - **Rationale**: A good loss is not evidence of memory unless breaking memory hurts.
 
+### `evaluate_warmup_sweep`
+- **Does**: Compares unique warmup lengths against one fixed held-out scoring window.
+- **Rationale**: Moving the scored text with the warmup would confound state settling
+  with corpus difficulty.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `benchmark.py` | All policies score the same held-out prefix and token count | Split or warmup semantics |
+| Warmup diagnostics | Every row predicts identical token indices | `score_start` semantics |
 | Experiment reports | BPC is NLL divided by `ln(2)` | Metric definitions |
