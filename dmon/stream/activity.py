@@ -136,6 +136,7 @@ def main():
     p.add_argument("--micro", type=int, default=3)
     p.add_argument("--mirror-len", type=int, default=24)
     p.add_argument("--local-pred", type=float, default=0.0)
+    p.add_argument("--scales", type=int, nargs="*", default=[])
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = p.parse_args()
@@ -145,9 +146,10 @@ def main():
     model = StreamingLattice(
         LatticeConfig(size=a.size, channels=a.channels, hidden=a.hidden, vocab=vocab,
                       micro=a.micro, mirror_len=a.mirror_len,
-                      local_pred=a.local_pred)
+                      local_pred=a.local_pred, scales=tuple(a.scales))
     ).to(a.device)
 
+    print(f"params={model.param_count()}  scales={tuple(a.scales)}")
     state = train_briefly(model, a.ticks, a.window, a.batch, a.lr, a.device, a.mirror_len)
     res = profile(model, state)
 

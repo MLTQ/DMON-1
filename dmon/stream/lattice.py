@@ -65,6 +65,20 @@ class LatticeConfig:
     # contribute 0.004 bpc, and a 6x change in `micro` does not move that boundary — so
     # the limit is incentive, not transport. A local self-prediction objective gives
     # every cell work that does not route through the readout.
+    # --- long-range pathway ---
+    # With 3x3 connectivity a cell at radius 15 is 15 hops from the readout BOTH ways:
+    # forward that is latency, backward it is a 15-deep credit chain per tick. That is
+    # the structural reason distance does not pay, and it is why sweeping `micro` did
+    # nothing — micro speeds forward transport and deepens the backward path in exact
+    # proportion, so the two cancel.
+    #
+    # Each scale here adds an avg-pooled, upsampled view of the whole state to every
+    # cell's perception. A distant cell then influences the readout in ONE hop, and
+    # gradient reaches it in one hop. This is the fixed-structure version of long-range
+    # cortical projections; guided axon growth is the learned version, and this exists
+    # to find out whether the mechanism helps before paying for the sophisticated form.
+    scales: tuple = ()  # e.g. (4, 8) — pooling factors for coarse levels
+
     local_pred: float = 0.0  # weight on local next-state prediction
     var_weight: float = 1.0  # anti-collapse. Predicting your own next state has the
     #                          trivial optimum "be constant" — every cell can reach it
@@ -90,7 +104,7 @@ class StreamingLattice(nn.Module):
 
         # --- gated cell. `x = x + dx` cannot hold a state under a continuous stream:
         # an additive rule must re-derive whatever it wants to remember on every tick.
-        p_in = 4 * c
+        p_in = 4 * c + len(self.cfg.scales) * c
         self.trunk = nn.Sequential(nn.Conv2d(p_in, h, 1), nn.ReLU())
         self.to_z = nn.Conv2d(h, c, 1)  # update gate
         self.to_r = nn.Conv2d(h, c, 1)  # reset gate
@@ -155,7 +169,24 @@ class StreamingLattice(nn.Module):
     def _perceive(self, x: torch.Tensor) -> torch.Tensor:
         n = x.shape[1]
         w = self.kern.repeat(n, 1, 1, 1)
-        return F.conv2d(x, w, padding=1, groups=n)
+        local = F.conv2d(x, w, padding=1, groups=n)
+        if not self.cfg.scales:
+            return local
+        parts = [local]
+        for s in self.cfg.scales:
+            k = min(s, x.shape[-1])
+            coarse = F.avg_pool2d(x, k)  # (B, C, S/k, S/k)
+            if coarse.shape[-1] > 1:
+                # Mix AT the coarse scale. Pooling and upsampling alone gives every cell
+                # the average of its own k x k block — a local blur, not a long-range
+                # connection, and gradient still reaches distant cells only by crawling
+                # the fine lattice. One 3x3 step here spans 3k fine cells; a coarse level
+                # of size 1 is a global broadcast and reaches everything in one hop.
+                w = self.kern[3:4].to(coarse.dtype)  # laplacian, mixes neighbours
+                cm = coarse.reshape(-1, 1, *coarse.shape[-2:])
+                coarse = coarse + F.conv2d(cm, w, padding=1).reshape(coarse.shape)
+            parts.append(F.interpolate(coarse, size=x.shape[-2:], mode="nearest"))
+        return torch.cat(parts, dim=1)
 
     def _cell(self, x: torch.Tensor):
         h = self.trunk(self._perceive(x))
