@@ -5,6 +5,10 @@ venv/
 
 # run outputs: checkpoints, gifs, probe json. Regenerable, and large.
 runs/
+grok/runs/
+
+# corpora (regenerable / copied from cache)
+data/
 
 # beads local db (jsonl is the source of truth)
 .beads/beads.db
