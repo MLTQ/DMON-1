@@ -70,3 +70,36 @@ smallest tested value that eliminates complete quiescence, and its immediate BPC
 is only +0.00035. It is therefore the first full-training candidate. The sweep does not
 establish capability: weights trained with zero maintenance may not use the restored
 cell, and the floor must earn its effect through a complete continuous run.
+
+## Full-scale result
+
+The seed-7 `0.001` candidate completed all 5,000 updates with 20 aligned held-out
+evaluations. Every scored checkpoint retained full viability and zero quiescent cells.
+Final mean energy was `0.96548`; external input and spending were `0.47440` and
+`0.47455` per scored tick, with transport drift `1.42e-7`.
+
+| Run | Best BPC | Final BPC | Best update |
+|---|---:|---:|---:|
+| maintenance `0.001` | **2.41516** | **2.51882** | 3,750 |
+| zero-floor metabolism | 2.45957 | 2.56175 | 3,750 |
+| energy-one control | 2.44573 | 2.52740 | 3,750 |
+
+Candidate-minus-control evidence:
+
+| Comparison | All-eval mean | Second-half mean | Best delta | Final delta |
+|---|---:|---:|---:|---:|
+| zero-floor | -0.00780 | -0.01823 | -0.04441 | -0.04293 |
+| energy-one | -0.01744 | -0.01285 | -0.03057 | -0.00858 |
+
+The full gate passes. Maintenance improved the second half, best, and final checkpoint
+against zero-floor metabolism and beat the stronger energy-one control at best and
+final. The run retained complete directed reachability. Resetting state at the final
+checkpoint worsened BPC from `2.51882` to `8.91099`; shuffling cell identity worsened it
+to `5.73405`.
+
+Constant-rate optimization still regressed after the new best: final regression was
+`0.10367` BPC and worst post-best regression was `0.14617`. Both are slightly better
+than the prior live source (`0.11201` and `0.15154`) and pass a stricter `0.15` promotion
+limit. The checkpoint was therefore promoted locally at `2.41516` BPC, improving the
+previous live checkpoint by `0.02410`. S12 separately tests whether late learning-rate
+decay can preserve this kind of gain.

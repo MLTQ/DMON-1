@@ -61,3 +61,7 @@ The selected full-scale candidate uses the current language-capability control: 
 64 cells/channels, 5,000 updates, energy held at one, no fast efficacy, `3e-3` through
 update 2,500, then cosine decay to `3e-4` at update 5,000. Its exact constant-rate
 comparison is the completed S9 energy-one seed-7 run.
+
+The candidate launched on the RTX 4090 after S11 completed. Its update-250 held-out BPC
+is bit-for-bit identical to the completed constant-rate control, establishing an exact
+pre-intervention trajectory rather than merely a seed-matched one.
