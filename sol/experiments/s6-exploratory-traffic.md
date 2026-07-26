@@ -86,6 +86,42 @@ admit missing follow-up evidence instead of manufacturing a verdict. It still do
 show that the graft caused the later language improvement: the ABBA reward difference is
 the local causal evidence, while decision-aligned held-out BPC is the survival gate.
 
+Two matched seeds extended this into a three-seed preflight:
+
+| Seed | Trials | Commits | Rejections | Evaluable | Survived | Pending | Final BPC |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 7 | 3 | 1 | 2 | 2 | 2 | 1 | 4.32248 |
+| 13 | 4 | 3 | 1 | 4 | 4 | 0 | 4.20667 |
+| 21 | 1 | 0 | 1 | 1 | 1 | 0 | 4.35458 |
+
+Across eight trials, exactly four advantages were positive and committed and four were
+negative and rejected. Mean advantage was +0.00200, median was -0.00257, and the range
+was -0.05386 to +0.10234. All seven trials with an isolated follow-up validation passed
+the body-survival threshold; every completed run reached its best BPC at the final
+evaluation. This validates sign selectivity and evidence coverage at smoke scale, not a
+language-capability benefit.
+
+## Full GPU protocol
+
+The full experiment uses three independent living organisms rather than assigning one
+GPU to a frozen-topology primary control:
+
+- RTX 4090: seed 7, followed by seed 21.
+- RTX 2070 Super: seed 13 concurrently.
+- 64 cells/channels, eight dendrites, eight sensory and output cells, three message
+  steps, batch 16, chunk 32, 5,000 updates.
+- Three structural confirmation phases, 100-update phases, 500-update warmup, 250-update
+  minimum edge age, and 300-window exploratory trials.
+- No fast efficacy and no ordinary metabolic drain, preserving the earlier capability
+  comparison while retaining real growth-energy payment.
+- Held-out evaluation and checkpointing every 250 updates. Each 300-window trial
+  therefore receives decision-aligned follow-up unless it resolves at the run boundary.
+
+The gate requires balanced ABBA evidence, a mix of commits and rejections, complete
+reachability, no trial-level body collapse, and stable late held-out BPC across seeds.
+Only after that within-organism gate passes is a probes-only run useful as secondary
+context; it cannot decide whether a graft lives.
+
 ## GPU status
 
 The first S5 launch reached update 500 before the RTX 2070 Super disappeared from the
