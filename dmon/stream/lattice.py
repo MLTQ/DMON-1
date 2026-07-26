@@ -88,9 +88,16 @@ class StreamingLattice(nn.Module):
         # --- regions. Port at centre; mirror along the row above it.
         p = self.cfg.port
         y0 = s // 2 - p // 2
-        x0 = s // 2 - p // 2
+        x0 = s // 2 - p
         self.in_slice = (slice(y0, y0 + p), slice(x0, x0 + p))
-        self.out_slice = (slice(y0, y0 + p), slice(x0, x0 + p))
+        # Output sits ADJACENT to input, never on top of it. Co-locating them looks
+        # natural — one port, minimal latency — but input cells are stream-driven and
+        # the rule cannot write them, so a readout placed there reads the current
+        # token's embedding and nothing else. That configuration is a bigram model with
+        # a lattice attached for decoration, and it scores exactly what an inert
+        # lattice scores. Adjacency keeps latency at one micro-step without handing the
+        # readout the answer.
+        self.out_slice = (slice(y0, y0 + p), slice(x0 + p, x0 + 2 * p))
         my = max(0, y0 - 2)
         mx0 = max(0, s // 2 - self.cfg.mirror_len // 2)
         self.mirror_slice = (slice(my, my + 1), slice(mx0, mx0 + self.cfg.mirror_len))
@@ -101,6 +108,16 @@ class StreamingLattice(nn.Module):
         driven[:, :, self.in_slice[0], self.in_slice[1]] = 1.0
         driven[:, :, self.mirror_slice[0], self.mirror_slice[1]] = 1.0
         self.register_buffer("driven", driven)
+
+        # Guard, not a comment: if the readout can see stream-driven cells, the model
+        # can score without using the lattice at all and the inert baseline will match
+        # it exactly. That happened; it cost a 60k-tick run to notice.
+        overlap = driven[:, :, self.out_slice[0], self.out_slice[1]].max().item()
+        if overlap > 0:
+            raise ValueError(
+                "output region overlaps stream-driven cells — the readout would see "
+                "the input directly and the lattice would be bypassed"
+            )
 
         self.readout = nn.Linear(c * p * p, self.cfg.vocab)
 
