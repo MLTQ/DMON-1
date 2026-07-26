@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Provides the Cloudflare Worker entrypoint emitted by the vinext build.
+Provides the Worker-shaped entrypoint used by Vinext's local runtime.
 
 ## Components
 
@@ -13,4 +13,4 @@ Provides the Cloudflare Worker entrypoint emitted by the vinext build.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Sites runtime | Default export is a Worker-compatible fetch handler | Export shape |
+| Local Vinext runtime | Default export is a Worker-compatible fetch handler | Export shape |

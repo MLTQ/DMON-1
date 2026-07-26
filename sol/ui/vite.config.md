@@ -2,16 +2,18 @@
 
 ## Purpose
 
-Composes vinext, React, Cloudflare, and Sites plugins for development and production.
+Composes vinext and the local Cloudflare worker emulator for development and
+production-like local builds.
 
 ## Components
 
 ### Vite configuration
-- **Does**: Builds the application and worker using hosting declarations.
-- **Interacts with**: `build/sites-vite-plugin.ts` and `worker/index.ts`.
+- **Does**: Builds and runs the application worker entirely on the local machine.
+- **Interacts with**: `worker/index.ts`.
+- **Does not**: Bind the project to a hosting provider or package deployment metadata.
 
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Development and Sites | `npm run dev` and `npm run build` use the same app shape | Plugin ordering |
+| Local development | `npm run dev` and `npm run build` use the same app shape | Plugin ordering |

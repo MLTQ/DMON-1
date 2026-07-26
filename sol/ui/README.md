@@ -6,7 +6,7 @@ The console visualizes a sparse directed field as a character stream moves throu
 shows energy, novelty, cell credit, and edge credit, and lets a user submit a prompt and
 watch the output organ answer one character at a time.
 
-The hosted endpoint is a deterministic behavioral demonstration and identifies itself as
+The local endpoint is a deterministic behavioral demonstration and identifies itself as
 such in the interface. `app/api/generate/route.ts` is the integration seam for the local
 PyTorch organism.
 
@@ -15,3 +15,6 @@ npm install
 npm run dev
 npm test
 ```
+
+Then open `http://localhost:3000`. This project has no Sites project binding or
+deployment metadata; its supported workflow is local-only.
