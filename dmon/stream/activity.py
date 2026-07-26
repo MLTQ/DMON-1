@@ -27,18 +27,28 @@ from .corpus import CharStream, History
 from .lattice import LatticeConfig, StreamingLattice
 
 
-def train_briefly(model, ticks, window, batch, lr, device, mirror_len):
+def train_briefly(model, ticks, window, batch, lr, device, mirror_len, log=5000):
     dev = torch.device(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     stream = CharStream(batch=batch, device=device, split="train")
     hist = History(mirror_len, batch, device)
     state = model.blank_state(batch, dev)
     acc = 0.0
+    use_aux = model.cfg.local_pred > 0
     for t in range(ticks):
         tok = stream.next()
         hist.push(tok)
-        state, logits = model.tick(state, tok, hist.tokens)
-        acc = acc + F.cross_entropy(logits, stream.peek())
+        if use_aux:
+            state, logits, aux = model.tick(state, tok, hist.tokens, return_aux=True)
+            acc = acc + F.cross_entropy(logits, stream.peek()) + model.cfg.local_pred * aux
+        else:
+            state, logits = model.tick(state, tok, hist.tokens)
+            acc = acc + F.cross_entropy(logits, stream.peek())
+        if (t + 1) % log == 0:
+            # Collapse watch: if the local objective is being satisfied by going still,
+            # state spread falls toward zero and the loss looks excellent while the
+            # creature stops existing.
+            print(f"  [{t+1:6d}] state std={state.std().item():.4f}")
         if (t + 1) % window == 0:
             opt.zero_grad()
             (acc / window).backward()
@@ -91,6 +101,12 @@ def ablate_beyond(model, radius: int, ticks: int, batch: int, device: str,
     ys = torch.arange(s, device=device)[:, None]
     xs = torch.arange(s, device=device)[None, :]
     keep = (torch.maximum((ys - cy).abs(), (xs - cx).abs()) <= radius).float()
+    # ALWAYS preserve the mirror row. The first version of this sweep did not, and the
+    # mirror sits 4 rows off the port centre — so small radii were deleting the
+    # creature's recent-history buffer at the same time as its peripheral compute, and
+    # the two effects were inseparable. Holding the mirror fixed makes this a
+    # measurement of computation only.
+    keep[model.mirror_slice[0], model.mirror_slice[1]] = 1.0
     keep = keep[None, None]
 
     stream = CharStream(split="eval", batch=batch, device=device)
@@ -119,6 +135,7 @@ def main():
     p.add_argument("--hidden", type=int, default=256)
     p.add_argument("--micro", type=int, default=3)
     p.add_argument("--mirror-len", type=int, default=24)
+    p.add_argument("--local-pred", type=float, default=0.0)
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = p.parse_args()
@@ -127,7 +144,8 @@ def main():
     torch.manual_seed(0)
     model = StreamingLattice(
         LatticeConfig(size=a.size, channels=a.channels, hidden=a.hidden, vocab=vocab,
-                      micro=a.micro, mirror_len=a.mirror_len)
+                      micro=a.micro, mirror_len=a.mirror_len,
+                      local_pred=a.local_pred)
     ).to(a.device)
 
     state = train_briefly(model, a.ticks, a.window, a.batch, a.lr, a.device, a.mirror_len)
@@ -144,7 +162,7 @@ def main():
         print("\nThe periphery is dead. Grid size was never the variable it looked "
               "like — S2's result is explained without any claim about growth.")
 
-    print(f"\n=== ablation: held-out bpc with periphery clamped off ===")
+    print(f"\n=== ablation: compute cells clamped off, mirror always intact ===")
     abl = []
     for radius in (2, 3, 5, 8, 12, 20, a.size):
         bpc = ablate_beyond(model, radius, 3000, a.batch, a.device, a.mirror_len)

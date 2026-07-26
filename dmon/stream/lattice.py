@@ -59,6 +59,19 @@ class LatticeConfig:
     #                         trick; here it only adds gradient noise.
     state_clip: float = 8.0  # a never-resetting state can drift without a bound
 
+    # --- local objective (see `_cell` and `micro_step`) ---
+    # The readout is a single small patch, so it supplies exactly one objective and it
+    # lives at one point. Measured consequence: cells beyond radius ~5 are active and
+    # contribute 0.004 bpc, and a 6x change in `micro` does not move that boundary — so
+    # the limit is incentive, not transport. A local self-prediction objective gives
+    # every cell work that does not route through the readout.
+    local_pred: float = 0.0  # weight on local next-state prediction
+    var_weight: float = 1.0  # anti-collapse. Predicting your own next state has the
+    #                          trivial optimum "be constant" — every cell can reach it
+    #                          independently, and it reports perfect error. The variance
+    #                          hinge is what makes stillness unprofitable.
+    var_target: float = 0.3
+
     def __post_init__(self):
         if self.mirror_len > self.size:
             raise ValueError("mirror_len must fit along one lattice edge")
@@ -82,6 +95,11 @@ class StreamingLattice(nn.Module):
         self.to_z = nn.Conv2d(h, c, 1)  # update gate
         self.to_r = nn.Conv2d(h, c, 1)  # reset gate
         self.to_c = nn.Conv2d(h + c, c, 1, bias=False)  # candidate
+        # Local objective head: from this cell's neighbourhood, predict what this cell
+        # is about to become. The update depends on the 3x3 neighbourhood, so getting
+        # this right requires modelling neighbours — which is work a distant cell can
+        # do without any path to the readout.
+        self.to_pred = nn.Conv2d(h, c, 1)
         nn.init.zeros_(self.to_c.weight)  # start inert
         nn.init.constant_(self.to_z.bias, -2.0)  # start closed: remember by default
 
@@ -131,20 +149,33 @@ class StreamingLattice(nn.Module):
         w = self.kern.repeat(n, 1, 1, 1)
         return F.conv2d(x, w, padding=1, groups=n)
 
-    def _cell(self, x: torch.Tensor) -> torch.Tensor:
+    def _cell(self, x: torch.Tensor):
         h = self.trunk(self._perceive(x))
         z = torch.sigmoid(self.to_z(h))
         rst = torch.sigmoid(self.to_r(h))
         cand = torch.tanh(self.to_c(torch.cat([h, rst * x], dim=1)))
-        return z * (cand - x)
+        pred = self.to_pred(h) if self.cfg.local_pred > 0 else None
+        return z * (cand - x), pred
 
-    def micro_step(self, x: torch.Tensor) -> torch.Tensor:
-        dx = self._cell(x)
+    def micro_step(self, x: torch.Tensor):
+        dx, pred = self._cell(x)
         if self.cfg.fire_rate < 1.0:
             dx = dx * (torch.rand_like(x[:, :1]) < self.cfg.fire_rate).float()
         # the stream owns its cells; the rule cannot write them
-        x = x + dx * (1.0 - self.driven)
-        return x.clamp(-self.cfg.state_clip, self.cfg.state_clip)
+        x_new = (x + dx * (1.0 - self.driven)).clamp(
+            -self.cfg.state_clip, self.cfg.state_clip
+        )
+        aux = None
+        if pred is not None:
+            # Stop-gradient on the target. Without it the cell can satisfy its own
+            # prediction by changing what it becomes rather than by predicting better,
+            # which is the same asymmetry failure the mirror cells are protected from.
+            free = 1.0 - self.driven  # driven cells are trivially predictable
+            err = ((pred - x_new.detach()) ** 2 * free).sum() / free.sum().clamp(min=1) / x.shape[1]
+            std = x_new.flatten(2).std(dim=2).mean(0)  # per-channel spread across cells
+            collapse = F.relu(self.cfg.var_target - std).mean()
+            aux = err + self.cfg.var_weight * collapse
+        return x_new, aux
 
     # --- the stream interface -------------------------------------------------
 
@@ -175,13 +206,19 @@ class StreamingLattice(nn.Module):
         return self.readout(patch.reshape(patch.shape[0], -1))
 
     def tick(
-        self, x: torch.Tensor, token: torch.Tensor, history: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        self, x: torch.Tensor, token: torch.Tensor, history: torch.Tensor,
+        return_aux: bool = False,
+    ):
         """One input tick: stimulus in, `micro` lattice steps, logits out."""
         x = self.write_input(x, token)
         x = self.write_mirror(x, history)
+        aux_total = 0.0
         for _ in range(self.cfg.micro):
-            x = self.micro_step(x)
+            x, aux = self.micro_step(x)
+            if aux is not None:
+                aux_total = aux_total + aux / self.cfg.micro
+        if return_aux:
+            return x, self.read_output(x), aux_total
         return x, self.read_output(x)
 
     # --- growth ---------------------------------------------------------------
