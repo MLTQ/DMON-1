@@ -29,6 +29,7 @@ from .stability import (
     load_sol_evaluation_history,
     summarize_stability,
 )
+from .structure import StructuralConfig, structural_summary
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .topology import analyze_topology
 from .train import ContinuousTrainer, generate
@@ -67,6 +68,11 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
     reward: dict[str, float] = {
         "fast_plasticity_gain": args.fast_plasticity_gain,
         "reward_baseline_decay": args.reward_baseline_decay,
+        "structural_probe_gain": (
+            args.structural_probe_gain
+            if args.structural_plasticity or args.structural_probes_only
+            else 0.0
+        ),
     }
     if args.no_reward:
         reward.update(
@@ -111,6 +117,21 @@ def _run_sol(
             learning_rate=args.learning_rate,
             frozen_parameters=(
                 ("edge_weight", "edge_bias") if args.freeze_edges else ()
+            ),
+            structural_config=StructuralConfig(
+                enabled=(
+                    args.structural_plasticity
+                    or args.structural_probes_only
+                ),
+                allow_rewiring=args.structural_plasticity,
+                interval=args.structural_interval,
+                warmup_updates=args.structural_warmup,
+                replacements_per_phase=args.structural_replacements,
+                credit_decay=args.structural_credit_decay,
+                credit_margin=args.structural_credit_margin,
+                min_edge_age=args.structural_min_edge_age,
+                growth_cost=args.structural_growth_cost,
+                min_endpoint_energy=args.structural_min_energy,
             ),
             device=device,
         )
@@ -227,6 +248,9 @@ def _run_sol(
             trainer.model.sensory_indices,
             trainer.model.output_indices,
         ).to_dict(),
+        "structure": structural_summary(
+            trainer.model, trainer.structural_config
+        ),
         "stability": summarize_stability(
             evaluation_history, args.max_final_regression_bpc
         ),
@@ -479,6 +503,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--message-steps", type=int, default=3)
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
+    parser.add_argument("--structural-probe-gain", type=float, default=0.03)
+    parser.add_argument("--structural-interval", type=int, default=100)
+    parser.add_argument("--structural-warmup", type=int, default=500)
+    parser.add_argument("--structural-replacements", type=int, default=1)
+    parser.add_argument("--structural-credit-decay", type=float, default=0.99)
+    parser.add_argument("--structural-credit-margin", type=float, default=1e-3)
+    parser.add_argument("--structural-min-edge-age", type=int, default=250)
+    parser.add_argument("--structural-growth-cost", type=float, default=0.01)
+    parser.add_argument("--structural-min-energy", type=float, default=0.05)
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
@@ -511,6 +544,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable fast synaptic efficacy while keeping cell reward feedback",
     )
+    parser.add_argument(
+        "--structural-plasticity",
+        action="store_true",
+        help="Probe, grow, and prune directed dendrites between BPTT windows",
+    )
+    parser.add_argument(
+        "--structural-probes-only",
+        action="store_true",
+        help="Run causal candidate probes without changing fixed topology",
+    )
     parser.add_argument("--prompt", default="ROMEO:")
     parser.add_argument("--generate", type=int, default=240)
     args = parser.parse_args()
@@ -518,13 +561,40 @@ def parse_args() -> argparse.Namespace:
         parser.error("--updates must be positive")
     if args.fast_plasticity_gain < 0:
         parser.error("--fast-plasticity-gain must be non-negative")
+    if args.structural_probe_gain <= 0 and (
+        args.structural_plasticity or args.structural_probes_only
+    ):
+        parser.error("structural probes require --structural-probe-gain > 0")
+    if args.structural_plasticity and args.structural_probes_only:
+        parser.error(
+            "--structural-plasticity and --structural-probes-only are exclusive"
+        )
+    if args.freeze_edges and args.structural_plasticity:
+        parser.error("--freeze-edges cannot be combined with rewiring")
     if not 0 <= args.reward_baseline_decay < 1:
         parser.error("--reward-baseline-decay must be in [0, 1)")
     if args.max_final_regression_bpc < 0:
         parser.error("--max-final-regression-bpc must be non-negative")
+    if not 0 <= args.structural_credit_decay < 1:
+        parser.error("--structural-credit-decay must be in [0, 1)")
+    if args.structural_credit_margin < 0:
+        parser.error("--structural-credit-margin must be non-negative")
+    if args.structural_growth_cost < 0:
+        parser.error("--structural-growth-cost must be non-negative")
+    if not 0 <= args.structural_min_energy <= 1:
+        parser.error("--structural-min-energy must be in [0, 1]")
     for name in ("log_every", "eval_every", "checkpoint_every"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
+    for name in (
+        "structural_interval",
+        "structural_replacements",
+    ):
+        if getattr(args, name) < 1:
+            parser.error(f"--{name.replace('_', '-')} must be positive")
+    for name in ("structural_warmup", "structural_min_edge_age"):
+        if getattr(args, name) < 0:
+            parser.error(f"--{name.replace('_', '-')} must be non-negative")
     if args.chunk > args.transformer_context:
         parser.error("--chunk must not exceed --transformer-context")
     return args

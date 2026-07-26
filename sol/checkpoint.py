@@ -87,7 +87,7 @@ def load_organism(
     model = SparseAxonField(
         SolConfig(**trainer_payload["model_config"])
     ).to(device)
-    model.load_state_dict(trainer_payload["model"])
+    model.load_compatible_state_dict(trainer_payload["model"])
     model.eval()
     state = model.state_from_snapshot(
         trainer_payload["field_state"],

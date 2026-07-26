@@ -10,7 +10,7 @@ including controls that test whether persistent cellular state is doing useful w
 ### `EvaluationMetrics`
 - **Does**: Reports NLL, bits per character, perplexity, accuracy, energy, novelty, and
   measured edge flow plus edge eligibility, mean fast synaptic efficacy, and saturation
-  together.
+  together with causal-probe flow/eligibility and total structural rewrites.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
 
 ### `evaluate_sol`
@@ -24,9 +24,13 @@ including controls that test whether persistent cellular state is doing useful w
 
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state
-  shuffling, including target-owned edge eligibility and fast efficacy.
+  shuffling, including target-owned edge/probe eligibility and fast efficacy.
 - **Does**: Scores the trained organism while zeroing fast efficacy before every tick,
   isolating whether online synaptic memory contributes at inference.
+- **Does**: Replaces a grown source table with the deterministic birth topology while
+  preserving learned weights and recurrent policy, then restores the live connectome.
+- **Rationale**: A matched training gain is stronger evidence when the winning organism
+  also causally depends on its installed morphology.
 - **Rationale**: A good loss is not evidence of memory unless breaking memory hurts.
 
 ### `evaluate_warmup_sweep`

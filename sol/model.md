@@ -4,7 +4,8 @@
 
 Implements the first SOL organism: homogeneous recurrent cells with private persistent
 state, explicit directed dendrites, streamed character input, character output, metabolic
-state, reward-addressable eligibility memory, and bounded fast synaptic efficacy.
+state, reward-addressable eligibility memory, bounded fast synaptic efficacy, and
+causally measured exploratory axon probes.
 
 ## Components
 
@@ -15,25 +16,42 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
 
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
-  delayed reward, per-edge eligibility, and per-stream fast weights across every
-  character and optimizer window.
+  delayed reward, per-edge and candidate-probe eligibility, and per-stream fast weights
+  across every character and optimizer window.
 - **Rationale**: Detaching a graph must not reset the organism.
 - **Compatibility**: `state_from_snapshot` initializes additive plasticity fields to
-  zero when loading checkpoints made before fast synaptic memory existed.
+  zero when loading checkpoints made before fast synaptic or structural memory existed.
 
 ### `FieldTrace`
 - **Does**: Retains token-local hidden states and measured traffic for post-backward
-  credit inspection, including edge eligibility and fast-weight saturation.
+  credit inspection, including edge eligibility, fast-weight saturation, and
+  reward-addressed incumbent/candidate structural evidence.
 
 ### `SparseAxonField`
 - **Does**: Applies one shared GRU rule at every cell while messages travel only through
   named source-to-target dendrites.
 - **Interacts with**: `ContinuousTrainer` in `train.py`.
 
+### Structural buffers and `load_compatible_state_dict`
+- **Does**: Persist current candidate sources, incumbent/candidate credit, edge age, and
+  total rewrites with the model while upgrading older checkpoints additively.
+- **Interacts with**: `apply_structural_phase` in `structure.py`.
+
+### `birth_sources`
+- **Does**: Reconstructs the deterministic pre-growth source table for a causal
+  morphology ablation without storing another full graph.
+- **Interacts with**: `evaluate_state_ablations` in `evaluate.py`.
+
+### `_probe_message`
+- **Does**: Adds one weak candidate source per target and measures its causal effect by
+  comparing the shared cell rule with and without that message.
+- **Rationale**: Growth evidence comes from an intervention, not geometric proximity or
+  an all-to-all correlation.
+
 ### `tick`
 - **Does**: Consumes one optional streamed character, performs recurrent graph updates,
-  tags individual dendrites from local pre/post activity, applies delayed reward to
-  previously tagged dendrites, updates energy, and emits next-character logits.
+  tags individual dendrites and causal probes from local activity, applies delayed
+  reward to remembered tags, updates energy, and emits next-character logits.
 - **Rationale**: `token=None` remains a live interval and proves energy depletion without
   stimulation.
 - **Reward contract**: A pending reward is consumed once. `forward_sequence` stores the
@@ -55,13 +73,14 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `train.py` | Tokens and logits use `(batch, time, ...)`; returned state remains attached | Shapes, return arity |
-| Tests and diagnostics | `sources[target, slot]` is the authoritative directed graph | Topology representation |
+| Tests and diagnostics | `sources[target, slot]` is the authoritative fixed-fan-in directed graph | Topology representation |
+| `structure.py` | Probe sources are non-edges and structural buffers retain fixed shapes | Buffer shapes |
 | Future modalities | A modality injects cell-aligned stimulus and causal stimulation | Replacing `tick` semantics |
 
 ## Notes
 
-- Fixed topology is intentional for the first falsification. Axon growth comes only after
-  forward transport, backward credit, and persistent event memory are demonstrated.
+- Rewiring is disabled by default. When enabled, one weak non-edge probe per target
+  supplies counterfactual evidence to a bounded between-window grow/prune phase.
 - Slow edge parameters learn by exact truncated BPTT. Fast efficacy is stream-local,
   smoothly bounded, decays, and changes only when delayed reward meets a remembered
   edge tag.

@@ -14,14 +14,15 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 ### `LiveOrganism.generate`
 - **Does**: Streams the human prompt through the ordinary field, backpropagates prompt
   next-character loss without updating weights, reports measured cell/edge credit and
-  fast synaptic efficacy and saturation, then samples through the same output path.
+  fast synaptic efficacy, causal-probe traffic, and structural rewrite count, then
+  samples through the same output path.
 - **Rationale**: UI credit telemetry comes from a real reverse signal rather than a
   fabricated animation metric.
 
 ### `LiveOrganism.snapshot`
 - **Does**: Returns energy, stimulation, cell/edge eligibility, directed sources, slow
-  signed edge weights, per-stream fast weights, and the reward surprise baseline for
-  live visualization.
+  signed edge weights, per-stream fast weights, candidate sources, retained structural
+  credit, rewrite count, and reward surprise baseline for live visualization.
 
 ### HTTP handler
 - **Does**: Serves `GET /health`, `GET /snapshot`, and `POST /generate`.

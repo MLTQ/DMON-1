@@ -12,6 +12,11 @@ import torch
 from torch.nn import functional as F
 
 from .model import FieldState, SolConfig, SparseAxonField
+from .structure import (
+    StructuralConfig,
+    accumulate_structural_credit,
+    apply_structural_phase,
+)
 from .stream import CharacterVocabulary, ContinuousCharStream
 
 
@@ -26,6 +31,12 @@ class TrainMetrics:
     mean_fast_weight: float
     mean_edge_eligibility: float
     fast_weight_saturation: float
+    mean_probe_eligibility: float
+    mean_probe_flow: float
+    rewired_edges: int
+    total_rewires: int
+    candidate_advantage: float
+    rejected_rewires: int
 
 
 class ContinuousTrainer:
@@ -41,6 +52,7 @@ class ContinuousTrainer:
         learning_rate: float = 3e-3,
         grad_clip: float = 1.0,
         frozen_parameters: tuple[str, ...] = (),
+        structural_config: StructuralConfig | None = None,
         device: torch.device | str = "cpu",
     ):
         self.device = torch.device(device)
@@ -52,11 +64,32 @@ class ContinuousTrainer:
         self.chunk_length = chunk_length
         self.grad_clip = grad_clip
         self.learning_rate = learning_rate
+        self.structural_config = structural_config or StructuralConfig()
         parameters_by_name = dict(self.model.named_parameters())
         unknown_frozen = sorted(set(frozen_parameters) - set(parameters_by_name))
         if unknown_frozen:
             raise ValueError(f"unknown frozen parameters: {unknown_frozen}")
         self.frozen_parameters = tuple(sorted(set(frozen_parameters)))
+        if (
+            self.structural_config.enabled
+            and self.model.cfg.structural_probe_gain <= 0
+        ):
+            raise ValueError(
+                "structural plasticity requires a positive probe gain"
+            )
+        frozen_edges = bool(
+            {"edge_weight", "edge_bias"}.intersection(
+                self.frozen_parameters
+            )
+        )
+        if (
+            self.structural_config.enabled
+            and self.structural_config.allow_rewiring
+            and frozen_edges
+        ):
+            raise ValueError(
+                "structural plasticity is incompatible with frozen edges"
+            )
         for name in self.frozen_parameters:
             parameters_by_name[name].requires_grad_(False)
         self.optimizer = torch.optim.AdamW(
@@ -89,6 +122,7 @@ class ContinuousTrainer:
             "learning_rate": self.learning_rate,
             "grad_clip": self.grad_clip,
             "frozen_parameters": list(self.frozen_parameters),
+            "structural_config": asdict(self.structural_config),
             "updates": self.updates,
             "torch_rng_state": torch.get_rng_state(),
             "cuda_rng_state": (
@@ -116,9 +150,12 @@ class ContinuousTrainer:
             learning_rate=float(payload["learning_rate"]),
             grad_clip=float(payload["grad_clip"]),
             frozen_parameters=tuple(payload.get("frozen_parameters", ())),
+            structural_config=StructuralConfig(
+                **payload.get("structural_config", {})
+            ),
             device=device,
         )
-        trainer.model.load_state_dict(payload["model"])
+        trainer.model.load_compatible_state_dict(payload["model"])
         trainer.optimizer.load_state_dict(payload["optimizer"])
         trainer.state = trainer.model.state_from_snapshot(
             payload["field_state"],
@@ -158,7 +195,27 @@ class ContinuousTrainer:
         self.optimizer.step()
 
         self.state = next_state.detached()
-        self.updates += 1
+        next_update = self.updates + 1
+        edge_evidence = torch.stack(
+            trace.structural_edge_evidence
+        ).mean(dim=0)
+        probe_evidence = torch.stack(
+            trace.structural_probe_evidence
+        ).mean(dim=0)
+        accumulate_structural_credit(
+            self.model,
+            edge_evidence,
+            probe_evidence,
+            self.structural_config,
+        )
+        structural_update = apply_structural_phase(
+            self.model,
+            self.state,
+            self.optimizer,
+            self.structural_config,
+            next_update,
+        )
+        self.updates = next_update
         mean_energy = torch.stack(trace.mean_energy).mean().item()
         mean_novelty = torch.stack(trace.novelty).mean().item()
         mean_fast_weight = torch.stack(trace.mean_fast_weight).mean().item()
@@ -168,6 +225,10 @@ class ContinuousTrainer:
         fast_weight_saturation = torch.stack(
             trace.fast_weight_saturation
         ).mean().item()
+        mean_probe_eligibility = torch.stack(
+            trace.mean_probe_eligibility
+        ).mean().item()
+        mean_probe_flow = torch.stack(trace.mean_probe_flow).mean().item()
         value = loss.item()
         return TrainMetrics(
             loss=value,
@@ -179,6 +240,14 @@ class ContinuousTrainer:
             mean_fast_weight=mean_fast_weight,
             mean_edge_eligibility=mean_edge_eligibility,
             fast_weight_saturation=fast_weight_saturation,
+            mean_probe_eligibility=mean_probe_eligibility,
+            mean_probe_flow=mean_probe_flow,
+            rewired_edges=structural_update.rewired_edges,
+            total_rewires=structural_update.total_rewires,
+            candidate_advantage=structural_update.candidate_advantage,
+            rejected_rewires=(
+                structural_update.rejected_for_reachability
+            ),
         )
 
 

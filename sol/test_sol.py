@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import replace
 from pathlib import Path
 
@@ -30,6 +31,7 @@ from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
 from .stability import summarize_stability
 from .stream import CharacterVocabulary, ContinuousCharStream
+from .structure import StructuralConfig, apply_structural_phase
 from .topology import analyze_topology
 from .train import ContinuousTrainer
 
@@ -214,6 +216,187 @@ def test_reward_plasticity_does_not_mint_energy() -> None:
     assert torch.all(after.energy <= before)
 
 
+def test_structural_probe_measures_a_causal_candidate_effect() -> None:
+    model = _model(structural_probe_gain=0.03)
+    state = model.initial_state(2)
+    _, state, diagnostics = model.tick(state, torch.tensor([0, 1]))
+    assert diagnostics["probe_flow"].mean().item() > 0
+    assert state.probe_eligibility.abs().sum().item() > 0
+
+    state.reward.fill_(1.0)
+    _, _, rewarded = model.tick(state, torch.tensor([1, 2]))
+    assert rewarded["structural_probe_evidence"].abs().sum().item() > 0
+    assert all(
+        int(candidate) not in model.sources[target].tolist()
+        for target, candidate in enumerate(model.probe_sources)
+    )
+
+
+def test_structural_phase_rewires_one_slot_without_losing_integrity() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        replacements_per_phase=1,
+        credit_decay=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_probe_credit.zero_()
+    model.structural_edge_age.fill_(10)
+
+    chosen: tuple[int, int, int] | None = None
+    for target in range(model.cfg.cells):
+        candidate = int(model.probe_sources[target].item())
+        for slot in range(model.cfg.dendrites):
+            proposed = model.sources.clone()
+            proposed[target, slot] = candidate
+            topology = analyze_topology(
+                proposed, model.sensory_indices, model.output_indices
+            )
+            if (
+                topology.reachable_fraction == 1.0
+                and topology.output_reachable_fraction == 1.0
+            ):
+                chosen = (target, slot, candidate)
+                break
+        if chosen is not None:
+            break
+    assert chosen is not None
+    target, slot, candidate = chosen
+    model.structural_edge_credit[target, slot] = 0.0
+    model.structural_probe_credit[target] = 1.0
+
+    sources_before = model.sources.clone()
+    weights_before = model.edge_weight.detach().clone()
+    energy_before = trainer.state.energy.sum().item()
+    edge_moment = trainer.optimizer.state[model.edge_weight]["exp_avg"]
+    assert edge_moment.abs().sum().item() > 0
+
+    update = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert update.rewired_edges == 1
+    assert update.total_rewires == 1
+    assert int(model.sources[target, slot].item()) == candidate
+    unchanged = torch.ones_like(model.sources, dtype=torch.bool)
+    unchanged[target, slot] = False
+    assert torch.equal(model.sources[unchanged], sources_before[unchanged])
+    expected_graft = math.atanh(
+        model.cfg.structural_probe_gain * model.cfg.dendrites
+    )
+    assert model.edge_weight[target, slot].item() == pytest.approx(
+        expected_graft
+    )
+    assert torch.equal(
+        model.edge_weight.detach()[unchanged], weights_before[unchanged]
+    )
+    assert edge_moment[target, slot].item() == 0
+    assert torch.count_nonzero(
+        trainer.state.edge_eligibility[:, target, slot]
+    ).item() == 0
+    assert torch.count_nonzero(
+        trainer.state.fast_weight[:, target, slot]
+    ).item() == 0
+    assert energy_before - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+    topology = analyze_topology(
+        model.sources, model.sensory_indices, model.output_indices
+    )
+    assert topology.reachable_fraction == 1.0
+    assert topology.output_reachable_fraction == 1.0
+    assert len(set(model.sources[target].tolist())) == model.cfg.dendrites
+    assert int(model.probe_sources[target]) not in model.sources[target].tolist()
+
+
+def test_probes_only_control_rotates_without_rewiring() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            allow_rewiring=False,
+            interval=1,
+            warmup_updates=0,
+            credit_decay=0.0,
+            min_edge_age=0,
+        ),
+    )
+    sources = trainer.model.sources.clone()
+    probes = trainer.model.probe_sources.clone()
+    metrics = trainer.step()
+    assert torch.equal(trainer.model.sources, sources)
+    assert not torch.equal(trainer.model.probe_sources, probes)
+    assert metrics.rewired_edges == 0
+    assert metrics.total_rewires == 0
+
+
+def test_harmful_structural_probe_cannot_rewire() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        min_edge_age=0,
+        credit_margin=0.0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.model.structural_edge_credit.fill_(-1.0)
+    trainer.model.structural_probe_credit.fill_(-0.5)
+    trainer.model.structural_edge_age.fill_(10)
+    sources = trainer.model.sources.clone()
+    update = apply_structural_phase(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        config,
+        update=1,
+    )
+    assert update.rewired_edges == 0
+    assert torch.equal(trainer.model.sources, sources)
+
+
 def test_backward_credit_reaches_cells_and_synapses() -> None:
     model = _model()
     tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
@@ -253,12 +436,23 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
     trainer = ContinuousTrainer(
-        _model(vocab_size=len(vocabulary)),
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
         text,
         vocabulary,
         batch_size=3,
         chunk_length=4,
         learning_rate=4e-3,
+        structural_config=StructuralConfig(
+            enabled=True,
+            allow_rewiring=False,
+            interval=2,
+            warmup_updates=0,
+            credit_decay=0.5,
+            min_edge_age=0,
+        ),
     )
     for _ in range(3):
         trainer.step()
@@ -272,8 +466,23 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert actual.loss == expected.loss
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
     assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
+    assert torch.equal(resumed.state.probe_eligibility, trainer.state.probe_eligibility)
     assert torch.equal(resumed.state.fast_weight, trainer.state.fast_weight)
     assert torch.equal(resumed.state.reward_baseline, trainer.state.reward_baseline)
+    assert torch.equal(resumed.model.probe_sources, trainer.model.probe_sources)
+    assert torch.equal(
+        resumed.model.structural_edge_credit,
+        trainer.model.structural_edge_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_probe_credit,
+        trainer.model.structural_probe_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_edge_age,
+        trainer.model.structural_edge_age,
+    )
+    assert resumed.structural_config == trainer.structural_config
 
 
 def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
@@ -289,12 +498,28 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     checkpoint = save_checkpoint(tmp_path / "old.pt", trainer)
     payload = torch.load(checkpoint, weights_only=False)
     del payload["trainer"]["field_state"]["edge_eligibility"]
+    del payload["trainer"]["field_state"]["probe_eligibility"]
     del payload["trainer"]["field_state"]["fast_weight"]
     del payload["trainer"]["field_state"]["reward_baseline"]
+    del payload["trainer"]["model_config"]["structural_probe_gain"]
+    del payload["trainer"]["structural_config"]
+    for name in (
+        "probe_sources",
+        "structural_edge_credit",
+        "structural_probe_credit",
+        "structural_edge_age",
+        "total_rewires",
+    ):
+        del payload["trainer"]["model"][name]
     torch.save(payload, checkpoint)
     resumed, _ = load_checkpoint(checkpoint, text)
     assert torch.count_nonzero(resumed.state.edge_eligibility).item() == 0
+    assert torch.count_nonzero(resumed.state.probe_eligibility).item() == 0
     assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
+    assert torch.count_nonzero(
+        resumed.model.structural_edge_credit
+    ).item() == 0
+    assert resumed.model.total_rewires.item() == 0
     assert torch.allclose(
         resumed.state.reward_baseline,
         torch.full_like(
@@ -355,6 +580,8 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert snapshot["metrics"]["edgeEligibility"] != 0
     assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
     assert snapshot["metrics"]["rewardBaseline"] > 0
+    assert snapshot["metrics"]["structuralRewires"] == 0
+    assert "probeSources" in snapshot["topology"]
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
 
 
@@ -469,6 +696,8 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
     model = _model(vocab_size=len(vocabulary))
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
     metrics = evaluate_state_ablations(
         model, vocabulary, text, tokens=12, warmup=4
     )
@@ -477,12 +706,17 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
         "reset_each_token",
         "shuffled_cells",
         "zero_fast_efficacy",
+        "birth_topology",
     }
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
     assert all(value["tokens"] == 12 for value in metrics.values())
     assert all(value["bits_per_character"] > 0 for value in metrics.values())
     assert all("mean_fast_weight" in value for value in metrics.values())
     assert all("mean_edge_eligibility" in value for value in metrics.values())
     assert all("fast_weight_saturation" in value for value in metrics.values())
+    assert all("mean_probe_flow" in value for value in metrics.values())
+    assert all("total_rewires" in value for value in metrics.values())
     assert metrics["zero_fast_efficacy"]["mean_fast_weight"] == 0
     sweep = evaluate_warmup_sweep(
         model,
@@ -520,6 +754,7 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     markers = torch.arange(model.cfg.cells, dtype=state.fast_weight.dtype)
     state.edge_eligibility[:, :, 0] = markers
     state.fast_weight[:, :, 0] = markers + 100
+    state.probe_eligibility[:] = markers
     permutation = torch.arange(model.cfg.cells - 1, -1, -1)
     shuffled = _shuffle_cell_state(state, permutation)
     assert torch.equal(
@@ -528,6 +763,9 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     assert torch.equal(
         shuffled.fast_weight[:, :, 0],
         (markers[permutation] + 100).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.probe_eligibility, markers[permutation].unsqueeze(0)
     )
 
 

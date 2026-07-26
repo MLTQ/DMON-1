@@ -17,7 +17,8 @@ optimizer, corpus position, or random stream.
 - **Does**: Validates the schema and reconstructs a trainer on the requested device.
 - **Interacts with**: `ContinuousTrainer.from_state_dict` in `train.py`.
 - **Compatibility**: Additive fast-plasticity state is zero-initialized for older
-  schema-1 checkpoints rather than invalidating trained organisms.
+  schema-1 checkpoints; additive structural buffers and probe eligibility are likewise
+  initialized deterministically rather than invalidating trained organisms.
 
 ### `load_organism`
 - **Does**: Loads one persistent batch lane, its model, vocabulary, update count, and
@@ -29,7 +30,7 @@ optimizer, corpus position, or random stream.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Benchmark and local UI backend | Checkpoint includes weights, live state (including fast synapses), vocabulary, and metadata | Schema or state keys |
+| Benchmark and local UI backend | Checkpoint includes weights, live state, fast synapses, connectome/probe state, vocabulary, and metadata | Schema or state keys |
 | Long training runs | A resumed update consumes the exact next corpus window | Stream or RNG restoration |
 
 ## Notes

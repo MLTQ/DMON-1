@@ -10,6 +10,16 @@ tensor shapes.
 ### Topology tests
 - **Does**: Proves the graph is sparse, directed, and connects sensory cells to outputs.
 - **Does**: Requires complete sensory reachability and reports shortest output paths.
+- **Does**: Proves causal candidate probes name non-edges and produce retained
+  reward-addressable effects.
+- **Does**: Forces a beneficial candidate rewrite and proves fixed fan-in, unique source
+  slots, complete reachability, bounded replacement count, endpoint energy payment,
+  probe-equivalent graft initialization, reused-slot transient-state reset, and
+  untouched-slot parameter/optimizer integrity.
+- **Does**: Proves the probes-only control rotates candidates on schedule while leaving
+  the authoritative topology and rewrite count unchanged.
+- **Does**: Proves a causally harmful candidate cannot replace even a worse incumbent
+  merely because its credit magnitude is large.
 
 ### Stream and persistence tests
 - **Does**: Proves optimizer windows are adjacent and prior characters affect later
@@ -39,9 +49,10 @@ tensor shapes.
 
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
-  state, optimizer, vocabulary, and metadata.
+  state, optimizer, vocabulary, structural policy/buffers, and metadata.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
-  zero-valued additive state and a chance-level surprise baseline.
+  zero-valued additive fast/structural state, deterministic probes, and a chance-level
+  surprise baseline.
 - **Does**: Proves a frozen-connectome control neither changes edges nor becomes
   trainable after resume.
 - **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and
@@ -57,8 +68,11 @@ tensor shapes.
   target-owned cell and edge state together.
 - **Does**: Zeroes only fast efficacy during held-out inference to prove whether the
   trained organism causally uses online synaptic memory.
+- **Does**: Restores deterministic birth sources for one held-out pass and proves both
+  source/probe tables return bitwise to their live values afterward.
 - **Does**: Requires edge eligibility and fast-weight saturation telemetry in training,
-  held-out evaluation, and the local live bridge.
+  held-out evaluation, and the local live bridge together with probe and rewrite
+  telemetry.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.
 
 ### Report guard test

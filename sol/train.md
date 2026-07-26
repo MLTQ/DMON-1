@@ -9,17 +9,21 @@ one-character-at-a-time organism path used during training.
 
 ### `TrainMetrics`
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
-  edge credit, mean edge eligibility, fast synaptic efficacy, and saturation.
+  edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
+  bounded rewiring counts.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
-- **Interacts with**: `SparseAxonField` in `model.py` and `ContinuousCharStream` in
-  `stream.py`.
+- **Interacts with**: `SparseAxonField` in `model.py`, structural phases in
+  `structure.py`, and `ContinuousCharStream` in `stream.py`.
 - **Rationale**: An optimizer boundary detaches history but never resets experience.
+- **Structural order**: Accumulates causal evidence and performs any fixed-shape
+  rewiring only after backward, gradient clipping, and the optimizer step.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,
-  vocabulary, hyperparameters, update count, and random-number state.
+  vocabulary, structural policy and buffers, hyperparameters, update count, and
+  random-number state.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.

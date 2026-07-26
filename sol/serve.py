@@ -108,6 +108,9 @@ class LiveOrganism:
                         diagnostics["fast_weight_saturation"].mean().item()
                     )
                 ]
+                probe_flow_values = [
+                    float(diagnostics["probe_flow"].mean().item())
+                ]
 
                 for _ in range(characters):
                     probabilities = torch.softmax(
@@ -136,6 +139,9 @@ class LiveOrganism:
                             .item()
                         )
                     )
+                    probe_flow_values.append(
+                        float(diagnostics["probe_flow"].mean().item())
+                    )
 
             self.loaded.state = state.detached()
             return {
@@ -154,6 +160,15 @@ class LiveOrganism:
                     "fastSaturation": (
                         sum(fast_saturation_values)
                         / len(fast_saturation_values)
+                    ),
+                    "probeFlow": (
+                        sum(probe_flow_values) / len(probe_flow_values)
+                    ),
+                    "probeEligibility": float(
+                        state.probe_eligibility.abs().mean().item()
+                    ),
+                    "structuralRewires": int(
+                        model.total_rewires.item()
                     ),
                 },
                 "checkpoint": {
@@ -196,9 +211,24 @@ class LiveOrganism:
                     "rewardBaseline": float(
                         state.reward_baseline.mean().item()
                     ),
+                    "probeEligibility": float(
+                        state.probe_eligibility.abs().mean().item()
+                    ),
+                    "structuralRewires": int(
+                        self.loaded.model.total_rewires.item()
+                    ),
                 },
                 "topology": {
                     "sources": self.loaded.model.sources.cpu().tolist(),
+                    "probeSources": (
+                        self.loaded.model.probe_sources.cpu().tolist()
+                    ),
+                    "structuralEdgeCredit": (
+                        self.loaded.model.structural_edge_credit.cpu().tolist()
+                    ),
+                    "structuralProbeCredit": (
+                        self.loaded.model.structural_probe_credit.cpu().tolist()
+                    ),
                     "weights": torch.tanh(
                         self.loaded.model.edge_weight.detach()
                     )

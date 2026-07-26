@@ -130,10 +130,9 @@ checkpoints (+0.001, +0.004, and +0.001 BPC). The direct tick-time contribution 
 small but consistently positive; the larger training delta indicates that continuous
 fast state also shapes the slow learner's trajectory.
 
-This is positive evidence for event-specific fast synaptic credit at reduced scale, not
-yet a full S1 pass. The next required result is the same smooth rule at the original
-64×64, 2.56-million-character GPU budget. Axon growth remains blocked until that
-comparison is stable and beneficial.
+This was positive reduced-scale evidence for event-specific fast synaptic credit and
+motivated the original-budget comparison below. The full-scale result, rather than this
+smaller sweep, determines the S1 conclusion.
 
 ## Full-scale GPU confirmation
 
@@ -157,10 +156,19 @@ At the fast candidate's best evaluation, forcing only fast efficacy to zero wors
 from 2.43925 to 2.44200 (+0.00275). The online synaptic state therefore carries a small
 amount of predictive information at the winning checkpoint. Its contribution changes
 sign across the full training history, however, and the candidate finishes 0.01687 BPC
-worse than the no-fast control. This is a narrow formal S1 pass, not evidence that the
-current reward rule is solved: it earns guarded checkpoint promotion and unblocks a
-first axon-growth experiment, while further credit-rule work must target a larger and
-more consistent endpoint benefit.
+worse than the no-fast control.
+
+The 0.00259 best-BPC difference is only about 0.1%, comes from one topology/training
+seed and a 2,048-character scoring window, and is selected as the minimum of 20
+evaluations. It is not credible evidence of a capability improvement. A seed-13
+replication was started, then stopped once this effect-size assessment made clear that
+another expensive near-tie would not change the next engineering decision.
+
+S1 therefore closes as a stable but capability-neutral negative result. The candidate
+remains the operational live checkpoint because it is stable and has the lowest
+measured BPC, not because fast memory has beaten control. Credit-guided axon growth
+proceeds as a separate hypothesis and must earn its own matched improvement; it does
+not inherit a positive claim from S1.
 
 ## Live checkpoint policy
 
@@ -169,8 +177,9 @@ final or worst post-best BPC regresses by more than 0.5. Applied to the real art
 
 - The smooth centered-reward candidate is stable with 0.152 worst post-best regression.
 - Its 2.439-BPC best checkpoint ranks ahead of the 2.442 matched no-fast control and
-  the 2.451 S0 no-metabolism checkpoint.
+  the 2.451 S0 no-metabolism checkpoint, but only by an unresolved single-seed margin.
 - High-gain fast memory with metabolism is rejected at 9.748 regression.
 - High-gain fast memory without metabolism is rejected at 3.948 regression.
 
-The local UI now uses the stable smooth fast-memory checkpoint from update 3,750.
+The local UI uses the stable smooth fast-memory checkpoint from update 3,750 as an
+operational best-measured snapshot, not as a claim that fast memory has beaten control.

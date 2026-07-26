@@ -26,10 +26,18 @@ with checkpointing and append-only metrics.
   matched gain sweeps without changing parameter count.
 - **Does**: `--reward-baseline-decay` records the time scale used to turn surprise into
   signed advantage relative to each stream lane's recent expectation.
+- **Does**: `--structural-plasticity` runs bounded between-window grow/prune phases;
+  `--structural-probes-only` supplies the parameter- and intervention-matched
+  fixed-topology control with identical probe accumulation and rotation.
+- **Does**: Structural flags record probe gain, phase cadence, replacement budget,
+  credit decay/margin, maturity, and endpoint energy cost.
+- **Rationale**: Rewiring must beat the same causal probes without topology mutation,
+  rather than receiving free exploratory traffic unavailable to control.
 
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean
-  sensory-to-output distance in every SOL summary.
+  sensory-to-output distance plus structural rewrite/credit telemetry in every SOL
+  summary.
 - **Interacts with**: `analyze_topology` in `topology.py`.
 
 ### Stability report

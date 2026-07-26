@@ -24,11 +24,16 @@ probabilities out. It is not a transformer imitation.
 - Persistent eligibility traces remember which cells participated in preceding events;
   delayed scalar reward modulates those traces on the following tick, including across
   optimizer boundaries.
+- One weak exploratory source per target is measured by running the shared cell rule
+  with and without that candidate message. Between differentiable windows, a bounded
+  structural phase may replace a mature low-credit dendrite when the candidate is
+  better, both endpoints can pay, and full sensory/output reachability survives.
 - Externally caused stimulation propagates along measured edge flow. Stimulation and
   energy decay when input stops.
 
-Topology is fixed in this milestone. Adding axon growth before proving transport and
-credit would make every failure ambiguous.
+Rewiring is disabled by default. The matched structural control receives the same
+rotating exploratory traffic and continues ordinary learning, but never installs a
+candidate into its permanent dendrite table.
 
 ## Run
 
@@ -42,6 +47,10 @@ python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-contr
 python -m sol.benchmark --model sol --freeze-edges --out-dir sol/runs/fixed-edge-control
 python -m sol.benchmark --model sol --no-metabolism --out-dir sol/runs/capability-control
 python -m sol.benchmark --model sol --no-reward --out-dir sol/runs/reward-control
+python -m sol.benchmark --model sol --no-fast-plasticity \
+  --structural-plasticity --out-dir sol/runs/growing-connectome
+python -m sol.benchmark --model sol --no-fast-plasticity \
+  --structural-probes-only --out-dir sol/runs/probes-only-control
 python -m sol.serve --checkpoint sol/runs/sol-main/best.pt
 python -m sol.report \
   --run sol=sol/runs/sol-main \
@@ -72,10 +81,15 @@ The prototype has failed if any of these are true:
 3. Resetting state has no effect on predictions.
 4. Delayed reward produces the same update with and without an eligibility trace.
 5. Energy does not fall during unstimulated ticks.
+6. A structural candidate can bypass endpoint energy payment or disconnect the output
+   organ.
+7. Rewiring changes fan-in, duplicates a source, drops successful probe traffic at
+   graft time, or contaminates untouched optimizer slots and persistent edge state.
 
 ## Deliberate omissions
 
-- No cell birth, death, or topology mutation yet.
+- No cell birth or death; topology mutation preserves a fixed number of cells and
+  dendrite slots.
 - No visual or audio organs yet.
 - Energy modulates cell computation but does not yet govern viability.
 - Eligibility is neural event memory, not a full online parameter-gradient algorithm.

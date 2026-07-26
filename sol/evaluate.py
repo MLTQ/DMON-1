@@ -9,6 +9,7 @@ import torch
 from torch.nn import functional as F
 
 from .model import FieldState, SparseAxonField
+from .structure import next_probe_sources
 from .stream import CharacterVocabulary
 
 
@@ -25,6 +26,9 @@ class EvaluationMetrics:
     mean_fast_weight: float
     mean_edge_eligibility: float
     fast_weight_saturation: float
+    mean_probe_eligibility: float
+    mean_probe_flow: float
+    total_rewires: int
 
     def to_dict(self) -> dict[str, float | int]:
         return asdict(self)
@@ -40,6 +44,7 @@ def _shuffle_cell_state(state: FieldState, permutation: torch.Tensor) -> FieldSt
         stimulation=state.stimulation[:, permutation],
         eligibility=state.eligibility[:, permutation],
         edge_eligibility=state.edge_eligibility[:, permutation],
+        probe_eligibility=state.probe_eligibility[:, permutation],
         fast_weight=state.fast_weight[:, permutation],
     )
 
@@ -99,6 +104,8 @@ def evaluate_sol(
     fast_weights: list[float] = []
     edge_eligibilities: list[float] = []
     fast_saturations: list[float] = []
+    probe_eligibilities: list[float] = []
+    probe_flows: list[float] = []
 
     for index in range(warmup + scored_tokens):
         if reset_each_token:
@@ -138,6 +145,14 @@ def evaluate_sol(
                     diagnostics["fast_weight_saturation"].mean().item()
                 )
             )
+            probe_eligibilities.append(
+                float(
+                    diagnostics["mean_probe_eligibility"].mean().item()
+                )
+            )
+            probe_flows.append(
+                float(diagnostics["probe_flow"].mean().item())
+            )
 
     model.train(was_training)
     nll = total_loss / scored_tokens
@@ -153,6 +168,9 @@ def evaluate_sol(
         mean_fast_weight=sum(fast_weights) / scored_tokens,
         mean_edge_eligibility=sum(edge_eligibilities) / scored_tokens,
         fast_weight_saturation=sum(fast_saturations) / scored_tokens,
+        mean_probe_eligibility=sum(probe_eligibilities) / scored_tokens,
+        mean_probe_flow=sum(probe_flows) / scored_tokens,
+        total_rewires=int(model.total_rewires.item()),
     )
 
 
@@ -174,7 +192,7 @@ def evaluate_state_ablations(
         "shuffled_cells": {"shuffle_cells": True},
         "zero_fast_efficacy": {"zero_fast_efficacy": True},
     }
-    return {
+    results = {
         name: evaluate_sol(
             model,
             vocabulary,
@@ -187,6 +205,30 @@ def evaluate_state_ablations(
         ).to_dict()
         for name, options in policies.items()
     }
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+    birth_sources = model.birth_sources()
+    birth_probes = probes.clone()
+    fallback_probes = next_probe_sources(birth_sources, probes)
+    for target in range(model.cfg.cells):
+        if int(birth_probes[target]) in birth_sources[target].tolist():
+            birth_probes[target] = fallback_probes[target]
+    try:
+        model.sources.copy_(birth_sources)
+        model.probe_sources.copy_(birth_probes)
+        results["birth_topology"] = evaluate_sol(
+            model,
+            vocabulary,
+            text,
+            device=device,
+            tokens=tokens,
+            warmup=warmup,
+            score_start=score_start,
+        ).to_dict()
+    finally:
+        model.sources.copy_(sources)
+        model.probe_sources.copy_(probes)
+    return results
 
 
 def evaluate_warmup_sweep(
