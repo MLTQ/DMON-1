@@ -11,6 +11,8 @@ one-character-at-a-time organism path used during training.
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
   bounded rewiring counts, including mean first-order probe fitness.
+- **Does**: Reports active probation, provisional starts, commits, rollbacks, and
+  accumulated prequential improvement, raw advantage, and developmental baseline.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
@@ -22,11 +24,19 @@ one-character-at-a-time organism path used during training.
 - **Structural fitness**: After backward, contracts every measured probe intervention
   with its target hidden state's exact global loss gradient before detaching the next
   continuous window.
+- **Probation order**: Accumulates the just-completed window's signed prequential reward,
+  resolves a due probation after the optimizer step, and skips a new graft on that same
+  update. Ordinary body learning is never paused.
+- **Developmental baseline**: Tracks signed reward outside and during probation with a
+  checkpointed EMA. A graft is judged by improvement over the body's pre-graft trend,
+  not by reward that ordinary learning would have produced anyway.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,
   vocabulary, structural policy and buffers, hyperparameters, update count, and
   random-number state.
+- **Does**: Includes the complete active graft backup and probation evidence so resume
+  produces the same future commit or rollback.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.

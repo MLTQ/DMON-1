@@ -25,6 +25,13 @@ tensor shapes.
   adverse evidence.
 - **Does**: Proves negative organism-level fitness vetoes otherwise positive local
   structural credit, while positive local and global evidence can still rewire.
+- **Does**: Proves failed post-graft probation restores the incumbent source, parameters,
+  optimizer moments, structural memory, and stream-local edge state exactly while
+  preserving unrelated body adaptation and spent growth energy.
+- **Does**: Proves positive probation retains the adapted graft and the probes-only
+  organism enters a virtual wait without topology mutation.
+- **Does**: Proves a graft that earns positive raw reward but underperforms the body's
+  pre-graft developmental baseline is rolled back.
 - **Does**: Proves a causally harmful candidate cannot replace even a worse incumbent
   merely because its credit magnitude is large.
 
@@ -58,6 +65,8 @@ tensor shapes.
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
   state, optimizer, vocabulary, structural policy/credit/global-fitness/confirmation
   buffers, and metadata.
+- **Does**: Resumes an active provisional graft through its decision and requires the
+  same loss, topology, body state, and commit/rollback counters.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

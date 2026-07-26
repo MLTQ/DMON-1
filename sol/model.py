@@ -151,6 +151,7 @@ class FieldTrace:
     structural_edge_evidence: list[torch.Tensor]
     structural_probe_evidence: list[torch.Tensor]
     probe_effect: list[torch.Tensor]
+    prequential_reward: list[torch.Tensor]
 
     def cell_credit(self) -> torch.Tensor:
         """Return mean absolute loss gradient per token and cell after backward."""
@@ -700,7 +701,9 @@ class SparseAxonField(nn.Module):
             raise ValueError("state batch does not match tokens")
 
         logits: list[torch.Tensor] = []
-        trace = FieldTrace([], [], [], [], [], [], [], [], [], [], [], [])
+        trace = FieldTrace(
+            [], [], [], [], [], [], [], [], [], [], [], [], []
+        )
         reward = state.reward
 
         for index in range(length):
@@ -737,5 +740,6 @@ class SparseAxonField(nn.Module):
                 )
                 state = self.observe_surprise(state, surprise)
                 reward = state.reward
+            trace.prequential_reward.append(reward.detach())
 
         return torch.stack(logits, dim=1), state, trace

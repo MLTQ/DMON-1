@@ -539,6 +539,276 @@ def test_global_fitness_can_veto_locally_credited_rewire() -> None:
     assert not torch.equal(model.sources, sources)
 
 
+def _start_forced_probation(
+    trainer: ContinuousTrainer,
+    config: StructuralConfig,
+    update: int,
+) -> tuple[int, int, int]:
+    model = trainer.model
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_probe_credit.zero_()
+    model.structural_edge_age.fill_(10)
+    for target in range(model.cfg.cells):
+        candidate = int(model.probe_sources[target].item())
+        for slot in range(model.cfg.dendrites):
+            proposed = model.sources.clone()
+            proposed[target, slot] = candidate
+            topology = analyze_topology(
+                proposed, model.sensory_indices, model.output_indices
+            )
+            if (
+                topology.reachable_fraction == 1.0
+                and topology.output_reachable_fraction == 1.0
+            ):
+                model.structural_edge_credit[target, slot] = 0.0
+                model.structural_probe_credit[target] = 1.0
+                result = apply_structural_phase(
+                    model,
+                    trainer.state,
+                    trainer.optimizer,
+                    config,
+                    update,
+                    trainer.structural_probation,
+                )
+                assert result.probation_started
+                return target, slot, candidate
+    raise AssertionError("no viable probation candidate found")
+
+
+def test_negative_probation_restores_exact_graft_slot() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    weights = model.edge_weight.detach().clone()
+    biases = model.edge_bias.detach().clone()
+    edge_eligibility = trainer.state.edge_eligibility.clone()
+    fast_weight = trainer.state.fast_weight.clone()
+    weight_moment = trainer.optimizer.state[model.edge_weight][
+        "exp_avg"
+    ].clone()
+    bias_moment = trainer.optimizer.state[model.edge_bias][
+        "exp_avg"
+    ].clone()
+    energy = trainer.state.energy.sum().item()
+
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+    backed_credit = trainer.structural_probation.edge_credit.clone()
+    backed_age = trainer.structural_probation.edge_age.clone()
+    assert int(model.sources[target, slot]) == candidate
+    with torch.no_grad():
+        model.token_embedding.weight.add_(1.0)
+        model.edge_weight[target, slot].add_(3.0)
+        model.edge_bias[target, slot].add_(2.0)
+    body_after_experience = model.token_embedding.weight.detach().clone()
+    trainer.optimizer.state[model.edge_weight]["exp_avg"][
+        target, slot
+    ] = 9.0
+    trainer.optimizer.state[model.edge_bias]["exp_avg"][
+        target, slot
+    ] = 8.0
+    trainer.state.edge_eligibility[:, target, slot] = 7.0
+    trainer.state.fast_weight[:, target, slot] = 6.0
+    trainer.structural_probation.observe(-0.5)
+    committed = trainer.structural_probation.resolve(
+        model, trainer.state, trainer.optimizer, margin=0.0
+    )
+
+    assert not committed
+    assert torch.equal(model.sources, sources)
+    assert model.edge_weight[target, slot] == weights[target, slot]
+    assert model.edge_bias[target, slot] == biases[target, slot]
+    assert (
+        model.structural_edge_credit[target, slot]
+        == backed_credit
+    )
+    assert model.structural_edge_age[target, slot] == backed_age
+    assert torch.equal(
+        trainer.state.edge_eligibility[:, target, slot],
+        edge_eligibility[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.fast_weight[:, target, slot],
+        fast_weight[:, target, slot],
+    )
+    assert (
+        trainer.optimizer.state[model.edge_weight]["exp_avg"][
+            target, slot
+        ]
+        == weight_moment[target, slot]
+    )
+    assert (
+        trainer.optimizer.state[model.edge_bias]["exp_avg"][
+            target, slot
+        ]
+        == bias_moment[target, slot]
+    )
+    assert torch.equal(
+        model.token_embedding.weight, body_after_experience
+    )
+    assert energy - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+    assert trainer.structural_probation.total_rolled_back == 1
+
+
+def test_positive_probation_commits_adapted_graft() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=1
+    )
+    with torch.no_grad():
+        trainer.model.edge_weight[target, slot].add_(0.5)
+    adapted = trainer.model.edge_weight[target, slot].detach().clone()
+    trainer.structural_probation.observe(0.25)
+    committed = trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert committed
+    assert int(trainer.model.sources[target, slot]) == candidate
+    assert trainer.model.edge_weight[target, slot] == adapted
+    assert not torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_committed == 1
+
+
+def test_probation_scores_against_pre_graft_developmental_baseline() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    _start_forced_probation(trainer, config, update=1)
+    trainer.structural_probation.baseline_advantage = 0.2
+    trainer.structural_probation.observe(0.1)
+    assert trainer.structural_probation.mean_advantage == pytest.approx(-0.1)
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+
+
+def test_probes_only_uses_virtual_probation_without_mutation() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        allow_rewiring=False,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    _start_forced_probation(trainer, config, update=1)
+    assert trainer.structural_probation.active
+    assert trainer.structural_probation.virtual
+    assert torch.equal(trainer.model.sources, sources)
+    trainer.structural_probation.observe(1.0)
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_rolled_back == 0
+
+
 def test_harmful_structural_probe_cannot_rewire() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -673,6 +943,74 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert resumed.structural_config == trainer.structural_config
 
 
+def test_checkpoint_resume_preserves_active_probation(tmp_path: Path) -> None:
+    torch.manual_seed(21)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=2)
+    trainer.updates = 2
+    checkpoint = save_checkpoint(
+        tmp_path / "probation.pt", trainer, {"tag": "probation"}
+    )
+
+    expected_first = trainer.step()
+    expected_second = trainer.step()
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual_first = resumed.step()
+    actual_second = resumed.step()
+
+    assert metadata == {"tag": "probation"}
+    assert actual_first.loss == expected_first.loss
+    assert actual_second.loss == expected_second.loss
+    assert resumed.updates == trainer.updates
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(
+        resumed.model.edge_weight, trainer.model.edge_weight
+    )
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.total_committed
+        == trainer.structural_probation.total_committed
+    )
+    assert (
+        resumed.structural_probation.total_rolled_back
+        == trainer.structural_probation.total_rolled_back
+    )
+    assert (
+        resumed.structural_probation.active
+        == trainer.structural_probation.active
+    )
+    assert (
+        resumed.prequential_advantage_ema
+        == trainer.prequential_advantage_ema
+    )
+
+
 def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -691,6 +1029,8 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["reward_baseline"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
     del payload["trainer"]["structural_config"]
+    del payload["trainer"]["structural_probation"]
+    del payload["trainer"]["prequential_advantage_ema"]
     for name in (
         "probe_sources",
         "structural_edge_credit",

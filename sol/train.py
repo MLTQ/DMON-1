@@ -14,8 +14,11 @@ from torch.nn import functional as F
 from .model import FieldState, SolConfig, SparseAxonField
 from .structure import (
     StructuralConfig,
+    StructuralProbation,
+    StructuralUpdate,
     accumulate_structural_credit,
     apply_structural_phase,
+    next_probe_sources,
 )
 from .stream import CharacterVocabulary, ContinuousCharStream
 
@@ -38,6 +41,13 @@ class TrainMetrics:
     total_rewires: int
     candidate_advantage: float
     rejected_rewires: int
+    probation_active: bool
+    probation_started: bool
+    probation_committed: int
+    probation_rolled_back: int
+    probation_advantage: float
+    prequential_advantage: float
+    prequential_baseline: float
 
 
 class ContinuousTrainer:
@@ -103,6 +113,8 @@ class ContinuousTrainer:
             weight_decay=1e-4,
         )
         self.state = self.model.initial_state(batch_size, self.device)
+        self.structural_probation = StructuralProbation()
+        self.prequential_advantage_ema = 0.0
         self.updates = 0
 
     def state_dict(self) -> dict[str, Any]:
@@ -124,6 +136,8 @@ class ContinuousTrainer:
             "grad_clip": self.grad_clip,
             "frozen_parameters": list(self.frozen_parameters),
             "structural_config": asdict(self.structural_config),
+            "structural_probation": self.structural_probation.state_dict(),
+            "prequential_advantage_ema": self.prequential_advantage_ema,
             "updates": self.updates,
             "torch_rng_state": torch.get_rng_state(),
             "cuda_rng_state": (
@@ -162,6 +176,13 @@ class ContinuousTrainer:
             payload["field_state"],
             int(payload["batch_size"]),
             trainer.device,
+        )
+        trainer.structural_probation = StructuralProbation.from_state_dict(
+            payload.get("structural_probation"),
+            trainer.device,
+        )
+        trainer.prequential_advantage_ema = float(
+            payload.get("prequential_advantage_ema", 0.0)
         )
         trainer.stream.load_state_dict(payload["stream"])
         trainer.updates = int(payload["updates"])
@@ -204,6 +225,9 @@ class ContinuousTrainer:
             trace.structural_probe_evidence
         ).mean(dim=0)
         probe_fitness = trace.probe_fitness().mean(dim=0)
+        prequential_advantage = float(
+            torch.stack(trace.prequential_reward).mean().item()
+        )
         accumulate_structural_credit(
             self.model,
             edge_evidence,
@@ -211,12 +235,64 @@ class ContinuousTrainer:
             probe_fitness,
             self.structural_config,
         )
-        structural_update = apply_structural_phase(
-            self.model,
-            self.state,
-            self.optimizer,
-            self.structural_config,
-            next_update,
+        baseline_before = self.prequential_advantage_ema
+        self.structural_probation.observe(prequential_advantage)
+        resolved = False
+        if (
+            self.structural_probation.active
+            and next_update - self.structural_probation.started_update
+            >= self.structural_config.probation_updates
+        ):
+            self.structural_probation.resolve(
+                self.model,
+                self.state,
+                self.optimizer,
+                self.structural_config.probation_margin,
+            )
+            self.model.probe_sources.copy_(
+                next_probe_sources(
+                    self.model.sources,
+                    self.model.probe_sources,
+                )
+            )
+            self.model.structural_probe_credit.zero_()
+            self.model.structural_probe_fitness.zero_()
+            self.model.structural_probe_confirmations.zero_()
+            self.state.probe_eligibility.zero_()
+            resolved = True
+        structural_update = (
+            StructuralUpdate(
+                0,
+                int(self.model.total_rewires.item()),
+                0.0,
+                0,
+                probation_active=self.structural_probation.active,
+                probation_committed=(
+                    self.structural_probation.total_committed
+                ),
+                probation_rolled_back=(
+                    self.structural_probation.total_rolled_back
+                ),
+                probation_advantage=(
+                    self.structural_probation.mean_advantage
+                ),
+            )
+            if resolved
+            else apply_structural_phase(
+                self.model,
+                self.state,
+                self.optimizer,
+                self.structural_config,
+                next_update,
+                self.structural_probation,
+            )
+        )
+        if structural_update.probation_started:
+            self.structural_probation.baseline_advantage = baseline_before
+        decay = self.structural_config.probation_baseline_decay
+        self.prequential_advantage_ema = (
+            decay * self.prequential_advantage_ema
+            + (1 - decay) * prequential_advantage
         )
         self.updates = next_update
         mean_energy = torch.stack(trace.mean_energy).mean().item()
@@ -254,6 +330,19 @@ class ContinuousTrainer:
             rejected_rewires=(
                 structural_update.rejected_for_reachability
             ),
+            probation_active=structural_update.probation_active,
+            probation_started=structural_update.probation_started,
+            probation_committed=(
+                self.structural_probation.total_committed
+            ),
+            probation_rolled_back=(
+                self.structural_probation.total_rolled_back
+            ),
+            probation_advantage=(
+                self.structural_probation.mean_advantage
+            ),
+            prequential_advantage=prequential_advantage,
+            prequential_baseline=self.prequential_advantage_ema,
         )
 
 

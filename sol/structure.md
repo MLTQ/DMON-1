@@ -13,6 +13,9 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   improvement margin, required consecutive confirmation phases, endpoint energy cost,
   whether global predictive fitness is required, and whether matched probes may actually
   rewrite topology.
+- **Does**: Optionally defines a post-graft probation duration and minimum observed
+  prequential improvement for committing provisional anatomy, plus the developmental
+  baseline decay used to distinguish graft benefit from ordinary learning.
 - **Interacts with**: `ContinuousTrainer` in `train.py`.
 
 ### `next_probe_sources`
@@ -39,8 +42,22 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 - **Rationale**: A successful candidate must not lose its causal traffic at the moment
   it becomes a permanent dendrite.
 
+### `StructuralProbation`
+- **Does**: Backs up one incumbent source, edge parameters, optimizer moments,
+  structural credit/age, and stream-local edge eligibility/fast efficacy before a
+  provisional graft.
+- **Does**: Accumulates signed prequential reward while the entire organism continues
+  ordinary training, subtracts the pre-graft developmental reward baseline, then commits
+  positive improvement or restores the backed-up slot.
+- **Does**: Serializes active and historical probation state for exact checkpoint
+  resume; probes-only uses the same waiting cadence as a virtual probation without
+  topology mutation.
+- **Rationale**: Failed anatomy can be removed without pretending the rest of the body
+  did not experience and adapt during the trial.
+
 ### `structural_summary`
-- **Does**: Reports policy, rewrite count, retained credit, edge age, and active probes.
+- **Does**: Reports policy, rewrite attempts, retained credit, edge age, active probes,
+  and probation start/commit/rollback telemetry.
 
 ## Contracts
 
@@ -67,3 +84,5 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   before it can replace even the target's worst mature incumbent; one adverse phase
   resets the streak.
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.
+- Rollback does not refund growth energy or revert unrelated model/state changes:
+  probation is anatomical reversibility, not erasure of lived experience.

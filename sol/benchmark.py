@@ -137,6 +137,11 @@ def _run_sol(
                 min_edge_age=args.structural_min_edge_age,
                 growth_cost=args.structural_growth_cost,
                 min_endpoint_energy=args.structural_min_energy,
+                probation_updates=args.structural_probation_updates,
+                probation_margin=args.structural_probation_margin,
+                probation_baseline_decay=(
+                    args.structural_probation_baseline_decay
+                ),
             ),
             device=device,
         )
@@ -254,7 +259,9 @@ def _run_sol(
             trainer.model.output_indices,
         ).to_dict(),
         "structure": structural_summary(
-            trainer.model, trainer.structural_config
+            trainer.model,
+            trainer.structural_config,
+            trainer.structural_probation,
         ),
         "stability": summarize_stability(
             evaluation_history, args.max_final_regression_bpc
@@ -526,6 +533,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--structural-min-edge-age", type=int, default=250)
     parser.add_argument("--structural-growth-cost", type=float, default=0.01)
     parser.add_argument("--structural-min-energy", type=float, default=0.05)
+    parser.add_argument(
+        "--structural-probation-updates", type=int, default=0
+    )
+    parser.add_argument(
+        "--structural-probation-margin", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--structural-probation-baseline-decay",
+        type=float,
+        default=0.99,
+    )
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
@@ -614,6 +632,12 @@ def parse_args() -> argparse.Namespace:
     for name in ("structural_warmup", "structural_min_edge_age"):
         if getattr(args, name) < 0:
             parser.error(f"--{name.replace('_', '-')} must be non-negative")
+    if args.structural_probation_updates < 0:
+        parser.error("--structural-probation-updates must be non-negative")
+    if not 0 <= args.structural_probation_baseline_decay < 1:
+        parser.error(
+            "--structural-probation-baseline-decay must be in [0, 1)"
+        )
     if args.chunk > args.transformer_context:
         parser.error("--chunk must not exceed --transformer-context")
     return args

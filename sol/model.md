@@ -29,6 +29,8 @@ causally measured exploratory axon probes.
 - **Does**: Combines each candidate's measured hidden-state intervention with the exact
   post-backward sequence-loss gradient, yielding a first-order organism-level fitness
   estimate without removing exploratory traffic.
+- **Does**: Retains token-wise signed reward relative to each lane's surprise baseline
+  so post-graft probation measures observed prequential advantage.
 
 ### `SparseAxonField`
 - **Does**: Applies one shared GRU rule at every cell while messages travel only through

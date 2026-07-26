@@ -34,6 +34,10 @@ with checkpointing and append-only metrics.
   cost.
 - **Does**: `--structural-global-fitness` requires locally confirmed probes to also
   predict a reduction in exact sequence loss before permanent installation.
+- **Does**: Structural probation flags hold a confirmed graft provisionally, accumulate
+  observed prequential improvement over a checkpointed pre-graft developmental baseline
+  during uninterrupted co-adaptation, and commit or restore it at the configured
+  deadline. Probes-only uses a virtual wait of the same duration.
 - **Rationale**: Rewiring must beat the same causal probes without topology mutation,
   rather than receiving free exploratory traffic unavailable to control.
 
@@ -41,6 +45,8 @@ with checkpointing and append-only metrics.
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean
   sensory-to-output distance plus structural rewrite/credit telemetry in every SOL
   summary.
+- **Does**: Records probation activity, attempts, commits, rollbacks, observations, and
+  mean observed advantage.
 - **Interacts with**: `analyze_topology` in `topology.py`.
 
 ### Stability report

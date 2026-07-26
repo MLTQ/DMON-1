@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -33,6 +33,9 @@ class StructuralConfig:
     min_edge_age: int = 250
     growth_cost: float = 0.01
     min_endpoint_energy: float = 0.05
+    probation_updates: int = 0
+    probation_margin: float = 0.0
+    probation_baseline_decay: float = 0.99
 
     def __post_init__(self) -> None:
         if self.interval < 1:
@@ -55,6 +58,12 @@ class StructuralConfig:
             raise ValueError("growth cost must be non-negative")
         if not 0 <= self.min_endpoint_energy <= 1:
             raise ValueError("minimum endpoint energy must be in [0, 1]")
+        if self.probation_updates < 0:
+            raise ValueError("probation_updates must be non-negative")
+        if not 0 <= self.probation_baseline_decay < 1:
+            raise ValueError(
+                "probation_baseline_decay must be in [0, 1)"
+            )
 
 
 @dataclass(frozen=True)
@@ -65,6 +74,214 @@ class StructuralUpdate:
     total_rewires: int
     candidate_advantage: float
     rejected_for_reachability: int
+    probation_started: bool = False
+    probation_active: bool = False
+    probation_committed: int = 0
+    probation_rolled_back: int = 0
+    probation_advantage: float = 0.0
+
+
+@dataclass
+class StructuralProbation:
+    """Checkpointable backup and observed fitness for one provisional graft."""
+
+    active: bool = False
+    virtual: bool = False
+    target: int = -1
+    slot: int = -1
+    old_source: int = -1
+    candidate_source: int = -1
+    started_update: int = 0
+    advantage_sum: float = 0.0
+    baseline_advantage: float = 0.0
+    observations: int = 0
+    total_started: int = 0
+    total_committed: int = 0
+    total_rolled_back: int = 0
+    edge_weight: torch.Tensor | None = None
+    edge_bias: torch.Tensor | None = None
+    edge_credit: torch.Tensor | None = None
+    edge_age: torch.Tensor | None = None
+    edge_eligibility: torch.Tensor | None = None
+    fast_weight: torch.Tensor | None = None
+    optimizer_slots: dict[str, dict[str, torch.Tensor]] = field(
+        default_factory=dict
+    )
+
+    @property
+    def mean_advantage(self) -> float:
+        return self.advantage_sum / max(1, self.observations)
+
+    def observe(self, advantage: float) -> None:
+        if self.active:
+            self.advantage_sum += (
+                float(advantage) - self.baseline_advantage
+            )
+            self.observations += 1
+
+    def state_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        for name in (
+            "edge_weight",
+            "edge_bias",
+            "edge_credit",
+            "edge_age",
+            "edge_eligibility",
+            "fast_weight",
+        ):
+            value = getattr(self, name)
+            payload[name] = (
+                None if value is None else value.detach().cpu()
+            )
+        payload["optimizer_slots"] = {
+            parameter: {
+                name: value.detach().cpu()
+                for name, value in slots.items()
+            }
+            for parameter, slots in self.optimizer_slots.items()
+        }
+        return payload
+
+    @classmethod
+    def from_state_dict(
+        cls,
+        payload: dict[str, Any] | None,
+        device: torch.device | str,
+    ) -> "StructuralProbation":
+        if not payload:
+            return cls()
+        restored = dict(payload)
+        device = torch.device(device)
+        for name in (
+            "edge_weight",
+            "edge_bias",
+            "edge_credit",
+            "edge_age",
+            "edge_eligibility",
+            "fast_weight",
+        ):
+            value = restored.get(name)
+            restored[name] = None if value is None else value.to(device)
+        restored["optimizer_slots"] = {
+            parameter: {
+                name: value.to(device)
+                for name, value in slots.items()
+            }
+            for parameter, slots in restored.get(
+                "optimizer_slots", {}
+            ).items()
+        }
+        return cls(**restored)
+
+    def begin(
+        self,
+        model: "SparseAxonField",
+        state: "FieldState",
+        optimizer: "Optimizer",
+        target: int,
+        slot: int,
+        candidate: int,
+        update: int,
+        virtual: bool,
+    ) -> None:
+        if self.active:
+            raise RuntimeError("structural probation is already active")
+        self.active = True
+        self.virtual = virtual
+        self.target = target
+        self.slot = slot
+        self.old_source = int(model.sources[target, slot].item())
+        self.candidate_source = candidate
+        self.started_update = update
+        self.advantage_sum = 0.0
+        self.baseline_advantage = 0.0
+        self.observations = 0
+        self.total_started += 1
+        if virtual:
+            return
+        self.edge_weight = model.edge_weight[target, slot].detach().clone()
+        self.edge_bias = model.edge_bias[target, slot].detach().clone()
+        self.edge_credit = (
+            model.structural_edge_credit[target, slot].detach().clone()
+        )
+        self.edge_age = (
+            model.structural_edge_age[target, slot].detach().clone()
+        )
+        self.edge_eligibility = (
+            state.edge_eligibility[:, target, slot].detach().clone()
+        )
+        self.fast_weight = (
+            state.fast_weight[:, target, slot].detach().clone()
+        )
+        parameters = {
+            "edge_weight": model.edge_weight,
+            "edge_bias": model.edge_bias,
+        }
+        self.optimizer_slots = {}
+        for parameter_name, parameter in parameters.items():
+            slots: dict[str, torch.Tensor] = {}
+            for name, value in optimizer.state.get(parameter, {}).items():
+                if torch.is_tensor(value) and value.shape == parameter.shape:
+                    slots[name] = value[target, slot].detach().clone()
+            self.optimizer_slots[parameter_name] = slots
+
+    @torch.no_grad()
+    def resolve(
+        self,
+        model: "SparseAxonField",
+        state: "FieldState",
+        optimizer: "Optimizer",
+        margin: float,
+    ) -> bool:
+        """Commit positive probation or restore the exact pre-graft slot."""
+
+        if not self.active:
+            raise RuntimeError("no structural probation is active")
+        committed = self.mean_advantage > margin
+        if self.virtual:
+            committed = False
+        elif not committed:
+            target, slot = self.target, self.slot
+            model.sources[target, slot] = self.old_source
+            model.edge_weight[target, slot] = self.edge_weight
+            model.edge_bias[target, slot] = self.edge_bias
+            model.structural_edge_credit[target, slot] = self.edge_credit
+            model.structural_edge_age[target, slot] = self.edge_age
+            state.edge_eligibility[:, target, slot] = (
+                self.edge_eligibility
+            )
+            state.fast_weight[:, target, slot] = self.fast_weight
+            parameters = {
+                "edge_weight": model.edge_weight,
+                "edge_bias": model.edge_bias,
+            }
+            for parameter_name, slots in self.optimizer_slots.items():
+                parameter = parameters[parameter_name]
+                optimizer_state = optimizer.state.get(parameter, {})
+                for name, current in optimizer_state.items():
+                    if (
+                        torch.is_tensor(current)
+                        and current.shape == parameter.shape
+                    ):
+                        if name in slots:
+                            current[target, slot] = slots[name]
+                        else:
+                            current[target, slot] = 0
+
+        if committed:
+            self.total_committed += 1
+        elif not self.virtual:
+            self.total_rolled_back += 1
+        self.active = False
+        self.virtual = False
+        self.edge_weight = None
+        self.edge_bias = None
+        self.edge_credit = None
+        self.edge_age = None
+        self.edge_eligibility = None
+        self.fast_weight = None
+        self.optimizer_slots = {}
+        return committed
 
 
 def next_probe_sources(
@@ -211,10 +428,22 @@ def apply_structural_phase(
     optimizer: "Optimizer",
     config: StructuralConfig,
     update: int,
+    probation: StructuralProbation | None = None,
 ) -> StructuralUpdate:
     """Replace mature low-credit edges with better causal probes when due."""
 
     total = int(model.total_rewires.item())
+    if probation is not None and probation.active:
+        return StructuralUpdate(
+            0,
+            total,
+            0.0,
+            0,
+            probation_active=True,
+            probation_committed=probation.total_committed,
+            probation_rolled_back=probation.total_rolled_back,
+            probation_advantage=probation.mean_advantage,
+        )
     if (
         not config.enabled
         or update < config.warmup_updates
@@ -254,7 +483,7 @@ def apply_structural_phase(
             model.structural_probe_confirmations[target] = 0
 
         if (
-            config.allow_rewiring
+            (config.allow_rewiring or config.probation_updates > 0)
             and int(model.structural_probe_confirmations[target].item())
             >= config.confirmation_phases
         ):
@@ -283,6 +512,7 @@ def apply_structural_phase(
         return StructuralUpdate(0, total, best_advantage, 0)
 
     rewired = 0
+    probation_started = False
     rejected_for_reachability = 0
     for advantage, target, slot, candidate, probe_credit in proposals:
         if rewired >= config.replacements_per_phase:
@@ -299,21 +529,36 @@ def apply_structural_phase(
             rejected_for_reachability += 1
             continue
 
-        model.sources[target, slot] = candidate
-        model.edge_weight[target, slot] = _probe_equivalent_weight(model)
-        model.edge_bias[target, slot] = 0
-        _reset_optimizer_slot(
-            optimizer, model.edge_weight, target, slot
-        )
-        _reset_optimizer_slot(
-            optimizer, model.edge_bias, target, slot
-        )
-        state.edge_eligibility[:, target, slot] = 0
-        state.fast_weight[:, target, slot] = 0
-        model.structural_edge_credit[target, slot] = probe_credit
-        model.structural_edge_age[target, slot] = 0
-        _charge_growth(state, target, candidate, config.growth_cost)
-        rewired += 1
+        if config.probation_updates > 0 and probation is not None:
+            probation.begin(
+                model,
+                state,
+                optimizer,
+                target,
+                slot,
+                candidate,
+                update,
+                virtual=not config.allow_rewiring,
+            )
+            probation_started = True
+        if config.allow_rewiring:
+            model.sources[target, slot] = candidate
+            model.edge_weight[target, slot] = _probe_equivalent_weight(model)
+            model.edge_bias[target, slot] = 0
+            _reset_optimizer_slot(
+                optimizer, model.edge_weight, target, slot
+            )
+            _reset_optimizer_slot(
+                optimizer, model.edge_bias, target, slot
+            )
+            state.edge_eligibility[:, target, slot] = 0
+            state.fast_weight[:, target, slot] = 0
+            model.structural_edge_credit[target, slot] = probe_credit
+            model.structural_edge_age[target, slot] = 0
+            _charge_growth(state, target, candidate, config.growth_cost)
+            rewired += 1
+        if probation_started:
+            break
 
     if rewired:
         model.total_rewires.add_(rewired)
@@ -330,12 +575,21 @@ def apply_structural_phase(
         total_rewires=int(model.total_rewires.item()),
         candidate_advantage=best_advantage,
         rejected_for_reachability=rejected_for_reachability,
+        probation_started=probation_started,
+        probation_active=bool(probation and probation.active),
+        probation_committed=(
+            0 if probation is None else probation.total_committed
+        ),
+        probation_rolled_back=(
+            0 if probation is None else probation.total_rolled_back
+        ),
     )
 
 
 def structural_summary(
     model: "SparseAxonField",
     config: StructuralConfig,
+    probation: StructuralProbation | None = None,
 ) -> dict[str, Any]:
     """Return checkpoint-friendly final structural telemetry."""
 
@@ -356,4 +610,22 @@ def structural_summary(
         ),
         "mean_edge_age": float(model.structural_edge_age.float().mean().item()),
         "probe_sources": model.probe_sources.detach().cpu().tolist(),
+        "probation": (
+            {
+                "active": probation.active,
+                "virtual": probation.virtual,
+                "target": probation.target,
+                "slot": probation.slot,
+                "candidate_source": probation.candidate_source,
+                "started_update": probation.started_update,
+                "observations": probation.observations,
+                "baseline_advantage": probation.baseline_advantage,
+                "mean_advantage": probation.mean_advantage,
+                "total_started": probation.total_started,
+                "total_committed": probation.total_committed,
+                "total_rolled_back": probation.total_rolled_back,
+            }
+            if probation is not None
+            else {}
+        ),
     }
