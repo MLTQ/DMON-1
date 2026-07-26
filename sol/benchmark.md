@@ -13,6 +13,12 @@ with checkpointing and append-only metrics.
   ablations, and atomically promotes the best held-out checkpoint.
 - **Interacts with**: `ContinuousTrainer`, `checkpoint.py`, and `evaluate.py`.
 
+### Scientific controls
+- **Does**: `--freeze-edges` trains an otherwise identical organism without modifying
+  its directed edge weights or biases; `--no-metabolism` holds energy at one.
+- **Rationale**: Learned morphology and metabolic modulation must earn their claims
+  against controls rather than ride on the shared cell rule.
+
 ### `_run_gru`
 - **Does**: Trains a parameter-matched GRU with the same batch lanes, chunk length,
   optimizer family, token budget, held-out split, and evaluation window.

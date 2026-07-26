@@ -24,6 +24,13 @@ one-character-at-a-time organism path used during training.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.
 
+### Frozen-parameter policy
+- **Does**: Excludes explicitly named parameters from optimization and persists that
+  policy in checkpoints.
+- **Interacts with**: `benchmark.py --freeze-edges`.
+- **Rationale**: A fixed-connectome control must survive resume without silently making
+  its edges trainable.
+
 ### `generate`
 - **Does**: Feeds a prompt and sampled characters through ordinary `tick` calls.
 - **Rationale**: Generation cannot use a separate decoder path that bypasses the field.

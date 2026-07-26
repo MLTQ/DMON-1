@@ -28,6 +28,8 @@ tensor shapes.
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
   state, optimizer, vocabulary, and metadata.
+- **Does**: Proves a frozen-connectome control neither changes edges nor becomes
+  trainable after resume.
 
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU

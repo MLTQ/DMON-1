@@ -53,6 +53,12 @@ def _split_corpus(path: Path, fraction: float = 0.9) -> tuple[str, str]:
 
 
 def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
+    metabolic = {} if not args.no_metabolism else {
+        "energy_start": 1.0,
+        "basal_cost": 0.0,
+        "activity_cost": 0.0,
+        "stimulation_gain": 0.0,
+    }
     return SolConfig(
         vocab_size=vocab_size,
         cells=args.cells,
@@ -62,6 +68,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         output_cells=args.output_cells,
         message_steps=args.message_steps,
         topology_seed=args.seed,
+        **metabolic,
     )
 
 
@@ -86,6 +93,9 @@ def _run_sol(
             batch_size=args.batch,
             chunk_length=args.chunk,
             learning_rate=args.learning_rate,
+            frozen_parameters=(
+                ("edge_weight", "edge_bias") if args.freeze_edges else ()
+            ),
             device=device,
         )
 
@@ -191,6 +201,7 @@ def _run_sol(
         "best_bpc": best_bpc,
         "evaluation": last_eval,
         "config": asdict(trainer.model.cfg),
+        "frozen_parameters": list(trainer.frozen_parameters),
     }
     _write_json(args.out_dir / "summary.json", summary)
     return summary
@@ -449,6 +460,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--transformer-heads", type=int, default=4)
     parser.add_argument("--transformer-context", type=int, default=128)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--freeze-edges",
+        action="store_true",
+        help="Train the cell rule while keeping edge weights and biases fixed",
+    )
+    parser.add_argument(
+        "--no-metabolism",
+        action="store_true",
+        help="Hold energy at one to isolate prediction capability from economy",
+    )
     parser.add_argument("--prompt", default="ROMEO:")
     parser.add_argument("--generate", type=int, default=240)
     args = parser.parse_args()

@@ -37,6 +37,7 @@ class ContinuousTrainer:
         chunk_length: int = 16,
         learning_rate: float = 3e-3,
         grad_clip: float = 1.0,
+        frozen_parameters: tuple[str, ...] = (),
         device: torch.device | str = "cpu",
     ):
         self.device = torch.device(device)
@@ -48,8 +49,21 @@ class ContinuousTrainer:
         self.chunk_length = chunk_length
         self.grad_clip = grad_clip
         self.learning_rate = learning_rate
+        parameters_by_name = dict(self.model.named_parameters())
+        unknown_frozen = sorted(set(frozen_parameters) - set(parameters_by_name))
+        if unknown_frozen:
+            raise ValueError(f"unknown frozen parameters: {unknown_frozen}")
+        self.frozen_parameters = tuple(sorted(set(frozen_parameters)))
+        for name in self.frozen_parameters:
+            parameters_by_name[name].requires_grad_(False)
         self.optimizer = torch.optim.AdamW(
-            self.model.parameters(), lr=learning_rate, weight_decay=1e-4
+            (
+                parameter
+                for parameter in self.model.parameters()
+                if parameter.requires_grad
+            ),
+            lr=learning_rate,
+            weight_decay=1e-4,
         )
         self.state = self.model.initial_state(batch_size, self.device)
         self.updates = 0
@@ -71,6 +85,7 @@ class ContinuousTrainer:
             "chunk_length": self.chunk_length,
             "learning_rate": self.learning_rate,
             "grad_clip": self.grad_clip,
+            "frozen_parameters": list(self.frozen_parameters),
             "updates": self.updates,
             "torch_rng_state": torch.get_rng_state(),
             "cuda_rng_state": (
@@ -97,6 +112,7 @@ class ContinuousTrainer:
             chunk_length=int(payload["chunk_length"]),
             learning_rate=float(payload["learning_rate"]),
             grad_clip=float(payload["grad_clip"]),
+            frozen_parameters=tuple(payload.get("frozen_parameters", ())),
             device=device,
         )
         trainer.model.load_state_dict(payload["model"])

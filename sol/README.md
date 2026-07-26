@@ -39,6 +39,8 @@ python -m sol.train --file path/to/corpus.txt --device cuda --updates 10000
 python -m sol.benchmark --model sol --out-dir sol/runs/sol-main
 python -m sol.benchmark --model gru --out-dir sol/runs/gru-control
 python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-control
+python -m sol.benchmark --model sol --freeze-edges --out-dir sol/runs/fixed-edge-control
+python -m sol.benchmark --model sol --no-metabolism --out-dir sol/runs/capability-control
 ```
 
 `sol.benchmark` uses a fixed 90/10 contiguous split, records held-out bits per

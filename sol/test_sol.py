@@ -153,6 +153,29 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
 
 
+def test_frozen_connectome_survives_training_and_resume(tmp_path: Path) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        frozen_parameters=("edge_weight", "edge_bias"),
+    )
+    before_weight = trainer.model.edge_weight.detach().clone()
+    before_bias = trainer.model.edge_bias.detach().clone()
+    trainer.step()
+    assert torch.equal(trainer.model.edge_weight, before_weight)
+    assert torch.equal(trainer.model.edge_bias, before_bias)
+    checkpoint = save_checkpoint(tmp_path / "frozen.pt", trainer)
+    resumed, _ = load_checkpoint(checkpoint, text)
+    assert resumed.frozen_parameters == ("edge_bias", "edge_weight")
+    assert not resumed.model.edge_weight.requires_grad
+    assert not resumed.model.edge_bias.requires_grad
+
+
 def test_heldout_evaluation_reports_state_ablations() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
