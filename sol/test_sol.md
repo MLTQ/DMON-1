@@ -47,6 +47,8 @@ tensor shapes.
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU
   and causal-transformer controls are stateful and genuinely parameter matched.
+- **Does**: Requires evaluation to report fast synaptic efficacy and shuffle every
+  target-owned cell and edge state together.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.
 
 ### Report guard test

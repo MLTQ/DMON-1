@@ -9,7 +9,7 @@ including controls that test whether persistent cellular state is doing useful w
 
 ### `EvaluationMetrics`
 - **Does**: Reports NLL, bits per character, perplexity, accuracy, energy, novelty, and
-  measured edge flow together.
+  measured edge flow plus mean fast synaptic efficacy together.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
 
 ### `evaluate_sol`
@@ -23,7 +23,7 @@ including controls that test whether persistent cellular state is doing useful w
 
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state
-  shuffling.
+  shuffling, including target-owned edge eligibility and fast efficacy.
 - **Rationale**: A good loss is not evidence of memory unless breaking memory hurts.
 
 ### `evaluate_warmup_sweep`

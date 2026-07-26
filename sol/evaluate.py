@@ -22,6 +22,7 @@ class EvaluationMetrics:
     mean_energy: float
     mean_novelty: float
     mean_edge_flow: float
+    mean_fast_weight: float
 
     def to_dict(self) -> dict[str, float | int]:
         return asdict(self)
@@ -36,6 +37,8 @@ def _shuffle_cell_state(state: FieldState, permutation: torch.Tensor) -> FieldSt
         energy=state.energy[:, permutation],
         stimulation=state.stimulation[:, permutation],
         eligibility=state.eligibility[:, permutation],
+        edge_eligibility=state.edge_eligibility[:, permutation],
+        fast_weight=state.fast_weight[:, permutation],
     )
 
 
@@ -90,6 +93,7 @@ def evaluate_sol(
     energies: list[float] = []
     novelties: list[float] = []
     edge_flows: list[float] = []
+    fast_weights: list[float] = []
 
     for index in range(warmup + scored_tokens):
         if reset_each_token:
@@ -109,6 +113,9 @@ def evaluate_sol(
             energies.append(float(diagnostics["mean_energy"].mean().item()))
             novelties.append(float(diagnostics["novelty"].mean().item()))
             edge_flows.append(float(diagnostics["edge_flow"].mean().item()))
+            fast_weights.append(
+                float(diagnostics["mean_fast_weight"].mean().item())
+            )
 
     model.train(was_training)
     nll = total_loss / scored_tokens
@@ -121,6 +128,7 @@ def evaluate_sol(
         mean_energy=sum(energies) / scored_tokens,
         mean_novelty=sum(novelties) / scored_tokens,
         mean_edge_flow=sum(edge_flows) / scored_tokens,
+        mean_fast_weight=sum(fast_weights) / scored_tokens,
     )
 
 
