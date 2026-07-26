@@ -52,14 +52,25 @@ Example from the best checkpoint:
 This is evidence of capability, not evidence that the architecture beats the strongest
 control.
 
-## Follow-up controls still running
+## Completed SOL controls
 
-1. Frozen edge weights and biases: tests whether learned edge parameters contribute
-   beyond fixed directed transport and the shared cell rule.
-2. No metabolism: holds energy at one to isolate prediction capability from the current
-   economy.
-3. Lower learning rate (`1e-3`): tests whether the oscillatory held-out curve is an
-   optimization artifact.
+| SOL variant | Trainable params | Best BPC | Final BPC | Result |
+|---|---:|---:|---:|---|
+| Default | 122,306 | 2.484 | 2.562 | Reference |
+| Fixed edge weights/biases | 121,282 | 2.461 | 2.569 | Learned slow edge efficacy did not help |
+| No metabolism | 122,306 | **2.451** | **2.535** | Current energy modulation slightly hurt |
+| Learning rate `1e-3` | 122,306 | 2.523 | 2.559 | Lowering the rate did not fix instability |
+| No reward feedback | 122,306 | 2.492 | 2.624 | Cell-level delayed reward was neutral at best and less stable late |
 
-The next architecture change should be selected only after these controls complete.
-Checkpoint tensors and raw JSONL histories remain in ignored `sol/runs/`.
+These controls sharpen the result:
+
+- The sparse recurrent field and its persistent state are the source of the demonstrated
+  capability; learned scalar edge weights, the first energy rule, and the first
+  whole-cell reward drive have not earned their complexity.
+- A 0/64/256/1,024/4,096-character fixed-window warmup sweep scored
+  2.493/2.472/2.473/2.473/2.472 BPC. The GRU gap is not a short-warmup artifact.
+- The next architecture step is therefore event-specific synaptic credit, followed by
+  credit-driven axon growth only after that memory is stable.
+
+The no-metabolism best checkpoint remains the local live checkpoint. Checkpoint tensors
+and raw JSONL histories remain in ignored `sol/runs/`.
