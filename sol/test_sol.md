@@ -53,6 +53,8 @@ tensor shapes.
   and causal-transformer controls are stateful and genuinely parameter matched.
 - **Does**: Requires evaluation to report fast synaptic efficacy and shuffle every
   target-owned cell and edge state together.
+- **Does**: Zeroes only fast efficacy during held-out inference to prove whether the
+  trained organism causally uses online synaptic memory.
 - **Does**: Requires edge eligibility and fast-weight saturation telemetry in training,
   held-out evaluation, and the local live bridge.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.

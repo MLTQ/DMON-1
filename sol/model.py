@@ -333,6 +333,7 @@ class SparseAxonField(nn.Module):
         token: torch.Tensor | None,
         reward: torch.Tensor | None = None,
         retain_credit: bool = False,
+        allow_fast_plasticity: bool = True,
     ) -> tuple[torch.Tensor, FieldState, dict[str, torch.Tensor]]:
         """Consume one optional character and emit one next-character distribution.
 
@@ -372,10 +373,14 @@ class SparseAxonField(nn.Module):
         stimulation = state.stimulation
         eligibility = state.eligibility
         edge_eligibility = state.edge_eligibility
-        fast_weight = self._updated_fast_weight(
-            state.fast_weight,
-            state.edge_eligibility,
-            reward,
+        fast_weight = (
+            self._updated_fast_weight(
+                state.fast_weight,
+                state.edge_eligibility,
+                reward,
+            )
+            if allow_fast_plasticity
+            else torch.zeros_like(state.fast_weight)
         )
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)

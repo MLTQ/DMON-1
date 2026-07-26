@@ -25,6 +25,8 @@ including controls that test whether persistent cellular state is doing useful w
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state
   shuffling, including target-owned edge eligibility and fast efficacy.
+- **Does**: Scores the trained organism while zeroing fast efficacy before every tick,
+  isolating whether online synaptic memory contributes at inference.
 - **Rationale**: A good loss is not evidence of memory unless breaking memory hurts.
 
 ### `evaluate_warmup_sweep`

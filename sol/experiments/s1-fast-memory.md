@@ -89,6 +89,12 @@ It improved best BPC by 0.058 and final BPC by 0.047 while passing the completed
 stability guard. The hard-bound rule also improved the endpoint, but accumulated roughly
 one third of its fast weights at the cap.
 
+An inference-time causal ablation on the smooth rule's best checkpoint preserved the
+same model, edge tags, reward path, and recurrent state policy while forcing fast
+efficacy to zero before every tick. Held-out BPC worsened from 2.907 to 2.990
+(+0.083). The trained organism therefore uses online synaptic memory directly; the gain
+is not only an incidental optimization effect.
+
 This is positive evidence for event-specific fast synaptic credit at reduced scale, not
 yet a full S1 pass. The next required result is the same smooth rule at the original
 64×64, 2.56-million-character GPU budget. Axon growth remains blocked until that

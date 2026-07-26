@@ -56,6 +56,7 @@ def evaluate_sol(
     score_start: int | None = None,
     reset_each_token: bool = False,
     shuffle_cells: bool = False,
+    zero_fast_efficacy: bool = False,
 ) -> EvaluationMetrics:
     """Score a contiguous held-out stream under an explicit state policy."""
 
@@ -102,9 +103,17 @@ def evaluate_sol(
     for index in range(warmup + scored_tokens):
         if reset_each_token:
             state = model.initial_state(1, device)
+        if zero_fast_efficacy:
+            state = replace(
+                state, fast_weight=torch.zeros_like(state.fast_weight)
+            )
         token = segment[index : index + 1]
         target = segment[index + 1 : index + 2]
-        logits, state, diagnostics = model.tick(state, token)
+        logits, state, diagnostics = model.tick(
+            state,
+            token,
+            allow_fast_plasticity=not zero_fast_efficacy,
+        )
         surprise = F.cross_entropy(logits, target, reduction="none")
         reward = torch.tanh(math.log(model.cfg.vocab_size) - surprise)
         state = replace(state, reward=reward)
@@ -164,6 +173,7 @@ def evaluate_state_ablations(
         "persistent": {},
         "reset_each_token": {"reset_each_token": True},
         "shuffled_cells": {"shuffle_cells": True},
+        "zero_fast_efficacy": {"zero_fast_efficacy": True},
     }
     return {
         name: evaluate_sol(

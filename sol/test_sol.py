@@ -445,12 +445,18 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     metrics = evaluate_state_ablations(
         model, vocabulary, text, tokens=12, warmup=4
     )
-    assert set(metrics) == {"persistent", "reset_each_token", "shuffled_cells"}
+    assert set(metrics) == {
+        "persistent",
+        "reset_each_token",
+        "shuffled_cells",
+        "zero_fast_efficacy",
+    }
     assert all(value["tokens"] == 12 for value in metrics.values())
     assert all(value["bits_per_character"] > 0 for value in metrics.values())
     assert all("mean_fast_weight" in value for value in metrics.values())
     assert all("mean_edge_eligibility" in value for value in metrics.values())
     assert all("fast_weight_saturation" in value for value in metrics.values())
+    assert metrics["zero_fast_efficacy"]["mean_fast_weight"] == 0
     sweep = evaluate_warmup_sweep(
         model,
         vocabulary,
