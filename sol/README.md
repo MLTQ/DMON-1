@@ -41,7 +41,12 @@ python -m sol.benchmark --model gru --out-dir sol/runs/gru-control
 python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-control
 python -m sol.benchmark --model sol --freeze-edges --out-dir sol/runs/fixed-edge-control
 python -m sol.benchmark --model sol --no-metabolism --out-dir sol/runs/capability-control
+python -m sol.serve --checkpoint sol/runs/sol-main/best.pt
 ```
+
+The checkpoint bridge binds to `127.0.0.1:8765` by default. It keeps one organism lane
+alive across prompts, measures real prompt gradients for the console's credit telemetry,
+and never exposes the service beyond the local machine unless explicitly reconfigured.
 
 `sol.benchmark` uses a fixed 90/10 contiguous split, records held-out bits per
 character and state ablations, and writes complete resumable checkpoints. The intended

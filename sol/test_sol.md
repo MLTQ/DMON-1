@@ -30,6 +30,8 @@ tensor shapes.
   state, optimizer, vocabulary, and metadata.
 - **Does**: Proves a frozen-connectome control neither changes edges nor becomes
   trainable after resume.
+- **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and
+  requires nonzero measured prompt credit.
 
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU

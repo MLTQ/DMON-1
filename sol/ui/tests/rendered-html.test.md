@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Protects the deployed SOL console and its hosted demonstration endpoint at the rendered
-worker boundary.
+Protects the local SOL console and its checkpoint-proxy fallback at the rendered worker
+boundary.
 
 ## Components
 
@@ -18,4 +18,4 @@ worker boundary.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Site deployment | Worker renders the console and serves `/api/generate` | Route or product-copy changes |
+| Local runtime | Worker renders the console and serves `/api/generate` | Route or product-copy changes |

@@ -19,6 +19,7 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .serve import LiveOrganism
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .train import ContinuousTrainer
 
@@ -174,6 +175,30 @@ def test_frozen_connectome_survives_training_and_resume(tmp_path: Path) -> None:
     assert resumed.frozen_parameters == ("edge_bias", "edge_weight")
     assert not resumed.model.edge_weight.requires_grad
     assert not resumed.model.edge_bias.requires_grad
+
+
+def test_live_checkpoint_bridge_generates_with_real_credit(
+    tmp_path: Path,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    trainer.step()
+    checkpoint = save_checkpoint(tmp_path / "live.pt", trainer)
+    organism = LiveOrganism(checkpoint)
+    result = organism.generate("abca", 6, seed=3)
+    assert result["mode"] == "live-checkpoint"
+    assert len(result["output"]) == 6
+    assert result["checkpoint"]["updates"] == 1
+    assert result["metrics"]["cellCredit"] > 0
+    assert result["metrics"]["edgeCredit"] > 0
+    assert result["metrics"]["energy"] >= 0
 
 
 def test_heldout_evaluation_reports_state_ablations() -> None:

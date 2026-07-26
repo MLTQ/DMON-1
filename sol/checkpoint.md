@@ -17,6 +17,12 @@ optimizer, corpus position, or random stream.
 - **Does**: Validates the schema and reconstructs a trainer on the requested device.
 - **Interacts with**: `ContinuousTrainer.from_state_dict` in `train.py`.
 
+### `load_organism`
+- **Does**: Loads one persistent batch lane, its model, vocabulary, update count, and
+  provenance without needing the training corpus or optimizer.
+- **Interacts with**: `serve.py`.
+- **Rationale**: Local inference should not pretend to resume the training stream.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |

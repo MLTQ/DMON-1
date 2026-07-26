@@ -6,6 +6,8 @@ const CORPUS = (
   "the output organ answers one character at a time. "
 ).repeat(12);
 
+const DEFAULT_BACKEND = "http://127.0.0.1:8765";
+
 function hash(text: string) {
   let value = 2166136261;
   for (const character of text) {
@@ -65,6 +67,27 @@ export async function POST(request: Request) {
       ? Math.max(24, Math.min(240, Math.floor(body.length)))
       : 160;
   const seed = hash(prompt);
+
+  const backend = (process.env.SOL_BACKEND_URL || DEFAULT_BACKEND).replace(
+    /\/+$/,
+    "",
+  );
+  try {
+    const liveResponse = await fetch(`${backend}/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt, length }),
+    });
+    const livePayload = await liveResponse.json();
+    if (liveResponse.ok) {
+      return Response.json(livePayload);
+    }
+    if (liveResponse.status < 500) {
+      return Response.json(livePayload, { status: liveResponse.status });
+    }
+  } catch {
+    // The checkpoint bridge is optional during static/local UI development.
+  }
 
   return Response.json({
     output: continuation(prompt, length),

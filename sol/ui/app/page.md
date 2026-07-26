@@ -16,8 +16,8 @@ prompt composer, streamed response, and organism telemetry.
 ### `Home`
 - **Does**: Owns prompt, response streaming, selected-cell state, and live telemetry.
 - **Interacts with**: `POST /api/generate` in `api/generate/route.ts`.
-- **Rationale**: The endpoint is replaceable by the local PyTorch bridge without changing
-  the interface.
+- **Rationale**: It labels live-checkpoint output separately from the local deterministic
+  fallback and exposes checkpoint name/update without changing the visual instrument.
 
 ## Contracts
 
