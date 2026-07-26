@@ -70,3 +70,52 @@ only `confirmation_phases` from one to three in both arms. Selective consolidati
 5. remain within the completed-run stability guard.
 
 No live checkpoint promotion follows from rewrite selectivity or morphology alone.
+
+## Full-scale result
+
+Both seed-7 organisms completed stably with complete sensory and output reachability.
+The growing arm installed 15 connections, 67.4% fewer than S2's 46. The matched control
+held, confirmed, and rotated the same continuous probes while retaining birth anatomy.
+
+| Statistic | Three-phase growth | Probes only | Growth − control |
+|---|---:|---:|---:|
+| Best BPC | 2.44067 | 2.46168 | −0.02101 |
+| Final BPC | 2.55800 | 2.50610 | +0.05190 |
+| Mean BPC, all 20 paired evaluations | 2.70158 | 2.69246 | +0.00913 |
+| Mean BPC, updates 2500–5000 | 2.57197 | 2.56235 | +0.00962 |
+| Mean BPC, updates 3750–5000 | 2.52974 | 2.52665 | +0.00309 |
+
+Lower is better. Growth won 9 of 20 paired checkpoints, 6 of 11 checkpoints in the
+second half, and 4 of the final 6. Its intact paired difference ranged from 0.02117 BPC
+better to 0.05190 worse.
+
+Selective anatomy became consistently useful after co-adaptation. The final
+birth-topology intervention worsened the growing organism from 2.55800 to 2.60442
+(+0.04642 BPC), and the final-six mean ablation penalty was +0.04099. One important
+counterexample occurred at update 2500: growth scored 2.70393, birth topology improved
+it to 2.66200, and the control scored 2.66173. At that moment almost the entire 0.04220
+paired deficit was caused directly by confirmed anatomy; by update 2750 continuous
+co-adaptation had made the same accumulated anatomy beneficial again.
+
+## Verdict
+
+Three-phase confirmation improves every aggregate comparison with S2:
+
+| Measure | S2: one phase | S3: three phases |
+|---|---:|---:|
+| Rewrites | 46 | 15 |
+| Overall mean deficit | +0.01281 BPC | +0.00913 BPC |
+| Second-half mean deficit | +0.02027 BPC | +0.00962 BPC |
+| Final-six mean deficit | +0.01364 BPC | +0.00309 BPC |
+| Final-six paired wins | 2 / 6 | 4 / 6 |
+| Final-six morphology penalty | +0.26035 BPC | +0.04099 BPC |
+
+It still fails the predeclared capability gate because both second-half and late-window
+means favor the probes-only organism. Repeated local signed credit reduces damaging
+commitment but remains an unreliable proxy for global language fitness. No checkpoint
+is promoted.
+
+The next experiment should preserve continuous probes and conservative confirmation
+while adding an organism-level predictive-fitness signal to candidate acceptance.
+Requiring more of the same local evidence would only slow a criterion already shown to
+approve globally harmful anatomy.

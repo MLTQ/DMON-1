@@ -26,6 +26,9 @@ causally measured exploratory axon probes.
 - **Does**: Retains token-local hidden states and measured traffic for post-backward
   credit inspection, including edge eligibility, fast-weight saturation, and
   reward-addressed incumbent/candidate structural evidence.
+- **Does**: Combines each candidate's measured hidden-state intervention with the exact
+  post-backward sequence-loss gradient, yielding a first-order organism-level fitness
+  estimate without removing exploratory traffic.
 
 ### `SparseAxonField`
 - **Does**: Applies one shared GRU rule at every cell while messages travel only through
@@ -34,8 +37,8 @@ causally measured exploratory axon probes.
 
 ### Structural buffers and `load_compatible_state_dict`
 - **Does**: Persist current candidate sources, incumbent/candidate credit, edge age, and
-  per-candidate confirmation streaks, and total rewrites with the model while upgrading
-  older checkpoints additively.
+  per-candidate global fitness and confirmation streaks, and total rewrites with the
+  model while upgrading older checkpoints additively.
 - **Interacts with**: `apply_structural_phase` in `structure.py`.
 
 ### `birth_sources`

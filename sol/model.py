@@ -150,6 +150,7 @@ class FieldTrace:
     mean_probe_flow: list[torch.Tensor]
     structural_edge_evidence: list[torch.Tensor]
     structural_probe_evidence: list[torch.Tensor]
+    probe_effect: list[torch.Tensor]
 
     def cell_credit(self) -> torch.Tensor:
         """Return mean absolute loss gradient per token and cell after backward."""
@@ -159,6 +160,18 @@ class FieldTrace:
             if value.grad is None:
                 raise RuntimeError("backward must run before cell_credit()")
             rows.append(value.grad.abs().mean(dim=(0, 2)))
+        return torch.stack(rows)
+
+    def probe_fitness(self) -> torch.Tensor:
+        """Estimate each probe's first-order effect on global sequence loss."""
+
+        rows = []
+        for hidden, effect in zip(self.hidden, self.probe_effect, strict=True):
+            if hidden.grad is None:
+                raise RuntimeError("backward must run before probe_fitness()")
+            rows.append(
+                -(hidden.grad.detach() * effect).mean(dim=(0, 2))
+            )
         return torch.stack(rows)
 
 
@@ -237,6 +250,9 @@ class SparseAxonField(nn.Module):
         )
         self.register_buffer(
             "structural_probe_credit", torch.zeros(n)
+        )
+        self.register_buffer(
+            "structural_probe_fitness", torch.zeros(n)
         )
         self.register_buffer(
             "structural_probe_confirmations",
@@ -355,6 +371,7 @@ class SparseAxonField(nn.Module):
             "probe_sources",
             "structural_edge_credit",
             "structural_probe_credit",
+            "structural_probe_fitness",
             "structural_probe_confirmations",
             "structural_edge_age",
             "total_rewires",
@@ -525,6 +542,7 @@ class SparseAxonField(nn.Module):
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
         mean_probe_flow = state.energy.new_zeros(cfg.cells)
+        final_probe_effect = torch.zeros_like(hidden)
 
         for _ in range(cfg.message_steps):
             source_hidden = hidden[:, self.sources]
@@ -578,8 +596,10 @@ class SparseAxonField(nn.Module):
                         ).mean(dim=2)
                         * math.sqrt(cfg.channels)
                     )
+                    final_probe_effect = probe_effect
             else:
                 probe_tag = torch.zeros_like(probe_eligibility)
+                final_probe_effect = torch.zeros_like(hidden)
 
             eligibility = (
                 cfg.eligibility_decay * eligibility
@@ -644,6 +664,7 @@ class SparseAxonField(nn.Module):
             "probe_flow": mean_probe_flow,
             "structural_edge_evidence": structural_edge_evidence,
             "structural_probe_evidence": structural_probe_evidence,
+            "probe_effect": final_probe_effect,
             "total_rewires": self.total_rewires.detach().clone(),
             "fast_weight_saturation": (
                 fast_weight.abs() >= 0.95 * cfg.fast_weight_limit
@@ -679,7 +700,7 @@ class SparseAxonField(nn.Module):
             raise ValueError("state batch does not match tokens")
 
         logits: list[torch.Tensor] = []
-        trace = FieldTrace([], [], [], [], [], [], [], [], [], [], [])
+        trace = FieldTrace([], [], [], [], [], [], [], [], [], [], [], [])
         reward = state.reward
 
         for index in range(length):
@@ -708,6 +729,7 @@ class SparseAxonField(nn.Module):
             trace.structural_probe_evidence.append(
                 diag["structural_probe_evidence"]
             )
+            trace.probe_effect.append(diag["probe_effect"])
 
             if targets is not None:
                 surprise = F.cross_entropy(

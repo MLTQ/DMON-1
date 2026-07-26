@@ -12,6 +12,8 @@ tensor shapes.
 - **Does**: Requires complete sensory reachability and reports shortest output paths.
 - **Does**: Proves causal candidate probes name non-edges and produce retained
   reward-addressable effects.
+- **Does**: Proves causal probe effects contract with exact post-backward sequence-loss
+  gradients into finite, nonzero organism-level fitness evidence.
 - **Does**: Forces a beneficial candidate rewrite and proves fixed fan-in, unique source
   slots, complete reachability, bounded replacement count, endpoint energy payment,
   probe-equivalent graft initialization, reused-slot transient-state reset, and
@@ -21,6 +23,8 @@ tensor shapes.
 - **Does**: Holds matched probes across multiple reward windows, requires consecutive
   positive confirmations before installation, and resets a candidate's streak after
   adverse evidence.
+- **Does**: Proves negative organism-level fitness vetoes otherwise positive local
+  structural credit, while positive local and global evidence can still rewire.
 - **Does**: Proves a causally harmful candidate cannot replace even a worse incumbent
   merely because its credit magnitude is large.
 
@@ -52,8 +56,8 @@ tensor shapes.
 
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
-  state, optimizer, vocabulary, structural policy/credit/confirmation buffers, and
-  metadata.
+  state, optimizer, vocabulary, structural policy/credit/global-fitness/confirmation
+  buffers, and metadata.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

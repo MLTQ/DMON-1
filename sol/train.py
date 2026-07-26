@@ -33,6 +33,7 @@ class TrainMetrics:
     fast_weight_saturation: float
     mean_probe_eligibility: float
     mean_probe_flow: float
+    mean_probe_fitness: float
     rewired_edges: int
     total_rewires: int
     candidate_advantage: float
@@ -202,10 +203,12 @@ class ContinuousTrainer:
         probe_evidence = torch.stack(
             trace.structural_probe_evidence
         ).mean(dim=0)
+        probe_fitness = trace.probe_fitness().mean(dim=0)
         accumulate_structural_credit(
             self.model,
             edge_evidence,
             probe_evidence,
+            probe_fitness,
             self.structural_config,
         )
         structural_update = apply_structural_phase(
@@ -242,6 +245,9 @@ class ContinuousTrainer:
             fast_weight_saturation=fast_weight_saturation,
             mean_probe_eligibility=mean_probe_eligibility,
             mean_probe_flow=mean_probe_flow,
+            mean_probe_fitness=float(
+                self.model.structural_probe_fitness.mean().item()
+            ),
             rewired_edges=structural_update.rewired_edges,
             total_rewires=structural_update.total_rewires,
             candidate_advantage=structural_update.candidate_advantage,

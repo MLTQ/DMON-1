@@ -10,7 +10,7 @@ one-character-at-a-time organism path used during training.
 ### `TrainMetrics`
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
-  bounded rewiring counts.
+  bounded rewiring counts, including mean first-order probe fitness.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
@@ -19,6 +19,9 @@ one-character-at-a-time organism path used during training.
 - **Rationale**: An optimizer boundary detaches history but never resets experience.
 - **Structural order**: Accumulates causal evidence and performs any fixed-shape
   rewiring only after backward, gradient clipping, and the optimizer step.
+- **Structural fitness**: After backward, contracts every measured probe intervention
+  with its target hidden state's exact global loss gradient before detaching the next
+  continuous window.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,

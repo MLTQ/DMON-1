@@ -32,6 +32,8 @@ with checkpointing and append-only metrics.
 - **Does**: Structural flags record probe gain, phase cadence, replacement budget,
   consecutive confirmation phases, credit decay/margin, maturity, and endpoint energy
   cost.
+- **Does**: `--structural-global-fitness` requires locally confirmed probes to also
+  predict a reduction in exact sequence loss before permanent installation.
 - **Rationale**: Rewiring must beat the same causal probes without topology mutation,
   rather than receiving free exploratory traffic unavailable to control.
 

@@ -11,7 +11,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 ### `StructuralConfig`
 - **Does**: Defines phase cadence, credit memory, replacement budget, edge maturity,
   improvement margin, required consecutive confirmation phases, endpoint energy cost,
-  and whether matched probes may actually rewrite topology.
+  whether global predictive fitness is required, and whether matched probes may actually
+  rewrite topology.
 - **Interacts with**: `ContinuousTrainer` in `train.py`.
 
 ### `next_probe_sources`
@@ -23,7 +24,7 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 
 ### `accumulate_structural_credit`
 - **Does**: Retains reward-addressed incumbent and causal-probe evidence across
-  optimizer windows.
+  optimizer windows together with each probe's first-order global loss benefit.
 - **Interacts with**: Structural evidence in `FieldTrace`.
 
 ### `apply_structural_phase`
@@ -58,6 +59,9 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   `model.py`; it is not inferred from geometric proximity.
 - Structural evidence retains the sign of reward times eligibility; a large harmful
   intervention cannot qualify merely because its magnitude is large.
+- When global fitness gating is enabled, local credit cannot earn a confirmation unless
+  the same causal probe also points against the exact sequence-loss gradient after
+  ordinary backpropagation.
 - A candidate must retain positive credit and clear a nonzero advantage margin before
   it earns one confirmation. It must do so in every consecutive confirmation phase
   before it can replace even the target's worst mature incumbent; one adverse phase

@@ -26,6 +26,8 @@ class StructuralConfig:
     warmup_updates: int = 500
     replacements_per_phase: int = 1
     confirmation_phases: int = 1
+    require_global_fitness: bool = False
+    global_fitness_margin: float = 0.0
     credit_decay: float = 0.99
     credit_margin: float = 1e-3
     min_edge_age: int = 250
@@ -41,6 +43,8 @@ class StructuralConfig:
             raise ValueError("replacements_per_phase must be positive")
         if self.confirmation_phases < 1:
             raise ValueError("confirmation_phases must be positive")
+        if self.global_fitness_margin < 0:
+            raise ValueError("global_fitness_margin must be non-negative")
         if not 0 <= self.credit_decay < 1:
             raise ValueError("structural credit decay must be in [0, 1)")
         if self.credit_margin < 0:
@@ -101,6 +105,7 @@ def accumulate_structural_credit(
     model: "SparseAxonField",
     edge_evidence: torch.Tensor,
     probe_evidence: torch.Tensor,
+    probe_fitness: torch.Tensor,
     config: StructuralConfig,
 ) -> None:
     """Retain reward-addressed edge and candidate evidence across windows."""
@@ -111,12 +116,18 @@ def accumulate_structural_credit(
         raise ValueError("edge structural evidence has the wrong shape")
     if probe_evidence.shape != model.structural_probe_credit.shape:
         raise ValueError("probe structural evidence has the wrong shape")
+    if probe_fitness.shape != model.structural_probe_fitness.shape:
+        raise ValueError("probe fitness evidence has the wrong shape")
     keep = config.credit_decay
     model.structural_edge_credit.mul_(keep).add_(
         edge_evidence.detach().to(model.structural_edge_credit), alpha=1 - keep
     )
     model.structural_probe_credit.mul_(keep).add_(
         probe_evidence.detach().to(model.structural_probe_credit), alpha=1 - keep
+    )
+    model.structural_probe_fitness.mul_(keep).add_(
+        probe_fitness.detach().to(model.structural_probe_fitness),
+        alpha=1 - keep,
     )
     model.structural_edge_age.add_(1)
 
@@ -224,9 +235,20 @@ def apply_structural_phase(
         slot = int(eligible_slots[position].item())
         edge_credit = float(model.structural_edge_credit[target, slot].item())
         probe_credit = float(model.structural_probe_credit[target].item())
+        probe_fitness = float(
+            model.structural_probe_fitness[target].item()
+        )
         advantage = probe_credit - edge_credit
         observed_advantages.append(advantage)
-        if probe_credit > 0 and advantage > config.credit_margin:
+        globally_fit = (
+            not config.require_global_fitness
+            or probe_fitness > config.global_fitness_margin
+        )
+        if (
+            probe_credit > 0
+            and advantage > config.credit_margin
+            and globally_fit
+        ):
             model.structural_probe_confirmations[target].add_(1)
         else:
             model.structural_probe_confirmations[target] = 0
@@ -300,6 +322,7 @@ def apply_structural_phase(
         next_probe_sources(model.sources, model.probe_sources)
     )
     model.structural_probe_credit.zero_()
+    model.structural_probe_fitness.zero_()
     model.structural_probe_confirmations.zero_()
     state.probe_eligibility.zero_()
     return StructuralUpdate(
@@ -324,6 +347,9 @@ def structural_summary(
         ),
         "mean_probe_credit": float(
             model.structural_probe_credit.mean().item()
+        ),
+        "mean_probe_fitness": float(
+            model.structural_probe_fitness.mean().item()
         ),
         "max_probe_confirmations": int(
             model.structural_probe_confirmations.max().item()

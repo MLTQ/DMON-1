@@ -232,6 +232,21 @@ def test_structural_probe_measures_a_causal_candidate_effect() -> None:
     )
 
 
+def test_structural_probe_fitness_uses_global_loss_gradient() -> None:
+    model = _model(structural_probe_gain=0.03)
+    tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
+    targets = torch.tensor([[1, 2, 0, 1], [2, 0, 1, 2]])
+    logits, _, trace = model.forward_sequence(
+        tokens, targets=targets, retain_credit=True
+    )
+    loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
+    loss.backward()
+    fitness = trace.probe_fitness()
+    assert fitness.shape == (tokens.shape[1], model.cfg.cells)
+    assert torch.isfinite(fitness).all()
+    assert fitness.abs().sum().item() > 0
+
+
 def test_structural_phase_rewires_one_slot_without_losing_integrity() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -475,6 +490,55 @@ def test_structural_confirmation_streak_resets_on_negative_phase() -> None:
     assert not torch.equal(model.probe_sources, probes)
 
 
+def test_global_fitness_can_veto_locally_credited_rewire() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        require_global_fitness=True,
+        global_fitness_margin=0.0,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_probe_fitness.fill_(-1.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+
+    rejected = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert rejected.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_probe_fitness.fill_(1.0)
+    accepted = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert accepted.rewired_edges == 1
+    assert not torch.equal(model.sources, sources)
+
+
 def test_harmful_structural_probe_cannot_rewire() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -595,6 +659,10 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
         trainer.model.structural_probe_credit,
     )
     assert torch.equal(
+        resumed.model.structural_probe_fitness,
+        trainer.model.structural_probe_fitness,
+    )
+    assert torch.equal(
         resumed.model.structural_probe_confirmations,
         trainer.model.structural_probe_confirmations,
     )
@@ -627,6 +695,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
         "probe_sources",
         "structural_edge_credit",
         "structural_probe_credit",
+        "structural_probe_fitness",
         "structural_probe_confirmations",
         "structural_edge_age",
         "total_rewires",

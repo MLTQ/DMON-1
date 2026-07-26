@@ -128,6 +128,10 @@ def _run_sol(
                 warmup_updates=args.structural_warmup,
                 replacements_per_phase=args.structural_replacements,
                 confirmation_phases=args.structural_confirmation_phases,
+                require_global_fitness=args.structural_global_fitness,
+                global_fitness_margin=(
+                    args.structural_global_fitness_margin
+                ),
                 credit_decay=args.structural_credit_decay,
                 credit_margin=args.structural_credit_margin,
                 min_edge_age=args.structural_min_edge_age,
@@ -511,6 +515,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--structural-confirmation-phases", type=int, default=1
     )
+    parser.add_argument(
+        "--structural-global-fitness", action="store_true"
+    )
+    parser.add_argument(
+        "--structural-global-fitness-margin", type=float, default=0.0
+    )
     parser.add_argument("--structural-credit-decay", type=float, default=0.99)
     parser.add_argument("--structural-credit-margin", type=float, default=1e-3)
     parser.add_argument("--structural-min-edge-age", type=int, default=250)
@@ -583,6 +593,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--structural-credit-decay must be in [0, 1)")
     if args.structural_credit_margin < 0:
         parser.error("--structural-credit-margin must be non-negative")
+    if args.structural_global_fitness_margin < 0:
+        parser.error(
+            "--structural-global-fitness-margin must be non-negative"
+        )
     if args.structural_growth_cost < 0:
         parser.error("--structural-growth-cost must be non-negative")
     if not 0 <= args.structural_min_energy <= 1:
