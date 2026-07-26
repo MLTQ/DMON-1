@@ -60,7 +60,11 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "activity_cost": 0.0,
         "stimulation_gain": 0.0,
     }
-    reward = {} if not args.no_reward else {"reward_gain": 0.0}
+    reward: dict[str, float] = {}
+    if args.no_reward:
+        reward = {"reward_gain": 0.0, "fast_plasticity_gain": 0.0}
+    elif args.no_fast_plasticity:
+        reward = {"fast_plasticity_gain": 0.0}
     return SolConfig(
         vocab_size=vocab_size,
         cells=args.cells,
@@ -481,7 +485,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-reward",
         action="store_true",
-        help="Disable reward-modulated eligibility feedback",
+        help="Disable cell and synapse reward-modulated eligibility feedback",
+    )
+    parser.add_argument(
+        "--no-fast-plasticity",
+        action="store_true",
+        help="Disable fast synaptic efficacy while keeping cell reward feedback",
     )
     parser.add_argument("--prompt", default="ROMEO:")
     parser.add_argument("--generate", type=int, default=240)

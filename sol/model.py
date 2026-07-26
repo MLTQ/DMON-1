@@ -8,7 +8,8 @@ targets own a small number of explicit dendrite slots, each naming one source ce
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
+from typing import Any, Mapping
 
 import torch
 from torch import nn
@@ -29,9 +30,13 @@ class SolConfig:
     topology_seed: int = 0
 
     eligibility_decay: float = 0.92
+    edge_eligibility_decay: float = 0.96
     sensory_trace_decay: float = 0.90
     stimulation_decay: float = 0.72
     reward_gain: float = 0.25
+    fast_weight_decay: float = 0.995
+    fast_plasticity_gain: float = 0.04
+    fast_weight_limit: float = 0.75
 
     energy_start: float = 0.60
     basal_cost: float = 0.002
@@ -53,10 +58,20 @@ class SolConfig:
             raise ValueError("sensory and output populations must not overlap")
         if self.message_steps < 1:
             raise ValueError("message_steps must be positive")
-        for name in ("eligibility_decay", "sensory_trace_decay", "stimulation_decay"):
+        for name in (
+            "eligibility_decay",
+            "edge_eligibility_decay",
+            "sensory_trace_decay",
+            "stimulation_decay",
+            "fast_weight_decay",
+        ):
             value = getattr(self, name)
             if not 0 <= value < 1:
                 raise ValueError(f"{name} must be in [0, 1)")
+        if self.reward_gain < 0 or self.fast_plasticity_gain < 0:
+            raise ValueError("reward and fast plasticity gains must be nonnegative")
+        if self.fast_weight_limit <= 0:
+            raise ValueError("fast_weight_limit must be positive")
 
 
 @dataclass
@@ -67,6 +82,8 @@ class FieldState:
     energy: torch.Tensor
     stimulation: torch.Tensor
     eligibility: torch.Tensor
+    edge_eligibility: torch.Tensor
+    fast_weight: torch.Tensor
     sensory_trace: torch.Tensor
     reward: torch.Tensor
 
@@ -78,6 +95,8 @@ class FieldState:
             energy=self.energy.detach(),
             stimulation=self.stimulation.detach(),
             eligibility=self.eligibility.detach(),
+            edge_eligibility=self.edge_eligibility.detach(),
+            fast_weight=self.fast_weight.detach(),
             sensory_trace=self.sensory_trace.detach(),
             reward=self.reward.detach(),
         )
@@ -90,6 +109,8 @@ class FieldState:
             energy=self.energy.clone(),
             stimulation=self.stimulation.clone(),
             eligibility=self.eligibility.clone(),
+            edge_eligibility=self.edge_eligibility.clone(),
+            fast_weight=self.fast_weight.clone(),
             sensory_trace=self.sensory_trace.clone(),
             reward=self.reward.clone(),
         )
@@ -103,6 +124,7 @@ class FieldTrace:
     edge_flow: list[torch.Tensor]
     novelty: list[torch.Tensor]
     mean_energy: list[torch.Tensor]
+    mean_fast_weight: list[torch.Tensor]
 
     def cell_credit(self) -> torch.Tensor:
         """Return mean absolute loss gradient per token and cell after backward."""
@@ -220,15 +242,48 @@ class SparseAxonField(nn.Module):
             eligibility=torch.zeros(
                 batch, self.cfg.cells, self.cfg.channels, device=device
             ),
+            edge_eligibility=torch.zeros(
+                batch, self.cfg.cells, self.cfg.dendrites, device=device
+            ),
+            fast_weight=torch.zeros(
+                batch, self.cfg.cells, self.cfg.dendrites, device=device
+            ),
             sensory_trace=torch.zeros(batch, self.cfg.channels, device=device),
             reward=torch.zeros(batch, device=device),
         )
+
+    def state_from_snapshot(
+        self,
+        payload: Mapping[str, Any],
+        batch: int,
+        device: torch.device | str,
+        lane: int | None = None,
+    ) -> FieldState:
+        """Restore additive fast state while accepting pre-plasticity checkpoints."""
+
+        device = torch.device(device)
+        fallback = self.initial_state(batch, device)
+        restored: dict[str, torch.Tensor] = {}
+        for field in fields(FieldState):
+            value = payload.get(field.name)
+            tensor = (
+                getattr(fallback, field.name)
+                if value is None
+                else value.to(device)
+            )
+            restored[field.name] = (
+                tensor if lane is None else tensor[lane : lane + 1]
+            )
+        return FieldState(**restored)
 
     def _cell_context(self) -> torch.Tensor:
         return self.cell_identity + self.role_projection(self.roles)
 
     def _messages(
-        self, hidden: torch.Tensor, stimulation: torch.Tensor
+        self,
+        hidden: torch.Tensor,
+        stimulation: torch.Tensor,
+        fast_weight: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Read each target's named dendrites and return message, flow, stimulation."""
 
@@ -241,7 +296,7 @@ class SparseAxonField(nn.Module):
         )
         attention = torch.softmax(score, dim=2)
         emission = torch.sigmoid(self.emit_gate(source_hidden)).squeeze(-1)
-        signed_weight = torch.tanh(self.edge_weight)
+        signed_weight = torch.tanh(self.edge_weight.unsqueeze(0) + fast_weight)
         coefficient = attention * emission * signed_weight
         value = self.message_value(source_hidden)
         incoming = (coefficient.unsqueeze(-1) * value).sum(dim=2)
@@ -295,11 +350,21 @@ class SparseAxonField(nn.Module):
         energy = state.energy
         stimulation = state.stimulation
         eligibility = state.eligibility
+        edge_eligibility = state.edge_eligibility
+        fast_weight = (
+            cfg.fast_weight_decay * state.fast_weight
+            + cfg.fast_plasticity_gain
+            * reward[:, None, None]
+            * state.edge_eligibility
+        ).clamp(-cfg.fast_weight_limit, cfg.fast_weight_limit)
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
 
         for _ in range(cfg.message_steps):
-            incoming, flow, propagated = self._messages(hidden, stimulation)
+            source_hidden = hidden[:, self.sources]
+            incoming, flow, propagated = self._messages(
+                hidden, stimulation, fast_weight
+            )
             stimulation = (
                 cfg.stimulation_decay * propagated + external_stimulation
             ).clamp(0.0, 1.0)
@@ -317,6 +382,15 @@ class SparseAxonField(nn.Module):
             eligibility = (
                 cfg.eligibility_decay * eligibility
                 + (1 - cfg.eligibility_decay) * torch.tanh(external + incoming)
+            )
+            target_change = updated - hidden
+            edge_tag = torch.tanh(
+                (source_hidden * target_change.unsqueeze(2)).mean(dim=3)
+                * math.sqrt(cfg.channels)
+            )
+            edge_eligibility = (
+                cfg.edge_eligibility_decay * edge_eligibility
+                + (1 - cfg.edge_eligibility_decay) * edge_tag
             )
             activity = (updated - hidden).abs().mean(dim=2)
             energy = (
@@ -338,6 +412,8 @@ class SparseAxonField(nn.Module):
             energy=energy,
             stimulation=stimulation,
             eligibility=eligibility,
+            edge_eligibility=edge_eligibility,
+            fast_weight=fast_weight,
             sensory_trace=sensory_trace,
             reward=reward,
         )
@@ -345,6 +421,7 @@ class SparseAxonField(nn.Module):
             "edge_flow": mean_flow,
             "novelty": novelty,
             "mean_energy": energy.mean(dim=1),
+            "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
         }
         return logits, next_state, diagnostics
 
@@ -374,7 +451,7 @@ class SparseAxonField(nn.Module):
             raise ValueError("state batch does not match tokens")
 
         logits: list[torch.Tensor] = []
-        trace = FieldTrace([], [], [], [])
+        trace = FieldTrace([], [], [], [], [])
         reward = state.reward
 
         for index in range(length):
@@ -386,6 +463,7 @@ class SparseAxonField(nn.Module):
             trace.edge_flow.append(diag["edge_flow"])
             trace.novelty.append(diag["novelty"])
             trace.mean_energy.append(diag["mean_energy"])
+            trace.mean_fast_weight.append(diag["mean_fast_weight"])
 
             if targets is not None:
                 surprise = F.cross_entropy(

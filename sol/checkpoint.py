@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -89,13 +89,11 @@ def load_organism(
     ).to(device)
     model.load_state_dict(trainer_payload["model"])
     model.eval()
-    state = FieldState(
-        **{
-            field.name: trainer_payload["field_state"][field.name][
-                lane : lane + 1
-            ].to(device)
-            for field in fields(FieldState)
-        }
+    state = model.state_from_snapshot(
+        trainer_payload["field_state"],
+        batch_size,
+        device,
+        lane=lane,
     )
     return LoadedOrganism(
         model=model,

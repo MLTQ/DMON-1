@@ -9,7 +9,7 @@ one-character-at-a-time organism path used during training.
 
 ### `TrainMetrics`
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
-  edge credit.
+  edge credit and mean fast synaptic efficacy.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
@@ -49,5 +49,5 @@ one-character-at-a-time organism path used during training.
 ## Notes
 
 - Cross-entropy is the current continuous task reward. A bounded per-example score is
-  also delivered on the next tick through persistent eligibility.
+  also delivered on the next tick through persistent cell and edge eligibility.
 - This is a capability probe, not yet a competitive NanoGPT implementation.

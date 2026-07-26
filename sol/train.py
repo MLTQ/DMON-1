@@ -23,6 +23,7 @@ class TrainMetrics:
     mean_novelty: float
     cell_credit: float
     edge_credit: float
+    mean_fast_weight: float
 
 
 class ContinuousTrainer:
@@ -117,11 +118,10 @@ class ContinuousTrainer:
         )
         trainer.model.load_state_dict(payload["model"])
         trainer.optimizer.load_state_dict(payload["optimizer"])
-        trainer.state = FieldState(
-            **{
-                field.name: payload["field_state"][field.name].to(trainer.device)
-                for field in fields(FieldState)
-            }
+        trainer.state = trainer.model.state_from_snapshot(
+            payload["field_state"],
+            int(payload["batch_size"]),
+            trainer.device,
         )
         trainer.stream.load_state_dict(payload["stream"])
         trainer.updates = int(payload["updates"])
@@ -159,6 +159,7 @@ class ContinuousTrainer:
         self.updates += 1
         mean_energy = torch.stack(trace.mean_energy).mean().item()
         mean_novelty = torch.stack(trace.novelty).mean().item()
+        mean_fast_weight = torch.stack(trace.mean_fast_weight).mean().item()
         value = loss.item()
         return TrainMetrics(
             loss=value,
@@ -167,6 +168,7 @@ class ContinuousTrainer:
             mean_novelty=mean_novelty,
             cell_credit=cell_credit,
             edge_credit=edge_credit,
+            mean_fast_weight=mean_fast_weight,
         )
 
 

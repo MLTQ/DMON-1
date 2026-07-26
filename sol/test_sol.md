@@ -18,6 +18,9 @@ tensor shapes.
 ### Metabolism and eligibility tests
 - **Does**: Proves unstimulated energy depletion and delayed reward dependence on a
   remembered event trace.
+- **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
+  create fast efficacy, fast weights remain bounded and differentiable, and plasticity
+  cannot mint metabolic energy.
 
 ### Credit-path test
 - **Does**: Proves exact loss gradients reach retained cell states and directed synapses.
@@ -29,10 +32,13 @@ tensor shapes.
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
   state, optimizer, vocabulary, and metadata.
+- **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
+  zero-valued additive state.
 - **Does**: Proves a frozen-connectome control neither changes edges nor becomes
   trainable after resume.
 - **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and
-  requires nonzero measured prompt credit.
+  requires nonzero measured prompt credit plus real edge-eligibility and fast-weight
+  telemetry.
 - **Does**: Validates multiple completed candidates, promotes the lowest-BPC checkpoint,
   and reloads the atomic destination.
 

@@ -4,7 +4,7 @@
 
 Implements the first SOL organism: homogeneous recurrent cells with private persistent
 state, explicit directed dendrites, streamed character input, character output, metabolic
-state, and reward-addressable eligibility memory.
+state, reward-addressable eligibility memory, and bounded fast synaptic efficacy.
 
 ## Components
 
@@ -15,8 +15,11 @@ state, and reward-addressable eligibility memory.
 
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
-  and delayed reward across every character and optimizer window.
+  delayed reward, per-edge eligibility, and per-stream fast weights across every
+  character and optimizer window.
 - **Rationale**: Detaching a graph must not reset the organism.
+- **Compatibility**: `state_from_snapshot` initializes additive plasticity fields to
+  zero when loading checkpoints made before fast synaptic memory existed.
 
 ### `FieldTrace`
 - **Does**: Retains token-local hidden states and measured traffic for post-backward
@@ -29,7 +32,8 @@ state, and reward-addressable eligibility memory.
 
 ### `tick`
 - **Does**: Consumes one optional streamed character, performs recurrent graph updates,
-  updates eligibility and energy, and emits next-character logits.
+  tags individual dendrites from local pre/post activity, applies delayed reward to
+  previously tagged dendrites, updates energy, and emits next-character logits.
 - **Rationale**: `token=None` remains a live interval and proves energy depletion without
   stimulation.
 
@@ -50,6 +54,8 @@ state, and reward-addressable eligibility memory.
 
 - Fixed topology is intentional for the first falsification. Axon growth comes only after
   forward transport, backward credit, and persistent event memory are demonstrated.
+- Slow edge parameters learn by exact truncated BPTT. Fast efficacy is stream-local,
+  bounded, decays, and changes only when delayed reward meets a remembered edge tag.
 - Energy currently modulates computation but does not kill or reproduce cells.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

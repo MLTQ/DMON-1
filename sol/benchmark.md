@@ -16,11 +16,12 @@ with checkpointing and append-only metrics.
 ### Scientific controls
 - **Does**: `--freeze-edges` trains an otherwise identical organism without modifying
   its directed edge weights or biases; `--no-metabolism` holds energy at one.
-- **Does**: `--no-reward` sets reward gain to zero while leaving the event trace
-  computation intact.
+- **Does**: `--no-reward` disables both cell and synapse reward effects while leaving
+  event traces intact; `--no-fast-plasticity` isolates the older cell-level reward path.
 - **Rationale**: Learned morphology and metabolic modulation must earn their claims
   against controls rather than ride on the shared cell rule; delayed eligibility
-  feedback must likewise improve prediction rather than merely sound plausible.
+  feedback and fast synaptic memory must likewise improve prediction rather than merely
+  sound plausible.
 
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean

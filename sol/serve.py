@@ -100,6 +100,9 @@ class LiveOrganism:
                 flow_values = [
                     float(diagnostics["edge_flow"].mean().item())
                 ]
+                fast_weight_values = [
+                    float(diagnostics["mean_fast_weight"].mean().item())
+                ]
 
                 for _ in range(characters):
                     probabilities = torch.softmax(
@@ -116,6 +119,11 @@ class LiveOrganism:
                     flow_values.append(
                         float(diagnostics["edge_flow"].mean().item())
                     )
+                    fast_weight_values.append(
+                        float(
+                            diagnostics["mean_fast_weight"].mean().item()
+                        )
+                    )
 
             self.loaded.state = state.detached()
             return {
@@ -128,6 +136,9 @@ class LiveOrganism:
                     "edgeCredit": edge_credit,
                     "perplexity": perplexity,
                     "edgeFlow": sum(flow_values) / len(flow_values),
+                    "fastWeight": (
+                        sum(fast_weight_values) / len(fast_weight_values)
+                    ),
                 },
                 "checkpoint": {
                     "name": self.checkpoint.name,
@@ -150,6 +161,12 @@ class LiveOrganism:
                     "energy": float(state.energy.mean().item()),
                     "stimulation": float(state.stimulation.mean().item()),
                     "eligibility": float(state.eligibility.abs().mean().item()),
+                    "edgeEligibility": float(
+                        state.edge_eligibility.abs().mean().item()
+                    ),
+                    "fastWeight": float(
+                        state.fast_weight.abs().mean().item()
+                    ),
                 },
                 "topology": {
                     "sources": self.loaded.model.sources.cpu().tolist(),
@@ -158,6 +175,7 @@ class LiveOrganism:
                     )
                     .cpu()
                     .tolist(),
+                    "fastWeights": state.fast_weight[0].cpu().tolist(),
                 },
             }
 

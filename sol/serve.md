@@ -13,14 +13,14 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 
 ### `LiveOrganism.generate`
 - **Does**: Streams the human prompt through the ordinary field, backpropagates prompt
-  next-character loss without updating weights, reports measured cell/edge credit, then
-  samples through the same output path.
+  next-character loss without updating weights, reports measured cell/edge credit and
+  fast synaptic efficacy, then samples through the same output path.
 - **Rationale**: UI credit telemetry comes from a real reverse signal rather than a
   fabricated animation metric.
 
 ### `LiveOrganism.snapshot`
-- **Does**: Returns energy, stimulation, eligibility, directed sources, and signed edge
-  weights for future live visualization.
+- **Does**: Returns energy, stimulation, cell/edge eligibility, directed sources, slow
+  signed edge weights, and per-stream fast weights for live visualization.
 
 ### HTTP handler
 - **Does**: Serves `GET /health`, `GET /snapshot`, and `POST /generate`.
@@ -34,7 +34,7 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| `sol/ui/app/api/generate/route.ts` | `/generate` returns `output`, `mode`, and legacy metric keys | Response shape |
+| `sol/ui/app/api/generate/route.ts` | `/generate` returns `output`, `mode`, legacy metric keys, and additive `fastWeight` | Response shape |
 | Local operator | Default host is loopback-only | Changing bind default |
 | `promote.py` | Default checkpoint path is `sol/runs/live.pt` | Path mismatch |
 | UI telemetry | Cell and edge credit are measured prompt gradients | Replacing backward pass with proxy values |

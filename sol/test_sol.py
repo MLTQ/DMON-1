@@ -107,6 +107,57 @@ def test_delayed_reward_acts_through_event_eligibility() -> None:
     )
 
 
+def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
+    model = _model(reward_gain=0.0, fast_weight_decay=0.0)
+    state = model.initial_state(1)
+    state.edge_eligibility[:, 3, 1] = 1.0
+    _, next_state, _ = model.tick(
+        state, token=None, reward=torch.ones(1)
+    )
+    expected = model.cfg.fast_plasticity_gain
+    assert next_state.fast_weight[0, 3, 1].item() == pytest.approx(expected)
+    untagged = next_state.fast_weight.clone()
+    untagged[:, 3, 1] = 0.0
+    assert torch.count_nonzero(untagged).item() == 0
+
+
+def test_fast_synapses_are_reward_dependent_bounded_and_differentiable() -> None:
+    model = _model(reward_gain=0.0)
+    no_reward = model.initial_state(1)
+    no_reward.edge_eligibility.fill_(1.0)
+    _, unchanged, _ = model.tick(
+        no_reward, token=None, reward=torch.zeros(1)
+    )
+    assert torch.count_nonzero(unchanged.fast_weight).item() == 0
+
+    bounded = model.initial_state(1)
+    bounded.edge_eligibility.fill_(1.0)
+    for _ in range(40):
+        _, bounded, _ = model.tick(
+            bounded, token=None, reward=torch.full((1,), 100.0)
+        )
+    assert bounded.fast_weight.abs().max().item() <= model.cfg.fast_weight_limit
+
+    gradient_state = model.initial_state(1)
+    gradient_state.fast_weight.requires_grad_(True)
+    logits, _, _ = model.tick(gradient_state, torch.tensor([1]))
+    logits.square().sum().backward()
+    assert gradient_state.fast_weight.grad is not None
+    assert gradient_state.fast_weight.grad.abs().sum().item() > 0
+
+
+def test_reward_plasticity_does_not_mint_energy() -> None:
+    model = _model(stimulation_gain=0.0, reward_gain=1.0)
+    state = model.initial_state(1)
+    state.eligibility.fill_(1.0)
+    state.edge_eligibility.fill_(1.0)
+    before = state.energy.clone()
+    _, after, _ = model.tick(
+        state, token=None, reward=torch.ones(1)
+    )
+    assert torch.all(after.energy <= before)
+
+
 def test_backward_credit_reaches_cells_and_synapses() -> None:
     model = _model()
     tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
@@ -164,6 +215,28 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert resumed.stream.position == trainer.stream.position
     assert actual.loss == expected.loss
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
+    assert torch.equal(resumed.state.fast_weight, trainer.state.fast_weight)
+
+
+def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    checkpoint = save_checkpoint(tmp_path / "old.pt", trainer)
+    payload = torch.load(checkpoint, weights_only=False)
+    del payload["trainer"]["field_state"]["edge_eligibility"]
+    del payload["trainer"]["field_state"]["fast_weight"]
+    torch.save(payload, checkpoint)
+    resumed, _ = load_checkpoint(checkpoint, text)
+    assert torch.count_nonzero(resumed.state.edge_eligibility).item() == 0
+    assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
 
 
 def test_frozen_connectome_survives_training_and_resume(tmp_path: Path) -> None:
@@ -211,6 +284,10 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert result["metrics"]["cellCredit"] > 0
     assert result["metrics"]["edgeCredit"] > 0
     assert result["metrics"]["energy"] >= 0
+    assert result["metrics"]["fastWeight"] >= 0
+    snapshot = organism.snapshot()
+    assert snapshot["metrics"]["edgeEligibility"] != 0
+    assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
 
 
 def test_checkpoint_promotion_validates_and_selects_lowest_bpc(
