@@ -22,6 +22,8 @@ with checkpointing and append-only metrics.
   against controls rather than ride on the shared cell rule; delayed eligibility
   feedback and fast synaptic memory must likewise improve prediction rather than merely
   sound plausible.
+- **Does**: `--fast-plasticity-gain` records and varies the reward-to-efficacy scale for
+  matched gain sweeps without changing parameter count.
 
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean

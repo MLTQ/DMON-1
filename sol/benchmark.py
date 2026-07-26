@@ -60,7 +60,9 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "activity_cost": 0.0,
         "stimulation_gain": 0.0,
     }
-    reward: dict[str, float] = {}
+    reward: dict[str, float] = {
+        "fast_plasticity_gain": args.fast_plasticity_gain
+    }
     if args.no_reward:
         reward = {"reward_gain": 0.0, "fast_plasticity_gain": 0.0}
     elif args.no_fast_plasticity:
@@ -461,6 +463,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sensory-cells", type=int, default=8)
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
+    parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--log-every", type=int, default=25)
@@ -497,6 +500,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.updates < 1:
         parser.error("--updates must be positive")
+    if args.fast_plasticity_gain < 0:
+        parser.error("--fast-plasticity-gain must be non-negative")
     for name in ("log_every", "eval_every", "checkpoint_every"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
