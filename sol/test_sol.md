@@ -12,6 +12,8 @@ tensor shapes.
 - **Does**: Requires complete sensory reachability and reports shortest output paths.
 - **Does**: Proves causal candidate probes name non-edges and produce retained
   reward-addressable effects.
+- **Does**: Proves a target mask can silence exactly one selected candidate probe while
+  every other exploratory connection remains active.
 - **Does**: Proves causal probe effects contract with exact post-backward sequence-loss
   gradients into finite, nonzero organism-level fitness evidence.
 - **Does**: Forces a beneficial candidate rewrite and proves fixed fan-in, unique source
@@ -32,6 +34,13 @@ tensor shapes.
   organism enters a virtual wait without topology mutation.
 - **Does**: Proves a graft that earns positive raw reward but underperforms the body's
   pre-graft developmental baseline is rolled back.
+- **Does**: Proves exploratory probation leaves incumbent anatomy and energy untouched
+  during an ABBA candidate-on/incumbent-only traffic trial, balances observations, and
+  grafts only after a positive within-organism reward difference.
+- **Does**: Proves rejected exploratory candidates never mutate anatomy or spend growth
+  energy, while shared body parameters continue learning during both traffic arms.
+- **Does**: Rechecks endpoint energy at the later commit boundary so an initially
+  affordable candidate cannot endanger a body whose energy declined during exploration.
 - **Does**: Proves a causally harmful candidate cannot replace even a worse incumbent
   merely because its credit magnitude is large.
 
@@ -67,6 +76,8 @@ tensor shapes.
   buffers, and metadata.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
+- **Does**: Resumes midway through an exploratory ABBA trial with the same next traffic
+  arm, losses, shared body state, topology decision, and reward aggregates.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

@@ -232,6 +232,29 @@ def test_structural_probe_measures_a_causal_candidate_effect() -> None:
     )
 
 
+def test_structural_probe_mask_gates_only_selected_exploratory_traffic() -> None:
+    model = _model(structural_probe_gain=0.03, message_steps=1)
+    state = model.initial_state(2)
+    token = torch.tensor([0, 1])
+    _, _, full = model.tick(state.clone(), token)
+    mask = torch.ones(model.cfg.cells)
+    target = 3
+    mask[target] = 0
+    _, masked_state, masked = model.tick(
+        state.clone(),
+        token,
+        structural_probe_mask=mask,
+    )
+
+    assert masked["probe_flow"][target].item() == 0
+    keep = torch.arange(model.cfg.cells) != target
+    assert torch.allclose(
+        masked["probe_flow"][keep], full["probe_flow"][keep]
+    )
+    assert masked_state.probe_eligibility[:, target].abs().sum() == 0
+    assert masked_state.probe_eligibility[:, keep].abs().sum() > 0
+
+
 def test_structural_probe_fitness_uses_global_loss_gradient() -> None:
     model = _model(structural_probe_gain=0.03)
     tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
@@ -809,6 +832,223 @@ def test_probes_only_uses_virtual_probation_without_mutation() -> None:
     assert trainer.structural_probation.total_rolled_back == 0
 
 
+def test_exploratory_probation_uses_abba_traffic_before_grafting() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    energy = trainer.state.energy.sum().item()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+
+    assert torch.equal(model.sources, sources)
+    assert trainer.state.energy.sum().item() == energy
+    arms = []
+    for reward in (0.4, 0.1, 0.2, 0.5):
+        mask, exposed = (
+            trainer.structural_probation.exploratory_probe_mask(model)
+        )
+        assert mask is not None
+        assert mask[target].item() == float(exposed)
+        arms.append(exposed)
+        trainer.structural_probation.observe(reward, exposed)
+    assert arms == [True, False, False, True]
+    assert (
+        trainer.structural_probation.candidate_observations
+        == trainer.structural_probation.incumbent_observations
+        == 2
+    )
+    assert trainer.structural_probation.mean_advantage == pytest.approx(0.3)
+
+    committed = trainer.structural_probation.resolve(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+    )
+    assert committed
+    assert int(model.sources[target, slot]) == candidate
+    assert model.total_rewires.item() == 1
+    assert energy - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+
+
+def test_exploratory_rejection_preserves_live_anatomy_and_energy() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    sources = trainer.model.sources.clone()
+    energy = trainer.state.energy.clone()
+    _start_forced_probation(trainer, config, update=2)
+    trainer.structural_probation.observe(0.1, True)
+    trainer.structural_probation.observe(0.2, False)
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert torch.equal(trainer.state.energy, energy)
+    assert trainer.structural_probation.total_rejected == 1
+    assert trainer.structural_probation.total_rolled_back == 0
+
+
+def test_exploratory_commit_rechecks_endpoint_energy() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.1,
+        probation_updates=2,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    sources = trainer.model.sources.clone()
+    target, _, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+    trainer.structural_probation.observe(0.4, True)
+    trainer.structural_probation.observe(0.1, False)
+    trainer.state.energy[:, target] = 0
+    trainer.state.energy[:, candidate] = 0
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        min_endpoint_energy=config.min_endpoint_energy,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_rejected == 1
+
+
+def test_exploratory_traffic_keeps_shared_body_learning_in_both_arms() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=2)
+    before = trainer.model.token_embedding.weight.detach().clone()
+    candidate_metrics = trainer.step()
+    after_candidate = (
+        trainer.model.token_embedding.weight.detach().clone()
+    )
+    incumbent_metrics = trainer.step()
+    after_incumbent = (
+        trainer.model.token_embedding.weight.detach().clone()
+    )
+
+    assert candidate_metrics.probation_candidate_exposed
+    assert not incumbent_metrics.probation_candidate_exposed
+    assert not torch.equal(after_candidate, before)
+    assert not torch.equal(after_incumbent, after_candidate)
+    assert trainer.structural_probation.active
+    assert trainer.structural_probation.candidate_observations == 1
+    assert trainer.structural_probation.incumbent_observations == 1
+
+
 def test_harmful_structural_probe_cannot_rewire() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -1008,6 +1248,75 @@ def test_checkpoint_resume_preserves_active_probation(tmp_path: Path) -> None:
     assert (
         resumed.prequential_advantage_ema
         == trainer.prequential_advantage_ema
+    )
+
+
+def test_checkpoint_resume_preserves_exploratory_traffic_arm(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(22)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    first = trainer.step()
+    assert first.probation_candidate_exposed
+    checkpoint = save_checkpoint(
+        tmp_path / "exploratory.pt",
+        trainer,
+        {"tag": "exploratory"},
+    )
+
+    expected = [trainer.step() for _ in range(3)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = [resumed.step() for _ in range(3)]
+
+    assert metadata == {"tag": "exploratory"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.probation_candidate_exposed for row in actual] == [
+        row.probation_candidate_exposed for row in expected
+    ]
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.total_committed
+        == trainer.structural_probation.total_committed
+    )
+    assert (
+        resumed.structural_probation.total_rejected
+        == trainer.structural_probation.total_rejected
+    )
+    assert (
+        resumed.structural_probation.last_mean_advantage
+        == trainer.structural_probation.last_mean_advantage
     )
 
 

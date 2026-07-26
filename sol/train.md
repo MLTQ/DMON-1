@@ -13,6 +13,8 @@ one-character-at-a-time organism path used during training.
   bounded rewiring counts, including mean first-order probe fitness.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
   accumulated prequential improvement, raw advantage, and developmental baseline.
+- **Does**: Reports exploratory-traffic arm exposure, per-arm observations and reward,
+  within-organism advantage, and rejected candidates.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
@@ -27,6 +29,10 @@ one-character-at-a-time organism path used during training.
 - **Probation order**: Accumulates the just-completed window's signed prequential reward,
   resolves a due probation after the optimizer step, and skips a new graft on that same
   update. Ordinary body learning is never paused.
+- **Exploratory probation**: Before each streamed window, gates only the selected
+  candidate probe according to a checkpointed ABBA schedule. Both arms update the same
+  persistent body and optimizer; all unselected probes remain live. Resolution compares
+  candidate-on and candidate-off reward before any anatomical mutation.
 - **Developmental baseline**: Tracks signed reward outside and during probation with a
   checkpointed EMA. A graft is judged by improvement over the body's pre-graft trend,
   not by reward that ordinary learning would have produced anyway.

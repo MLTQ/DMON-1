@@ -45,7 +45,13 @@ class TrainMetrics:
     probation_started: bool
     probation_committed: int
     probation_rolled_back: int
+    probation_rejected: int
     probation_advantage: float
+    probation_candidate_exposed: bool
+    probation_candidate_observations: int
+    probation_incumbent_observations: int
+    probation_candidate_reward: float
+    probation_incumbent_reward: float
     prequential_advantage: float
     prequential_baseline: float
 
@@ -196,12 +202,18 @@ class ContinuousTrainer:
         """Advance the stream once, backpropagate, and keep the detached organism."""
 
         inputs, targets = self.stream.next(self.chunk_length)
+        probe_mask, candidate_exposed = (
+            self.structural_probation.exploratory_probe_mask(
+                self.model
+            )
+        )
         self.optimizer.zero_grad(set_to_none=True)
         logits, next_state, trace = self.model.forward_sequence(
             inputs,
             self.state.detached(),
             targets=targets,
             retain_credit=True,
+            structural_probe_mask=probe_mask,
         )
         loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
         loss.backward()
@@ -236,18 +248,42 @@ class ContinuousTrainer:
             self.structural_config,
         )
         baseline_before = self.prequential_advantage_ema
-        self.structural_probation.observe(prequential_advantage)
+        exploratory_trial = (
+            self.structural_probation.active
+            and self.structural_probation.exploratory_traffic
+        )
+        self.structural_probation.observe(
+            prequential_advantage,
+            (
+                candidate_exposed
+                if exploratory_trial
+                else None
+            ),
+        )
         resolved = False
         if (
             self.structural_probation.active
-            and next_update - self.structural_probation.started_update
-            >= self.structural_config.probation_updates
+            and (
+                (
+                    self.structural_probation.exploratory_traffic
+                    and self.structural_probation.observations
+                    >= self.structural_config.probation_updates
+                )
+                or (
+                    not self.structural_probation.exploratory_traffic
+                    and next_update
+                    - self.structural_probation.started_update
+                    >= self.structural_config.probation_updates
+                )
+            )
         ):
             self.structural_probation.resolve(
                 self.model,
                 self.state,
                 self.optimizer,
                 self.structural_config.probation_margin,
+                self.structural_config.growth_cost,
+                self.structural_config.min_endpoint_energy,
             )
             self.model.probe_sources.copy_(
                 next_probe_sources(
@@ -273,9 +309,13 @@ class ContinuousTrainer:
                 probation_rolled_back=(
                     self.structural_probation.total_rolled_back
                 ),
+                probation_rejected=(
+                    self.structural_probation.total_rejected
+                ),
                 probation_advantage=(
                     self.structural_probation.mean_advantage
                 ),
+                probation_candidate_exposed=candidate_exposed,
             )
             if resolved
             else apply_structural_phase(
@@ -338,8 +378,32 @@ class ContinuousTrainer:
             probation_rolled_back=(
                 self.structural_probation.total_rolled_back
             ),
+            probation_rejected=(
+                self.structural_probation.total_rejected
+            ),
             probation_advantage=(
                 self.structural_probation.mean_advantage
+            ),
+            probation_candidate_exposed=candidate_exposed,
+            probation_candidate_observations=(
+                self.structural_probation.candidate_observations
+            ),
+            probation_incumbent_observations=(
+                self.structural_probation.incumbent_observations
+            ),
+            probation_candidate_reward=(
+                self.structural_probation.candidate_reward_sum
+                / max(
+                    1,
+                    self.structural_probation.candidate_observations,
+                )
+            ),
+            probation_incumbent_reward=(
+                self.structural_probation.incumbent_reward_sum
+                / max(
+                    1,
+                    self.structural_probation.incumbent_observations,
+                )
             ),
             prequential_advantage=prequential_advantage,
             prequential_baseline=self.prequential_advantage_ema,

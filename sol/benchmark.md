@@ -38,8 +38,14 @@ with checkpointing and append-only metrics.
   observed prequential improvement over a checkpointed pre-graft developmental baseline
   during uninterrupted co-adaptation, and commit or restore it at the configured
   deadline. Probes-only uses a virtual wait of the same duration.
+- **Does**: `--structural-probation-exploratory-traffic` instead retains incumbent
+  anatomy, alternates the selected candidate probe on/off across adjacent live stream
+  windows, and commits from the within-organism reward difference. All other probes and
+  all ordinary learning continue in both arms.
 - **Rationale**: Rewiring must beat the same causal probes without topology mutation,
   rather than receiving free exploratory traffic unavailable to control.
+- **Rationale**: The fixed-topology run remains a diagnostic, but it is not the primary
+  survival measure for a body that co-develops with its organ.
 
 ### Topology report
 - **Does**: Records sensory reachability, output reachability, self-edge count, and mean

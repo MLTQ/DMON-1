@@ -16,6 +16,9 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 - **Does**: Optionally defines a post-graft probation duration and minimum observed
   prequential improvement for committing provisional anatomy, plus the developmental
   baseline decay used to distinguish graft benefit from ordinary learning.
+- **Does**: Can instead request exploratory-traffic probation, which leaves the
+  incumbent anatomy live and tests the selected candidate probe on and off inside one
+  continuously adapting organism.
 - **Interacts with**: `ContinuousTrainer` in `train.py`.
 
 ### `next_probe_sources`
@@ -52,8 +55,13 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 - **Does**: Serializes active and historical probation state for exact checkpoint
   resume; probes-only uses the same waiting cadence as a virtual probation without
   topology mutation.
+- **Does**: In exploratory-traffic mode, assigns streamed windows in a balanced ABBA
+  candidate-on/incumbent-only schedule, retains separate reward aggregates, and grafts
+  only after the candidate wins within the same organism.
 - **Rationale**: Failed anatomy can be removed without pretending the rest of the body
   did not experience and adapt during the trial.
+- **Rationale**: A frozen organ in a separate organism cannot serve as the primary
+  fitness signal when body and organ develop together.
 
 ### `structural_summary`
 - **Does**: Reports policy, rewrite attempts, retained credit, edge age, active probes,
@@ -86,3 +94,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.
 - Rollback does not refund growth energy or revert unrelated model/state changes:
   probation is anatomical reversibility, not erasure of lived experience.
+- Exploratory-traffic rejection never mutates anatomy or spends growth energy. The
+  incumbent, hidden state, body parameters, and optimizer remain live in both arms; only
+  the selected weak probe is gated, while every other exploratory probe continues.
+- Endpoint energy is checked again at the actual commit boundary; developmental success
+  cannot force a graft that the organism can no longer afford.

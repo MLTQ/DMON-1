@@ -423,6 +423,7 @@ class SparseAxonField(nn.Module):
     def _probe_message(
         self,
         hidden: torch.Tensor,
+        mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return one weak exploratory candidate message per target."""
 
@@ -435,6 +436,12 @@ class SparseAxonField(nn.Module):
             )
         emission = torch.sigmoid(self.emit_gate(source_hidden)).squeeze(-1)
         flow = self.cfg.structural_probe_gain * emission
+        if mask is not None:
+            if mask.shape != (self.cfg.cells,):
+                raise ValueError(
+                    "structural probe mask must have shape (cells,)"
+                )
+            flow = flow * mask.to(device=flow.device, dtype=flow.dtype)
         message = flow.unsqueeze(-1) * self.message_value(source_hidden)
         return message, flow, source_hidden
 
@@ -485,6 +492,7 @@ class SparseAxonField(nn.Module):
         reward: torch.Tensor | None = None,
         retain_credit: bool = False,
         allow_fast_plasticity: bool = True,
+        structural_probe_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, FieldState, dict[str, torch.Tensor]]:
         """Consume one optional character and emit one next-character distribution.
 
@@ -551,7 +559,7 @@ class SparseAxonField(nn.Module):
                 hidden, stimulation, fast_weight
             )
             probe_message, probe_flow, probe_source_hidden = (
-                self._probe_message(hidden)
+                self._probe_message(hidden, structural_probe_mask)
             )
             incoming_with_probe = incoming + probe_message
             stimulation = (
@@ -681,6 +689,7 @@ class SparseAxonField(nn.Module):
         state: FieldState | None = None,
         targets: torch.Tensor | None = None,
         retain_credit: bool = False,
+        structural_probe_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, FieldState, FieldTrace]:
         """Stream `(batch, time)` tokens through one uninterrupted organism state.
 
@@ -708,7 +717,11 @@ class SparseAxonField(nn.Module):
 
         for index in range(length):
             current_logits, state, diag = self.tick(
-                state, tokens[:, index], reward, retain_credit=retain_credit
+                state,
+                tokens[:, index],
+                reward,
+                retain_credit=retain_credit,
+                structural_probe_mask=structural_probe_mask,
             )
             logits.append(current_logits)
             trace.hidden.append(state.hidden)

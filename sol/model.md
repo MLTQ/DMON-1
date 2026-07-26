@@ -51,6 +51,8 @@ causally measured exploratory axon probes.
 ### `_probe_message`
 - **Does**: Adds one weak candidate source per target and measures its causal effect by
   comparing the shared cell rule with and without that message.
+- **Does**: Accepts a target mask so one candidate can be alternated on and off during
+  an exploratory traffic trial without silencing any other candidate traffic.
 - **Rationale**: Growth evidence comes from an intervention, not geometric proximity or
   an all-to-all correlation.
 
@@ -71,6 +73,8 @@ causally measured exploratory axon probes.
 
 ### `forward_sequence`
 - **Does**: Runs truncated differentiable windows without resetting field state.
+- **Does**: Can gate selected structural probes for an entire streamed window while
+  preserving the same hidden, metabolic, reward, and gradient path.
 - **Rationale**: Exact BPTT handles within-window credit; scalar reward gates persistent
   eligibility on the following tick, including across truncation boundaries.
 

@@ -36,6 +36,7 @@ class StructuralConfig:
     probation_updates: int = 0
     probation_margin: float = 0.0
     probation_baseline_decay: float = 0.99
+    probation_exploratory_traffic: bool = False
 
     def __post_init__(self) -> None:
         if self.interval < 1:
@@ -64,6 +65,17 @@ class StructuralConfig:
             raise ValueError(
                 "probation_baseline_decay must be in [0, 1)"
             )
+        if (
+            self.probation_exploratory_traffic
+            and (
+                self.probation_updates < 2
+                or self.probation_updates % 2 != 0
+            )
+        ):
+            raise ValueError(
+                "exploratory traffic probation requires an even number "
+                "of at least two updates"
+            )
 
 
 @dataclass(frozen=True)
@@ -78,7 +90,9 @@ class StructuralUpdate:
     probation_active: bool = False
     probation_committed: int = 0
     probation_rolled_back: int = 0
+    probation_rejected: int = 0
     probation_advantage: float = 0.0
+    probation_candidate_exposed: bool = False
 
 
 @dataclass
@@ -87,6 +101,7 @@ class StructuralProbation:
 
     active: bool = False
     virtual: bool = False
+    exploratory_traffic: bool = False
     target: int = -1
     slot: int = -1
     old_source: int = -1
@@ -98,6 +113,13 @@ class StructuralProbation:
     total_started: int = 0
     total_committed: int = 0
     total_rolled_back: int = 0
+    total_rejected: int = 0
+    candidate_reward_sum: float = 0.0
+    incumbent_reward_sum: float = 0.0
+    candidate_observations: int = 0
+    incumbent_observations: int = 0
+    candidate_edge_credit: float = 0.0
+    last_mean_advantage: float = 0.0
     edge_weight: torch.Tensor | None = None
     edge_bias: torch.Tensor | None = None
     edge_credit: torch.Tensor | None = None
@@ -110,14 +132,60 @@ class StructuralProbation:
 
     @property
     def mean_advantage(self) -> float:
+        if not self.active and self.observations > 0:
+            return self.last_mean_advantage
+        if self.exploratory_traffic:
+            if (
+                self.candidate_observations == 0
+                or self.incumbent_observations == 0
+            ):
+                return 0.0
+            return (
+                self.candidate_reward_sum / self.candidate_observations
+                - self.incumbent_reward_sum / self.incumbent_observations
+            )
         return self.advantage_sum / max(1, self.observations)
 
-    def observe(self, advantage: float) -> None:
+    def observe(
+        self,
+        advantage: float,
+        candidate_exposed: bool | None = None,
+    ) -> None:
         if self.active:
-            self.advantage_sum += (
-                float(advantage) - self.baseline_advantage
-            )
+            if self.exploratory_traffic:
+                if candidate_exposed is None:
+                    raise ValueError(
+                        "exploratory traffic observations require an arm"
+                    )
+                if candidate_exposed:
+                    self.candidate_reward_sum += float(advantage)
+                    self.candidate_observations += 1
+                else:
+                    self.incumbent_reward_sum += float(advantage)
+                    self.incumbent_observations += 1
+            else:
+                self.advantage_sum += (
+                    float(advantage) - self.baseline_advantage
+                )
             self.observations += 1
+
+    def exploratory_probe_mask(
+        self,
+        model: "SparseAxonField",
+    ) -> tuple[torch.Tensor | None, bool]:
+        """Gate one candidate probe with a balanced ABBA stream schedule."""
+
+        if not self.active or not self.exploratory_traffic:
+            return None, False
+        candidate_exposed = self.observations % 4 in (0, 3)
+        mask = torch.ones(
+            model.cfg.cells,
+            device=model.sources.device,
+            dtype=model.edge_weight.dtype,
+        )
+        if not candidate_exposed:
+            mask[self.target] = 0
+        return mask, candidate_exposed
 
     def state_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -183,11 +251,14 @@ class StructuralProbation:
         candidate: int,
         update: int,
         virtual: bool,
+        exploratory_traffic: bool = False,
+        candidate_edge_credit: float = 0.0,
     ) -> None:
         if self.active:
             raise RuntimeError("structural probation is already active")
         self.active = True
         self.virtual = virtual
+        self.exploratory_traffic = exploratory_traffic
         self.target = target
         self.slot = slot
         self.old_source = int(model.sources[target, slot].item())
@@ -196,6 +267,12 @@ class StructuralProbation:
         self.advantage_sum = 0.0
         self.baseline_advantage = 0.0
         self.observations = 0
+        self.candidate_reward_sum = 0.0
+        self.incumbent_reward_sum = 0.0
+        self.candidate_observations = 0
+        self.incumbent_observations = 0
+        self.candidate_edge_credit = float(candidate_edge_credit)
+        self.last_mean_advantage = 0.0
         self.total_started += 1
         if virtual:
             return
@@ -232,46 +309,93 @@ class StructuralProbation:
         state: "FieldState",
         optimizer: "Optimizer",
         margin: float,
+        growth_cost: float = 0.0,
+        min_endpoint_energy: float = 0.0,
     ) -> bool:
         """Commit positive probation or restore the exact pre-graft slot."""
 
         if not self.active:
             raise RuntimeError("no structural probation is active")
-        committed = self.mean_advantage > margin
+        decision_advantage = self.mean_advantage
+        committed = (
+            decision_advantage > margin
+            and (
+                not self.exploratory_traffic
+                or (
+                    self.candidate_observations > 0
+                    and self.incumbent_observations > 0
+                )
+            )
+        )
+        if self.exploratory_traffic and committed:
+            threshold = min_endpoint_energy + growth_cost / 2
+            committed = (
+                float(state.energy[:, self.target].mean().item())
+                >= threshold
+                and float(
+                    state.energy[:, self.candidate_source].mean().item()
+                )
+                >= threshold
+            )
         if self.virtual:
             committed = False
-        elif not committed:
+        elif self.exploratory_traffic and committed:
             target, slot = self.target, self.slot
-            model.sources[target, slot] = self.old_source
-            model.edge_weight[target, slot] = self.edge_weight
-            model.edge_bias[target, slot] = self.edge_bias
-            model.structural_edge_credit[target, slot] = self.edge_credit
-            model.structural_edge_age[target, slot] = self.edge_age
-            state.edge_eligibility[:, target, slot] = (
-                self.edge_eligibility
+            model.sources[target, slot] = self.candidate_source
+            model.edge_weight[target, slot] = _probe_equivalent_weight(model)
+            model.edge_bias[target, slot] = 0
+            _reset_optimizer_slot(
+                optimizer, model.edge_weight, target, slot
             )
-            state.fast_weight[:, target, slot] = self.fast_weight
-            parameters = {
-                "edge_weight": model.edge_weight,
-                "edge_bias": model.edge_bias,
-            }
-            for parameter_name, slots in self.optimizer_slots.items():
-                parameter = parameters[parameter_name]
-                optimizer_state = optimizer.state.get(parameter, {})
-                for name, current in optimizer_state.items():
-                    if (
-                        torch.is_tensor(current)
-                        and current.shape == parameter.shape
-                    ):
-                        if name in slots:
-                            current[target, slot] = slots[name]
-                        else:
-                            current[target, slot] = 0
+            _reset_optimizer_slot(
+                optimizer, model.edge_bias, target, slot
+            )
+            state.edge_eligibility[:, target, slot] = 0
+            state.fast_weight[:, target, slot] = 0
+            model.structural_edge_credit[target, slot] = (
+                self.candidate_edge_credit
+            )
+            model.structural_edge_age[target, slot] = 0
+            _charge_growth(
+                state, target, self.candidate_source, growth_cost
+            )
+            model.total_rewires.add_(1)
+        elif not committed:
+            if self.exploratory_traffic:
+                self.total_rejected += 1
+            else:
+                target, slot = self.target, self.slot
+                model.sources[target, slot] = self.old_source
+                model.edge_weight[target, slot] = self.edge_weight
+                model.edge_bias[target, slot] = self.edge_bias
+                model.structural_edge_credit[target, slot] = self.edge_credit
+                model.structural_edge_age[target, slot] = self.edge_age
+                state.edge_eligibility[:, target, slot] = (
+                    self.edge_eligibility
+                )
+                state.fast_weight[:, target, slot] = self.fast_weight
+                parameters = {
+                    "edge_weight": model.edge_weight,
+                    "edge_bias": model.edge_bias,
+                }
+                for parameter_name, slots in self.optimizer_slots.items():
+                    parameter = parameters[parameter_name]
+                    optimizer_state = optimizer.state.get(parameter, {})
+                    for name, current in optimizer_state.items():
+                        if (
+                            torch.is_tensor(current)
+                            and current.shape == parameter.shape
+                        ):
+                            if name in slots:
+                                current[target, slot] = slots[name]
+                            else:
+                                current[target, slot] = 0
 
         if committed:
             self.total_committed += 1
-        elif not self.virtual:
+        elif not self.virtual and not self.exploratory_traffic:
             self.total_rolled_back += 1
+        self.last_mean_advantage = decision_advantage
         self.active = False
         self.virtual = False
         self.edge_weight = None
@@ -442,6 +566,7 @@ def apply_structural_phase(
             probation_active=True,
             probation_committed=probation.total_committed,
             probation_rolled_back=probation.total_rolled_back,
+            probation_rejected=probation.total_rejected,
             probation_advantage=probation.mean_advantage,
         )
     if (
@@ -539,9 +664,16 @@ def apply_structural_phase(
                 candidate,
                 update,
                 virtual=not config.allow_rewiring,
+                exploratory_traffic=(
+                    config.probation_exploratory_traffic
+                ),
+                candidate_edge_credit=probe_credit,
             )
             probation_started = True
-        if config.allow_rewiring:
+        if (
+            config.allow_rewiring
+            and not config.probation_exploratory_traffic
+        ):
             model.sources[target, slot] = candidate
             model.edge_weight[target, slot] = _probe_equivalent_weight(model)
             model.edge_bias[target, slot] = 0
@@ -563,6 +695,22 @@ def apply_structural_phase(
     if rewired:
         model.total_rewires.add_(rewired)
 
+    if (
+        probation_started
+        and config.probation_exploratory_traffic
+    ):
+        return StructuralUpdate(
+            rewired_edges=0,
+            total_rewires=int(model.total_rewires.item()),
+            candidate_advantage=best_advantage,
+            rejected_for_reachability=rejected_for_reachability,
+            probation_started=True,
+            probation_active=True,
+            probation_committed=probation.total_committed,
+            probation_rolled_back=probation.total_rolled_back,
+            probation_rejected=probation.total_rejected,
+        )
+
     model.probe_sources.copy_(
         next_probe_sources(model.sources, model.probe_sources)
     )
@@ -582,6 +730,9 @@ def apply_structural_phase(
         ),
         probation_rolled_back=(
             0 if probation is None else probation.total_rolled_back
+        ),
+        probation_rejected=(
+            0 if probation is None else probation.total_rejected
         ),
     )
 
@@ -614,16 +765,32 @@ def structural_summary(
             {
                 "active": probation.active,
                 "virtual": probation.virtual,
+                "exploratory_traffic": probation.exploratory_traffic,
                 "target": probation.target,
                 "slot": probation.slot,
                 "candidate_source": probation.candidate_source,
                 "started_update": probation.started_update,
                 "observations": probation.observations,
+                "candidate_observations": (
+                    probation.candidate_observations
+                ),
+                "incumbent_observations": (
+                    probation.incumbent_observations
+                ),
+                "mean_candidate_reward": (
+                    probation.candidate_reward_sum
+                    / max(1, probation.candidate_observations)
+                ),
+                "mean_incumbent_reward": (
+                    probation.incumbent_reward_sum
+                    / max(1, probation.incumbent_observations)
+                ),
                 "baseline_advantage": probation.baseline_advantage,
                 "mean_advantage": probation.mean_advantage,
                 "total_started": probation.total_started,
                 "total_committed": probation.total_committed,
                 "total_rolled_back": probation.total_rolled_back,
+                "total_rejected": probation.total_rejected,
             }
             if probation is not None
             else {}

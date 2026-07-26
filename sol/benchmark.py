@@ -142,6 +142,9 @@ def _run_sol(
                 probation_baseline_decay=(
                     args.structural_probation_baseline_decay
                 ),
+                probation_exploratory_traffic=(
+                    args.structural_probation_exploratory_traffic
+                ),
             ),
             device=device,
         )
@@ -544,6 +547,14 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.99,
     )
+    parser.add_argument(
+        "--structural-probation-exploratory-traffic",
+        action="store_true",
+        help=(
+            "alternate one candidate probe on/off inside the same "
+            "continuously learning organism before grafting"
+        ),
+    )
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
@@ -634,6 +645,17 @@ def parse_args() -> argparse.Namespace:
             parser.error(f"--{name.replace('_', '-')} must be non-negative")
     if args.structural_probation_updates < 0:
         parser.error("--structural-probation-updates must be non-negative")
+    if (
+        args.structural_probation_exploratory_traffic
+        and (
+            args.structural_probation_updates < 2
+            or args.structural_probation_updates % 2 != 0
+        )
+    ):
+        parser.error(
+            "--structural-probation-exploratory-traffic requires "
+            "an even --structural-probation-updates >= 2"
+        )
     if not 0 <= args.structural_probation_baseline_decay < 1:
         parser.error(
             "--structural-probation-baseline-decay must be in [0, 1)"
