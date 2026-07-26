@@ -24,6 +24,8 @@ class TrainMetrics:
     cell_credit: float
     edge_credit: float
     mean_fast_weight: float
+    mean_edge_eligibility: float
+    fast_weight_saturation: float
 
 
 class ContinuousTrainer:
@@ -160,6 +162,12 @@ class ContinuousTrainer:
         mean_energy = torch.stack(trace.mean_energy).mean().item()
         mean_novelty = torch.stack(trace.novelty).mean().item()
         mean_fast_weight = torch.stack(trace.mean_fast_weight).mean().item()
+        mean_edge_eligibility = torch.stack(
+            trace.mean_edge_eligibility
+        ).mean().item()
+        fast_weight_saturation = torch.stack(
+            trace.fast_weight_saturation
+        ).mean().item()
         value = loss.item()
         return TrainMetrics(
             loss=value,
@@ -169,6 +177,8 @@ class ContinuousTrainer:
             cell_credit=cell_credit,
             edge_credit=edge_credit,
             mean_fast_weight=mean_fast_weight,
+            mean_edge_eligibility=mean_edge_eligibility,
+            fast_weight_saturation=fast_weight_saturation,
         )
 
 

@@ -68,7 +68,39 @@ no-metabolism checkpoint remains better and stable.
 The revised local rule centers activity tags across each target's dendrite fan, making
 eligibility competitive rather than allowing mostly positive reward to potentiate all
 incoming edges together. The default gain is 0.02 and the fast-efficacy limit is 0.25.
+A scaled `tanh` homeostat contracts efficacy smoothly near the bound instead of leaving
+many synapses pinned by a hard clamp.
 
-The original gain runs remain useful negative controls. A clean long-run comparison of
-the stabilized rule is still required before fast synaptic memory can be declared
-successful or used to drive axon growth.
+## Matched CPU-scale Shakespeare comparison
+
+The refinement was tested on the same Tiny Shakespeare split with 32 cells, 32 channels,
+6 dendrites, 4 sensory cells, 4 output cells, 2 message steps, seed 13, no metabolism,
+and 2,000 updates × 8 lanes × 32 characters = 512,000 training characters. All variants
+had 32,002 trainable parameters.
+
+| Variant | Best BPC | Final BPC | Final regression | Final saturation |
+|---|---:|---:|---:|---:|
+| No fast efficacy | 2.964 | 2.969 | +0.004 | 0% |
+| Competitive tags, hard bound | 2.945 | 2.945 | +0.000 | 33% |
+| Competitive tags, smooth homeostat | **2.907** | **2.921** | +0.014 | **0%** |
+
+The smooth rule beat the no-fast control at every validation from update 1,000 onward.
+It improved best BPC by 0.058 and final BPC by 0.047 while passing the completed-run
+stability guard. The hard-bound rule also improved the endpoint, but accumulated roughly
+one third of its fast weights at the cap.
+
+This is positive evidence for event-specific fast synaptic credit at reduced scale, not
+yet a full S1 pass. The next required result is the same smooth rule at the original
+64×64, 2.56-million-character GPU budget. Axon growth remains blocked until that
+comparison is stable and beneficial.
+
+## Live checkpoint policy
+
+Promotion now audits the complete validation history. A candidate is excluded when its
+final or worst post-best BPC regresses by more than 0.5. Applied to the real artifacts:
+
+- The S0 no-metabolism live winner is stable with 0.143 worst post-best regression.
+- High-gain fast memory with metabolism is rejected at 9.748 regression.
+- High-gain fast memory without metabolism is rejected at 3.948 regression.
+
+The local UI therefore continues to use the stable 2.451-BPC S0 checkpoint.

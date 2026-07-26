@@ -125,6 +125,8 @@ class FieldTrace:
     novelty: list[torch.Tensor]
     mean_energy: list[torch.Tensor]
     mean_fast_weight: list[torch.Tensor]
+    mean_edge_eligibility: list[torch.Tensor]
+    fast_weight_saturation: list[torch.Tensor]
 
     def cell_credit(self) -> torch.Tensor:
         """Return mean absolute loss gradient per token and cell after backward."""
@@ -306,6 +308,25 @@ class SparseAxonField(nn.Module):
         propagated = (flow * source_stimulation).sum(dim=2)
         return incoming, flow, propagated
 
+    def _updated_fast_weight(
+        self,
+        fast_weight: torch.Tensor,
+        edge_eligibility: torch.Tensor,
+        reward: torch.Tensor,
+    ) -> torch.Tensor:
+        """Apply reward locally through a smooth homeostatic efficacy bound."""
+
+        cfg = self.cfg
+        drive = (
+            cfg.fast_weight_decay * fast_weight
+            + cfg.fast_plasticity_gain
+            * reward[:, None, None]
+            * edge_eligibility
+        )
+        return cfg.fast_weight_limit * torch.tanh(
+            drive / cfg.fast_weight_limit
+        )
+
     def tick(
         self,
         state: FieldState,
@@ -351,12 +372,11 @@ class SparseAxonField(nn.Module):
         stimulation = state.stimulation
         eligibility = state.eligibility
         edge_eligibility = state.edge_eligibility
-        fast_weight = (
-            cfg.fast_weight_decay * state.fast_weight
-            + cfg.fast_plasticity_gain
-            * reward[:, None, None]
-            * state.edge_eligibility
-        ).clamp(-cfg.fast_weight_limit, cfg.fast_weight_limit)
+        fast_weight = self._updated_fast_weight(
+            state.fast_weight,
+            state.edge_eligibility,
+            reward,
+        )
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
 
@@ -425,6 +445,14 @@ class SparseAxonField(nn.Module):
             "novelty": novelty,
             "mean_energy": energy.mean(dim=1),
             "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
+            "mean_edge_eligibility": edge_eligibility.abs().mean(
+                dim=(1, 2)
+            ),
+            "fast_weight_saturation": (
+                fast_weight.abs() >= 0.95 * cfg.fast_weight_limit
+            )
+            .to(fast_weight.dtype)
+            .mean(dim=(1, 2)),
         }
         return logits, next_state, diagnostics
 
@@ -454,7 +482,7 @@ class SparseAxonField(nn.Module):
             raise ValueError("state batch does not match tokens")
 
         logits: list[torch.Tensor] = []
-        trace = FieldTrace([], [], [], [], [])
+        trace = FieldTrace([], [], [], [], [], [], [])
         reward = state.reward
 
         for index in range(length):
@@ -467,6 +495,12 @@ class SparseAxonField(nn.Module):
             trace.novelty.append(diag["novelty"])
             trace.mean_energy.append(diag["mean_energy"])
             trace.mean_fast_weight.append(diag["mean_fast_weight"])
+            trace.mean_edge_eligibility.append(
+                diag["mean_edge_eligibility"]
+            )
+            trace.fast_weight_saturation.append(
+                diag["fast_weight_saturation"]
+            )
 
             if targets is not None:
                 surprise = F.cross_entropy(

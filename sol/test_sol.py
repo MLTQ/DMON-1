@@ -28,6 +28,7 @@ from .model import SolConfig, SparseAxonField
 from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
+from .stability import summarize_stability
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .topology import analyze_topology
 from .train import ContinuousTrainer
@@ -118,7 +119,12 @@ def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
     _, next_state, _ = model.tick(
         state, token=None, reward=torch.ones(1)
     )
-    expected = model.cfg.fast_plasticity_gain
+    expected = model.cfg.fast_weight_limit * torch.tanh(
+        torch.tensor(
+            model.cfg.fast_plasticity_gain
+            / model.cfg.fast_weight_limit
+        )
+    ).item()
     assert next_state.fast_weight[0, 3, 1].item() == pytest.approx(expected)
     untagged = next_state.fast_weight.clone()
     untagged[:, 3, 1] = 0.0
@@ -167,9 +173,14 @@ def test_pending_reward_is_consumed_exactly_once() -> None:
     _, after_reward, _ = model.tick(state, token=None)
     _, after_quiet, _ = model.tick(after_reward, token=None)
     assert torch.count_nonzero(after_reward.fast_weight).item() > 0
+    expected_quiet = model.cfg.fast_weight_limit * torch.tanh(
+        model.cfg.fast_weight_decay
+        * after_reward.fast_weight
+        / model.cfg.fast_weight_limit
+    )
     assert torch.allclose(
         after_quiet.fast_weight,
-        model.cfg.fast_weight_decay * after_reward.fast_weight,
+        expected_quiet,
     )
     assert torch.count_nonzero(after_quiet.reward).item() == 0
 
@@ -313,8 +324,10 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert result["metrics"]["edgeCredit"] > 0
     assert result["metrics"]["energy"] >= 0
     assert result["metrics"]["fastWeight"] >= 0
+    assert 0 <= result["metrics"]["fastSaturation"] <= 1
     snapshot = organism.snapshot()
     assert snapshot["metrics"]["edgeEligibility"] != 0
+    assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
 
 
@@ -353,11 +366,72 @@ def test_checkpoint_promotion_validates_and_selects_lowest_bpc(
             ),
             encoding="utf-8",
         )
+        (run / "metrics.jsonl").write_text(
+            json.dumps(
+                {
+                    "kind": "evaluation",
+                    "model": "sol",
+                    "update": trainer.updates,
+                    "ablations": {
+                        "persistent": {
+                            "bits_per_character": bpc
+                        }
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         runs.append(run)
+
+    unstable = tmp_path / "unstable"
+    unstable.mkdir()
+    save_checkpoint(
+        unstable / "best.pt", trainer, {"best_bpc": 2.2}
+    )
+    (unstable / "summary.json").write_text(
+        json.dumps(
+            {
+                "model": "sol",
+                "best_bpc": 2.2,
+                "updates": 2,
+                "parameters": sum(
+                    parameter.numel()
+                    for parameter in trainer.model.parameters()
+                ),
+                "evaluation": {
+                    "persistent": {"bits_per_character": 4.0}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (unstable / "metrics.jsonl").write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "kind": "evaluation",
+                    "model": "sol",
+                    "update": update,
+                    "ablations": {
+                        "persistent": {
+                            "bits_per_character": bpc
+                        }
+                    },
+                }
+            )
+            for update, bpc in ((1, 2.2), (2, 4.0))
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     destination = tmp_path / "live.pt"
-    manifest = promote_best_checkpoint(runs, destination)
+    manifest = promote_best_checkpoint(runs + [unstable], destination)
     assert manifest["source_run"] == str(runs[1])
     assert manifest["best_bpc"] == 2.4
+    assert manifest["stability"]["stable"]
+    assert manifest["rejected_candidates"][0]["run"] == str(unstable)
+    assert not manifest["rejected_candidates"][0]["stability"]["stable"]
     assert destination.exists()
     assert destination.with_suffix(".json").exists()
     promoted = LiveOrganism(destination)
@@ -375,6 +449,8 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     assert all(value["tokens"] == 12 for value in metrics.values())
     assert all(value["bits_per_character"] > 0 for value in metrics.values())
     assert all("mean_fast_weight" in value for value in metrics.values())
+    assert all("mean_edge_eligibility" in value for value in metrics.values())
+    assert all("fast_weight_saturation" in value for value in metrics.values())
     sweep = evaluate_warmup_sweep(
         model,
         vocabulary,
@@ -385,6 +461,24 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     )
     assert set(sweep) == {"0", "2", "4"}
     assert all(value["tokens"] == 12 for value in sweep.values())
+
+
+def test_stability_ignores_early_learning_but_rejects_post_best_collapse() -> None:
+    stable = summarize_stability(
+        [(1, 5.0), (2, 3.0), (3, 2.5), (4, 2.7)],
+        max_regression_bpc=0.5,
+    )
+    assert stable["stable"]
+    assert stable["best_update"] == 3
+    assert stable["final_regression_bpc"] == pytest.approx(0.2)
+
+    collapsed = summarize_stability(
+        [(1, 5.0), (2, 2.4), (3, 3.1), (3, 3.2)],
+        max_regression_bpc=0.5,
+    )
+    assert not collapsed["stable"]
+    assert collapsed["evaluations"] == 3
+    assert collapsed["worst_regression_bpc"] == pytest.approx(0.8)
 
 
 def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:

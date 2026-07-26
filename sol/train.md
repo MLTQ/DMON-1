@@ -9,7 +9,7 @@ one-character-at-a-time organism path used during training.
 
 ### `TrainMetrics`
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
-  edge credit and mean fast synaptic efficacy.
+  edge credit, mean edge eligibility, fast synaptic efficacy, and saturation.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.

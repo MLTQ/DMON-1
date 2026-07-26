@@ -103,6 +103,11 @@ class LiveOrganism:
                 fast_weight_values = [
                     float(diagnostics["mean_fast_weight"].mean().item())
                 ]
+                fast_saturation_values = [
+                    float(
+                        diagnostics["fast_weight_saturation"].mean().item()
+                    )
+                ]
 
                 for _ in range(characters):
                     probabilities = torch.softmax(
@@ -124,6 +129,13 @@ class LiveOrganism:
                             diagnostics["mean_fast_weight"].mean().item()
                         )
                     )
+                    fast_saturation_values.append(
+                        float(
+                            diagnostics["fast_weight_saturation"]
+                            .mean()
+                            .item()
+                        )
+                    )
 
             self.loaded.state = state.detached()
             return {
@@ -138,6 +150,10 @@ class LiveOrganism:
                     "edgeFlow": sum(flow_values) / len(flow_values),
                     "fastWeight": (
                         sum(fast_weight_values) / len(fast_weight_values)
+                    ),
+                    "fastSaturation": (
+                        sum(fast_saturation_values)
+                        / len(fast_saturation_values)
                     ),
                 },
                 "checkpoint": {
@@ -166,6 +182,16 @@ class LiveOrganism:
                     ),
                     "fastWeight": float(
                         state.fast_weight.abs().mean().item()
+                    ),
+                    "fastSaturation": float(
+                        (
+                            state.fast_weight.abs()
+                            >= 0.95
+                            * self.loaded.model.cfg.fast_weight_limit
+                        )
+                        .to(state.fast_weight.dtype)
+                        .mean()
+                        .item()
                     ),
                 },
                 "topology": {

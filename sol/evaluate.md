@@ -9,7 +9,8 @@ including controls that test whether persistent cellular state is doing useful w
 
 ### `EvaluationMetrics`
 - **Does**: Reports NLL, bits per character, perplexity, accuracy, energy, novelty, and
-  measured edge flow plus mean fast synaptic efficacy together.
+  measured edge flow plus edge eligibility, mean fast synaptic efficacy, and saturation
+  together.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
 
 ### `evaluate_sol`

@@ -14,7 +14,7 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 ### `LiveOrganism.generate`
 - **Does**: Streams the human prompt through the ordinary field, backpropagates prompt
   next-character loss without updating weights, reports measured cell/edge credit and
-  fast synaptic efficacy, then samples through the same output path.
+  fast synaptic efficacy and saturation, then samples through the same output path.
 - **Rationale**: UI credit telemetry comes from a real reverse signal rather than a
   fabricated animation metric.
 

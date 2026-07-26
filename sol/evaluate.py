@@ -23,6 +23,8 @@ class EvaluationMetrics:
     mean_novelty: float
     mean_edge_flow: float
     mean_fast_weight: float
+    mean_edge_eligibility: float
+    fast_weight_saturation: float
 
     def to_dict(self) -> dict[str, float | int]:
         return asdict(self)
@@ -94,6 +96,8 @@ def evaluate_sol(
     novelties: list[float] = []
     edge_flows: list[float] = []
     fast_weights: list[float] = []
+    edge_eligibilities: list[float] = []
+    fast_saturations: list[float] = []
 
     for index in range(warmup + scored_tokens):
         if reset_each_token:
@@ -116,6 +120,16 @@ def evaluate_sol(
             fast_weights.append(
                 float(diagnostics["mean_fast_weight"].mean().item())
             )
+            edge_eligibilities.append(
+                float(
+                    diagnostics["mean_edge_eligibility"].mean().item()
+                )
+            )
+            fast_saturations.append(
+                float(
+                    diagnostics["fast_weight_saturation"].mean().item()
+                )
+            )
 
     model.train(was_training)
     nll = total_loss / scored_tokens
@@ -129,6 +143,8 @@ def evaluate_sol(
         mean_novelty=sum(novelties) / scored_tokens,
         mean_edge_flow=sum(edge_flows) / scored_tokens,
         mean_fast_weight=sum(fast_weights) / scored_tokens,
+        mean_edge_eligibility=sum(edge_eligibilities) / scored_tokens,
+        fast_weight_saturation=sum(fast_saturations) / scored_tokens,
     )
 
 

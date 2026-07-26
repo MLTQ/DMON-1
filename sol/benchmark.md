@@ -30,6 +30,12 @@ with checkpointing and append-only metrics.
   sensory-to-output distance in every SOL summary.
 - **Interacts with**: `analyze_topology` in `topology.py`.
 
+### Stability report
+- **Does**: Measures final and worst post-best BPC regression across completed
+  validations and marks runs unstable beyond `--max-final-regression-bpc`.
+- **Rationale**: A transient best checkpoint does not establish a viable continuous
+  organism if the same uninterrupted run later collapses.
+
 ### `_run_gru`
 - **Does**: Trains a parameter-matched GRU with the same batch lanes, chunk length,
   optimizer family, token budget, held-out split, and evaluation window.
@@ -53,6 +59,7 @@ with checkpointing and append-only metrics.
 | Dual-GPU launch | `--model sol|gru|transformer` lets each GPU run one independent job | CLI names |
 | Local UI backend | `best.pt` is a complete SOL checkpoint with evaluation metadata | Checkpoint selection |
 | Scientific report | Both models see the first 90% for training and final 10% for validation | Split semantics |
+| `promote.py` | SOL summaries and JSONL history expose completed-run stability | Stability fields or evaluation rows |
 
 ## Notes
 

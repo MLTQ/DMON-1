@@ -23,7 +23,7 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
 
 ### `FieldTrace`
 - **Does**: Retains token-local hidden states and measured traffic for post-backward
-  credit inspection.
+  credit inspection, including edge eligibility and fast-weight saturation.
 
 ### `SparseAxonField`
 - **Does**: Applies one shared GRU rule at every cell while messages travel only through
@@ -58,10 +58,14 @@ state, reward-addressable eligibility memory, and bounded fast synaptic efficacy
 - Fixed topology is intentional for the first falsification. Axon growth comes only after
   forward transport, backward credit, and persistent event memory are demonstrated.
 - Slow edge parameters learn by exact truncated BPTT. Fast efficacy is stream-local,
-  bounded, decays, and changes only when delayed reward meets a remembered edge tag.
+  smoothly bounded, decays, and changes only when delayed reward meets a remembered
+  edge tag.
 - Locally computed tags are centered across each target's dendrites before entering
   eligibility memory. This makes plasticity competitive within a dendrite fan instead
   of allowing globally positive reward to potentiate every incoming edge together.
+- Fast efficacy uses a scaled `tanh` homeostat rather than a hard clamp. Small updates
+  remain nearly linear, while values approaching the bound receive increasing
+  contraction instead of accumulating as clipped, effectively frozen synapses.
 - Energy currently modulates computation but does not kill or reproduce cells.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

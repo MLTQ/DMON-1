@@ -23,6 +23,8 @@ tensor shapes.
   cannot mint metabolic energy.
 - **Does**: Proves learned edge tags are competitive and zero-sum within each target's
   dendrite fan, preventing broad reward-driven potentiation.
+- **Does**: Proves the smooth homeostatic efficacy update remains bounded and consumes
+  pending reward without falling back to hard clipping.
 - **Does**: Proves a pending reward is consumed exactly once instead of being replayed
   during unstimulated or generated ticks.
 
@@ -44,18 +46,22 @@ tensor shapes.
   requires nonzero measured prompt credit plus real edge-eligibility and fast-weight
   telemetry.
 - **Does**: Validates multiple completed candidates, promotes the lowest-BPC checkpoint,
-  and reloads the atomic destination.
+  rejects a transient best from a collapsed run, and reloads the atomic destination.
 
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU
   and causal-transformer controls are stateful and genuinely parameter matched.
 - **Does**: Requires evaluation to report fast synaptic efficacy and shuffle every
   target-owned cell and edge state together.
+- **Does**: Requires edge eligibility and fast-weight saturation telemetry in training,
+  held-out evaluation, and the local live bridge.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.
 
 ### Report guard test
 - **Does**: Requires finite completed summaries, matched parameter/update budgets, and
   correct reset/shuffle penalties before a winner can be named.
+- **Does**: Distinguishes ordinary early learning from post-best collapse and deduplicates
+  repeated evaluation updates after resume.
 
 ## Contracts
 

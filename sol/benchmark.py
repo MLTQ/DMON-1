@@ -25,6 +25,10 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .stability import (
+    load_sol_evaluation_history,
+    summarize_stability,
+)
 from .stream import CharacterVocabulary, ContinuousCharStream
 from .topology import analyze_topology
 from .train import ContinuousTrainer, generate
@@ -121,6 +125,9 @@ def _run_sol(
     best_bpc = float(checkpoint_metadata.get("best_bpc", math.inf))
     started = time.monotonic()
     last_eval: dict[str, Any] = {}
+    evaluation_history = load_sol_evaluation_history(
+        args.out_dir / "metrics.jsonl"
+    )
 
     while trainer.updates < args.updates:
         metrics = trainer.step()
@@ -173,6 +180,7 @@ def _run_sol(
                 "sample": sample,
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", eval_row)
+            evaluation_history.append((update, persistent_bpc))
             print(
                 f"[sol:{update:6d}] heldout_bpc={persistent_bpc:.3f} "
                 f"reset={last_eval['reset_each_token']['bits_per_character']:.3f} "
@@ -216,6 +224,9 @@ def _run_sol(
             trainer.model.sensory_indices,
             trainer.model.output_indices,
         ).to_dict(),
+        "stability": summarize_stability(
+            evaluation_history, args.max_final_regression_bpc
+        ),
     }
     _write_json(args.out_dir / "summary.json", summary)
     return summary
@@ -464,6 +475,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.02)
+    parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--log-every", type=int, default=25)
@@ -502,6 +514,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--updates must be positive")
     if args.fast_plasticity_gain < 0:
         parser.error("--fast-plasticity-gain must be non-negative")
+    if args.max_final_regression_bpc < 0:
+        parser.error("--max-final-regression-bpc must be non-negative")
     for name in ("log_every", "eval_every", "checkpoint_every"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
