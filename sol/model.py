@@ -8,7 +8,7 @@ targets own a small number of explicit dendrite slots, each naming one source ce
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from typing import Any, Mapping
 
 import torch
@@ -45,7 +45,10 @@ class SolConfig:
     energy_start: float = 0.60
     basal_cost: float = 0.002
     activity_cost: float = 0.003
-    stimulation_gain: float = 0.025
+    stimulation_gain: float = 0.05
+    energy_transport_rate: float = 0.50
+    quiescence_energy: float = 0.01
+    full_activity_energy: float = 0.05
 
     def __post_init__(self) -> None:
         if self.vocab_size < 2:
@@ -88,6 +91,26 @@ class SolConfig:
         if self.structural_probe_gain > 0 and self.dendrites >= self.cells:
             raise ValueError(
                 "structural probes require at least one non-edge source"
+            )
+        if not 0 <= self.energy_start <= 1:
+            raise ValueError("energy_start must be in [0, 1]")
+        if (
+            self.basal_cost < 0
+            or self.activity_cost < 0
+            or self.stimulation_gain < 0
+        ):
+            raise ValueError("metabolic costs and input gain must be nonnegative")
+        if not 0 <= self.energy_transport_rate <= 1:
+            raise ValueError("energy_transport_rate must be in [0, 1]")
+        if not (
+            0
+            <= self.quiescence_energy
+            < self.full_activity_energy
+            <= 1
+        ):
+            raise ValueError(
+                "viability thresholds must satisfy "
+                "0 <= quiescence_energy < full_activity_energy <= 1"
             )
 
 
@@ -146,20 +169,25 @@ class FieldState:
 class FieldTrace:
     """Differentiable evidence retained from one streamed sequence."""
 
-    hidden: list[torch.Tensor]
-    edge_flow: list[torch.Tensor]
-    novelty: list[torch.Tensor]
-    mean_energy: list[torch.Tensor]
-    mean_backward_credit: list[torch.Tensor]
-    mean_fast_weight: list[torch.Tensor]
-    mean_edge_eligibility: list[torch.Tensor]
-    fast_weight_saturation: list[torch.Tensor]
-    mean_probe_eligibility: list[torch.Tensor]
-    mean_probe_flow: list[torch.Tensor]
-    structural_edge_evidence: list[torch.Tensor]
-    structural_probe_evidence: list[torch.Tensor]
-    probe_effect: list[torch.Tensor]
-    prequential_reward: list[torch.Tensor]
+    hidden: list[torch.Tensor] = field(default_factory=list)
+    edge_flow: list[torch.Tensor] = field(default_factory=list)
+    novelty: list[torch.Tensor] = field(default_factory=list)
+    mean_energy: list[torch.Tensor] = field(default_factory=list)
+    mean_viability: list[torch.Tensor] = field(default_factory=list)
+    quiescent_fraction: list[torch.Tensor] = field(default_factory=list)
+    energy_input: list[torch.Tensor] = field(default_factory=list)
+    energy_spent: list[torch.Tensor] = field(default_factory=list)
+    energy_transport_drift: list[torch.Tensor] = field(default_factory=list)
+    mean_backward_credit: list[torch.Tensor] = field(default_factory=list)
+    mean_fast_weight: list[torch.Tensor] = field(default_factory=list)
+    mean_edge_eligibility: list[torch.Tensor] = field(default_factory=list)
+    fast_weight_saturation: list[torch.Tensor] = field(default_factory=list)
+    mean_probe_eligibility: list[torch.Tensor] = field(default_factory=list)
+    mean_probe_flow: list[torch.Tensor] = field(default_factory=list)
+    structural_edge_evidence: list[torch.Tensor] = field(default_factory=list)
+    structural_probe_evidence: list[torch.Tensor] = field(default_factory=list)
+    probe_effect: list[torch.Tensor] = field(default_factory=list)
+    prequential_reward: list[torch.Tensor] = field(default_factory=list)
 
     def cell_credit(self) -> torch.Tensor:
         """Return mean absolute loss gradient per token and cell after backward."""
@@ -404,11 +432,21 @@ class SparseAxonField(nn.Module):
 
         return _directed_sources(self.cfg).to(self.sources.device)
 
+    def _viability(self, energy: torch.Tensor) -> torch.Tensor:
+        """Map energy to a reversible quiescence gate without adding state."""
+
+        cfg = self.cfg
+        return (
+            (energy - cfg.quiescence_energy)
+            / (cfg.full_activity_energy - cfg.quiescence_energy)
+        ).clamp(0.0, 1.0)
+
     def _messages(
         self,
         hidden: torch.Tensor,
         stimulation: torch.Tensor,
         fast_weight: torch.Tensor,
+        viability: torch.Tensor,
     ) -> tuple[
         torch.Tensor,
         torch.Tensor,
@@ -426,6 +464,7 @@ class SparseAxonField(nn.Module):
         )
         attention = torch.softmax(score, dim=2)
         emission = torch.sigmoid(self.emit_gate(source_hidden)).squeeze(-1)
+        emission = emission * viability[:, self.sources]
         signed_weight = torch.tanh(self.edge_weight.unsqueeze(0) + fast_weight)
         coefficient = attention * emission * signed_weight
         value = self.message_value(source_hidden)
@@ -472,9 +511,58 @@ class SparseAxonField(nn.Module):
         )
         return transported / math.sqrt(self.cfg.dendrites)
 
+    def _transport_energy(
+        self,
+        energy: torch.Tensor,
+        edge_flow: torch.Tensor,
+        probe_flow: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Move existing energy from sources to targets without creating any."""
+
+        cfg = self.cfg
+        batch = energy.shape[0]
+        expected_edges = (batch, cfg.cells, cfg.dendrites)
+        if energy.shape != (batch, cfg.cells):
+            raise ValueError("energy must have shape (batch, cells)")
+        if edge_flow.shape != expected_edges:
+            raise ValueError(
+                "edge flow must have shape (batch, cells, dendrites)"
+            )
+        if probe_flow.shape != (batch, cfg.cells):
+            raise ValueError("probe flow must have shape (batch, cells)")
+        if cfg.energy_transport_rate == 0:
+            return energy, torch.zeros(batch, device=energy.device)
+
+        flow = torch.cat((edge_flow, probe_flow.unsqueeze(2)), dim=2)
+        sources = torch.cat(
+            (self.sources, self.probe_sources.unsqueeze(1)),
+            dim=1,
+        )
+        requested = cfg.energy_transport_rate * flow
+        flat_sources = sources.flatten().view(1, -1).expand(batch, -1)
+        outbound_request = torch.zeros_like(energy)
+        outbound_request.scatter_add_(1, flat_sources, requested.flatten(1))
+        source_scale = outbound_request.clamp_min(1.0).reciprocal()
+        edge_fraction = requested * source_scale[:, sources]
+        requested_transfer = energy[:, sources] * edge_fraction
+        requested_incoming = requested_transfer.sum(dim=2)
+        target_scale = torch.minimum(
+            torch.ones_like(requested_incoming),
+            (1.0 - energy)
+            / requested_incoming.clamp_min(torch.finfo(energy.dtype).eps),
+        )
+        transfer = requested_transfer * target_scale.unsqueeze(2)
+        incoming = transfer.sum(dim=2)
+        outgoing = torch.zeros_like(energy)
+        outgoing.scatter_add_(1, flat_sources, transfer.flatten(1))
+        transported = (energy + incoming - outgoing).clamp_min(0.0)
+        drift = transported.sum(dim=1) - energy.sum(dim=1)
+        return transported, drift
+
     def _probe_message(
         self,
         hidden: torch.Tensor,
+        viability: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return one weak exploratory candidate message per target."""
@@ -487,6 +575,7 @@ class SparseAxonField(nn.Module):
                 source_hidden,
             )
         emission = torch.sigmoid(self.emit_gate(source_hidden)).squeeze(-1)
+        emission = emission * viability[:, self.probe_sources]
         flow = self.cfg.structural_probe_gain * emission
         if mask is not None:
             if mask.shape != (self.cfg.cells,):
@@ -580,7 +669,19 @@ class SparseAxonField(nn.Module):
             )
 
         hidden = state.hidden
-        energy = state.energy
+        energy_before_tick = state.energy.sum(dim=1)
+        requested_input = torch.zeros_like(state.energy)
+        if token is not None and cfg.stimulation_gain > 0:
+            requested_input[:, self.sensory_indices] = (
+                cfg.stimulation_gain
+                * novelty.unsqueeze(1)
+                * cfg.cells
+                / cfg.sensory_cells
+            )
+        energy = (state.energy + requested_input).clamp(0.0, 1.0)
+        energy_input = energy.sum(dim=1) - energy_before_tick
+        energy_spent = torch.zeros_like(energy_input)
+        energy_transport_drift = torch.zeros_like(energy_input)
         stimulation = state.stimulation
         eligibility = state.eligibility
         backward_credit = state.backward_credit
@@ -618,12 +719,17 @@ class SparseAxonField(nn.Module):
             backward_credit = torch.zeros_like(backward_credit)
 
         for _ in range(cfg.message_steps):
+            viability = self._viability(energy)
             source_hidden = hidden[:, self.sources]
             incoming, flow, propagated, coefficient = self._messages(
-                hidden, stimulation, fast_weight
+                hidden, stimulation, fast_weight, viability
             )
             probe_message, probe_flow, probe_source_hidden = (
-                self._probe_message(hidden, structural_probe_mask)
+                self._probe_message(
+                    hidden,
+                    viability,
+                    structural_probe_mask,
+                )
             )
             incoming_with_probe = incoming + probe_message
             stimulation = (
@@ -645,9 +751,10 @@ class SparseAxonField(nn.Module):
                 ),
                 dim=2,
             )
-            updated = self.cell_rule(
+            proposed = self.cell_rule(
                 rule_input.flatten(0, 1), hidden.flatten(0, 1)
             ).reshape_as(hidden)
+            updated = hidden + viability.unsqueeze(2) * (proposed - hidden)
             if cfg.structural_probe_gain > 0:
                 with torch.no_grad():
                     counterfactual_input = torch.cat(
@@ -660,10 +767,13 @@ class SparseAxonField(nn.Module):
                         ),
                         dim=2,
                     )
-                    without_probe = self.cell_rule(
+                    without_probe_proposed = self.cell_rule(
                         counterfactual_input.flatten(0, 1),
                         hidden.detach().flatten(0, 1),
                     ).reshape_as(hidden)
+                    without_probe = hidden.detach() + viability.unsqueeze(
+                        2
+                    ) * (without_probe_proposed - hidden.detach())
                     probe_effect = updated.detach() - without_probe
                     probe_tag = torch.tanh(
                         (
@@ -679,7 +789,9 @@ class SparseAxonField(nn.Module):
 
             eligibility = (
                 cfg.eligibility_decay * eligibility
-                + (1 - cfg.eligibility_decay) * torch.tanh(external + incoming)
+                + (1 - cfg.eligibility_decay)
+                * viability.unsqueeze(2)
+                * torch.tanh(external + incoming)
             )
             target_change = updated - hidden
             edge_tag = torch.tanh(
@@ -698,12 +810,21 @@ class SparseAxonField(nn.Module):
                 + (1 - cfg.edge_eligibility_decay) * probe_tag
             )
             activity = (updated - hidden).abs().mean(dim=2)
+            before_cost = energy.sum(dim=1)
             energy = (
                 energy
-                - cfg.basal_cost
+                - cfg.basal_cost * (viability > 0).to(energy.dtype)
                 - cfg.activity_cost * activity
-                + cfg.stimulation_gain * stimulation
             ).clamp(0.0, 1.0)
+            energy_spent = energy_spent + before_cost - energy.sum(dim=1)
+            energy, transport_drift = self._transport_energy(
+                energy,
+                flow,
+                probe_flow,
+            )
+            energy_transport_drift = (
+                energy_transport_drift + transport_drift
+            )
             if cfg.backward_credit_gain > 0:
                 transported_credit = self._transport_backward_credit(
                     backward_credit,
@@ -723,7 +844,11 @@ class SparseAxonField(nn.Module):
         if retain_credit and hidden.requires_grad:
             hidden.retain_grad()
 
-        output = hidden[:, self.output_indices].reshape(batch, -1)
+        final_viability = self._viability(energy)
+        output = (
+            hidden[:, self.output_indices]
+            * final_viability[:, self.output_indices].unsqueeze(2)
+        ).reshape(batch, -1)
         logits = self.output_readout(self.output_norm(output))
         next_state = FieldState(
             hidden=hidden,
@@ -742,6 +867,13 @@ class SparseAxonField(nn.Module):
             "edge_flow": mean_flow,
             "novelty": novelty,
             "mean_energy": energy.mean(dim=1),
+            "mean_viability": final_viability.mean(dim=1),
+            "quiescent_fraction": (
+                energy <= cfg.quiescence_energy
+            ).to(energy.dtype).mean(dim=1),
+            "energy_input": energy_input,
+            "energy_spent": energy_spent,
+            "energy_transport_drift": energy_transport_drift,
             "mean_backward_credit": backward_credit.abs().mean(dim=1),
             "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
             "mean_edge_eligibility": edge_eligibility.abs().mean(
@@ -788,9 +920,7 @@ class SparseAxonField(nn.Module):
             raise ValueError("state batch does not match tokens")
 
         logits: list[torch.Tensor] = []
-        trace = FieldTrace(
-            [], [], [], [], [], [], [], [], [], [], [], [], [], []
-        )
+        trace = FieldTrace()
         reward = state.reward
 
         for index in range(length):
@@ -806,6 +936,13 @@ class SparseAxonField(nn.Module):
             trace.edge_flow.append(diag["edge_flow"])
             trace.novelty.append(diag["novelty"])
             trace.mean_energy.append(diag["mean_energy"])
+            trace.mean_viability.append(diag["mean_viability"])
+            trace.quiescent_fraction.append(diag["quiescent_fraction"])
+            trace.energy_input.append(diag["energy_input"])
+            trace.energy_spent.append(diag["energy_spent"])
+            trace.energy_transport_drift.append(
+                diag["energy_transport_drift"]
+            )
             trace.mean_backward_credit.append(
                 diag["mean_backward_credit"]
             )

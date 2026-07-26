@@ -16,12 +16,17 @@ with checkpointing and append-only metrics.
 ### Scientific controls
 - **Does**: `--freeze-edges` trains an otherwise identical organism without modifying
   its directed edge weights or biases; `--no-metabolism` holds energy at one.
+- **Does**: `--external-energy-gain`, `--energy-transport-rate`,
+  `--quiescence-energy`, and `--full-activity-energy` expose the parameter-neutral
+  directed economy and viability ramp for matched experiments.
 - **Does**: `--no-reward` disables both cell and synapse reward effects while leaving
   event traces intact; `--no-fast-plasticity` isolates the older cell-level reward path.
 - **Rationale**: Learned morphology and metabolic modulation must earn their claims
   against controls rather than ride on the shared cell rule; delayed eligibility
   feedback and fast synaptic memory must likewise improve prediction rather than merely
   sound plausible.
+- **Rationale**: `--no-metabolism` also disables energy transport, preserving the exact
+  energy-one capability control instead of silently introducing redistribution.
 - **Does**: `--fast-plasticity-gain` records and varies the reward-to-efficacy scale for
   matched gain sweeps without changing parameter count.
 - **Does**: `--reward-baseline-decay` records the time scale used to turn surprise into

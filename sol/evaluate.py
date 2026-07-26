@@ -21,6 +21,11 @@ class EvaluationMetrics:
     accuracy: float
     tokens: int
     mean_energy: float
+    mean_viability: float
+    quiescent_fraction: float
+    energy_input: float
+    energy_spent: float
+    energy_transport_drift: float
     mean_backward_credit: float
     mean_novelty: float
     mean_edge_flow: float
@@ -101,6 +106,11 @@ def evaluate_sol(
     total_loss = 0.0
     correct = 0
     energies: list[float] = []
+    viabilities: list[float] = []
+    quiescent_fractions: list[float] = []
+    energy_inputs: list[float] = []
+    energy_costs: list[float] = []
+    energy_drifts: list[float] = []
     backward_credits: list[float] = []
     novelties: list[float] = []
     edge_flows: list[float] = []
@@ -133,6 +143,23 @@ def evaluate_sol(
             total_loss += float(surprise.item())
             correct += int(logits.argmax(dim=-1).item() == target.item())
             energies.append(float(diagnostics["mean_energy"].mean().item()))
+            viabilities.append(
+                float(diagnostics["mean_viability"].mean().item())
+            )
+            quiescent_fractions.append(
+                float(diagnostics["quiescent_fraction"].mean().item())
+            )
+            energy_inputs.append(
+                float(diagnostics["energy_input"].mean().item())
+            )
+            energy_costs.append(
+                float(diagnostics["energy_spent"].mean().item())
+            )
+            energy_drifts.append(
+                float(
+                    diagnostics["energy_transport_drift"].mean().item()
+                )
+            )
             backward_credits.append(
                 float(
                     diagnostics["mean_backward_credit"].mean().item()
@@ -171,6 +198,11 @@ def evaluate_sol(
         accuracy=correct / scored_tokens,
         tokens=scored_tokens,
         mean_energy=sum(energies) / scored_tokens,
+        mean_viability=sum(viabilities) / scored_tokens,
+        quiescent_fraction=sum(quiescent_fractions) / scored_tokens,
+        energy_input=sum(energy_inputs) / scored_tokens,
+        energy_spent=sum(energy_costs) / scored_tokens,
+        energy_transport_drift=sum(energy_drifts) / scored_tokens,
         mean_backward_credit=(
             sum(backward_credits) / scored_tokens
         ),

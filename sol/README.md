@@ -33,6 +33,10 @@ probabilities out. It is not a transformer imitation.
   better, both endpoints can pay, and full sensory/output reachability survives.
 - Externally caused stimulation propagates along measured edge flow. Stimulation and
   energy decay when input stops.
+- Novel input is the only metabolic inflow. Energy is conserved while moving through
+  named axons and exploratory probes, pays basal/activity/growth costs, and gates each
+  cell from quiescent to fully active. A quiet cell can recover when later input or a
+  funded neighbor reaches it.
 
 Rewiring is disabled by default. The matched structural control receives the same
 rotating exploratory traffic and continues ordinary learning, but never installs a
@@ -94,9 +98,9 @@ The prototype has failed if any of these are true:
 
 ## Deliberate omissions
 
-- No cell birth or death; topology mutation preserves a fixed number of cells and
-  dendrite slots.
+- No cell birth or irreversible death; topology mutation preserves a fixed number of
+  cells and dendrite slots, while energy can cause reversible quiescence.
 - No visual or audio organs yet.
-- Energy modulates cell computation but does not yet govern viability.
+- Energy governs reversible viability but not reproduction or permanent tissue loss.
 - Eligibility is neural event memory, not a full online parameter-gradient algorithm.
   Exact gradients remain truncated to the current optimizer window.

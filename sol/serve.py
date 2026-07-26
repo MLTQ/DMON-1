@@ -97,6 +97,25 @@ class LiveOrganism:
                 novelty_values = [
                     float(diagnostics["novelty"].mean().item())
                 ]
+                viability_values = [
+                    float(diagnostics["mean_viability"].mean().item())
+                ]
+                quiescent_values = [
+                    float(
+                        diagnostics["quiescent_fraction"].mean().item()
+                    )
+                ]
+                energy_input_values = [
+                    float(diagnostics["energy_input"].mean().item())
+                ]
+                energy_spent_values = [
+                    float(diagnostics["energy_spent"].mean().item())
+                ]
+                energy_drift_values = [
+                    float(
+                        diagnostics["energy_transport_drift"].mean().item()
+                    )
+                ]
                 flow_values = [
                     float(diagnostics["edge_flow"].mean().item())
                 ]
@@ -124,6 +143,29 @@ class LiveOrganism:
                     novelty_values.append(
                         float(diagnostics["novelty"].mean().item())
                     )
+                    viability_values.append(
+                        float(
+                            diagnostics["mean_viability"].mean().item()
+                        )
+                    )
+                    quiescent_values.append(
+                        float(
+                            diagnostics["quiescent_fraction"].mean().item()
+                        )
+                    )
+                    energy_input_values.append(
+                        float(diagnostics["energy_input"].mean().item())
+                    )
+                    energy_spent_values.append(
+                        float(diagnostics["energy_spent"].mean().item())
+                    )
+                    energy_drift_values.append(
+                        float(
+                            diagnostics["energy_transport_drift"]
+                            .mean()
+                            .item()
+                        )
+                    )
                     flow_values.append(
                         float(diagnostics["edge_flow"].mean().item())
                     )
@@ -149,6 +191,21 @@ class LiveOrganism:
                 "mode": "live-checkpoint",
                 "metrics": {
                     "energy": float(state.energy.mean().item()),
+                    "viability": (
+                        sum(viability_values) / len(viability_values)
+                    ),
+                    "quiescentFraction": (
+                        sum(quiescent_values) / len(quiescent_values)
+                    ),
+                    "energyInput": (
+                        sum(energy_input_values) / len(energy_input_values)
+                    ),
+                    "energySpent": (
+                        sum(energy_spent_values) / len(energy_spent_values)
+                    ),
+                    "energyTransportDrift": (
+                        sum(energy_drift_values) / len(energy_drift_values)
+                    ),
                     "novelty": sum(novelty_values) / len(novelty_values),
                     "cellCredit": cell_credit,
                     "edgeCredit": edge_credit,
@@ -185,6 +242,7 @@ class LiveOrganism:
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
             state = self.loaded.state
+            viability = self.loaded.model._viability(state.energy)
             return {
                 "mode": "live-checkpoint",
                 "checkpoint": {
@@ -193,6 +251,16 @@ class LiveOrganism:
                 },
                 "metrics": {
                     "energy": float(state.energy.mean().item()),
+                    "viability": float(viability.mean().item()),
+                    "quiescentFraction": float(
+                        (
+                            state.energy
+                            <= self.loaded.model.cfg.quiescence_energy
+                        )
+                        .to(state.energy.dtype)
+                        .mean()
+                        .item()
+                    ),
                     "stimulation": float(state.stimulation.mean().item()),
                     "eligibility": float(state.eligibility.abs().mean().item()),
                     "backwardCredit": float(

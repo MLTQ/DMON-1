@@ -28,6 +28,11 @@ class TrainMetrics:
     loss: float
     perplexity: float
     mean_energy: float
+    mean_viability: float
+    quiescent_fraction: float
+    energy_input: float
+    energy_spent: float
+    energy_transport_drift: float
     mean_backward_credit: float
     mean_novelty: float
     cell_credit: float
@@ -338,6 +343,15 @@ class ContinuousTrainer:
         )
         self.updates = next_update
         mean_energy = torch.stack(trace.mean_energy).mean().item()
+        mean_viability = torch.stack(trace.mean_viability).mean().item()
+        quiescent_fraction = torch.stack(
+            trace.quiescent_fraction
+        ).mean().item()
+        energy_input = torch.stack(trace.energy_input).mean().item()
+        energy_spent = torch.stack(trace.energy_spent).mean().item()
+        energy_transport_drift = torch.stack(
+            trace.energy_transport_drift
+        ).mean().item()
         mean_backward_credit = torch.stack(
             trace.mean_backward_credit
         ).mean().item()
@@ -358,6 +372,11 @@ class ContinuousTrainer:
             loss=value,
             perplexity=math.exp(min(20.0, value)),
             mean_energy=mean_energy,
+            mean_viability=mean_viability,
+            quiescent_fraction=quiescent_fraction,
+            energy_input=energy_input,
+            energy_spent=energy_spent,
+            energy_transport_drift=energy_transport_drift,
             mean_backward_credit=mean_backward_credit,
             mean_novelty=mean_novelty,
             cell_credit=cell_credit,

@@ -104,6 +104,149 @@ def test_energy_depletes_without_external_input() -> None:
     assert state.stimulation.max().item() == 0.0
 
 
+def test_unfed_cells_reach_quiescence_in_finite_time() -> None:
+    model = _model(
+        message_steps=1,
+        energy_start=0.2,
+        basal_cost=0.01,
+        activity_cost=0.0,
+        energy_transport_rate=0.0,
+        quiescence_energy=0.01,
+        full_activity_energy=0.05,
+    )
+    state = model.initial_state(1)
+    for _ in range(24):
+        _, state, diagnostics = model.tick(state, token=None)
+    assert diagnostics["quiescent_fraction"].item() == 1
+    assert diagnostics["mean_viability"].item() == 0
+    frozen = state.hidden.clone()
+    _, state, _ = model.tick(state, token=None)
+    assert torch.equal(state.hidden, frozen)
+
+
+def test_directed_energy_transport_never_mints_and_follows_named_axons() -> None:
+    model = _model(energy_transport_rate=0.5)
+    control = _model(energy_transport_rate=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    torch.manual_seed(9)
+    energy = 0.2 + 0.6 * torch.rand(3, model.cfg.cells)
+    flow = torch.rand(
+        3,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    probe_flow = torch.rand(3, model.cfg.cells)
+    transported, drift = model._transport_energy(
+        energy,
+        flow,
+        probe_flow,
+    )
+    assert torch.all(transported >= 0)
+    assert torch.all(transported <= 1)
+    assert torch.allclose(
+        transported.sum(dim=1),
+        energy.sum(dim=1),
+        atol=2e-6,
+    )
+    assert torch.allclose(drift, torch.zeros_like(drift), atol=2e-6)
+
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    isolated_energy = torch.zeros(1, model.cfg.cells)
+    isolated_energy[0, source] = 0.8
+    isolated_flow = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    isolated_flow[0, target, slot] = 1.0
+    moved, isolated_drift = model._transport_energy(
+        isolated_energy,
+        isolated_flow,
+        torch.zeros(1, model.cfg.cells),
+    )
+    assert moved[0, target] > 0
+    assert moved[0, source] < isolated_energy[0, source]
+    assert moved.sum().item() == pytest.approx(
+        isolated_energy.sum().item(),
+        abs=1e-6,
+    )
+    assert isolated_drift.item() == pytest.approx(0.0, abs=1e-6)
+
+
+def test_recurrent_stimulation_cannot_mint_metabolic_energy() -> None:
+    model = _model(
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=1.0,
+        energy_transport_rate=0.5,
+    )
+    state = model.initial_state(2)
+    state.energy.fill_(0.4)
+    state.stimulation.fill_(1.0)
+    before = state.energy.sum(dim=1)
+    _, after, diagnostics = model.tick(state, token=None)
+    assert torch.all(after.energy.sum(dim=1) <= before + 1e-6)
+    assert torch.count_nonzero(diagnostics["energy_input"]).item() == 0
+    assert torch.all(diagnostics["energy_transport_drift"] <= 1e-6)
+
+
+def test_external_input_is_the_only_energy_source() -> None:
+    model = _model(
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=0.5,
+        energy_transport_rate=0.25,
+    )
+    state = model.initial_state(2)
+    state.energy.fill_(0.2)
+    before = state.energy.sum(dim=1)
+    _, after, diagnostics = model.tick(state, torch.tensor([0, 1]))
+    expected = (
+        before
+        + diagnostics["energy_input"]
+        + diagnostics["energy_transport_drift"]
+    )
+    assert torch.all(diagnostics["energy_input"] > 0)
+    assert torch.allclose(after.energy.sum(dim=1), expected, atol=2e-6)
+
+
+def test_energy_quiescence_is_reversible_from_new_input() -> None:
+    model = _model(
+        message_steps=1,
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=1.0,
+        energy_transport_rate=0.0,
+        quiescence_energy=0.1,
+        full_activity_energy=0.2,
+    )
+    state = model.initial_state(1)
+    state.energy.zero_()
+    hidden = state.hidden.clone()
+    _, quiet, quiet_diagnostics = model.tick(state, token=None)
+    assert torch.equal(quiet.hidden, hidden)
+    assert quiet_diagnostics["mean_viability"].item() == 0
+    assert quiet_diagnostics["quiescent_fraction"].item() == 1
+
+    _, recovered, recovered_diagnostics = model.tick(
+        quiet,
+        torch.tensor([0]),
+    )
+    sensory = model.sensory_indices
+    assert torch.all(recovered.energy[:, sensory] > 0.2)
+    assert not torch.equal(recovered.hidden[:, sensory], hidden[:, sensory])
+    assert recovered_diagnostics["mean_viability"].item() > 0
+    assert recovered_diagnostics["quiescent_fraction"].item() < 1
+
+
 def test_delayed_reward_acts_through_event_eligibility() -> None:
     model = _model()
     base = model.initial_state(1)
@@ -311,10 +454,11 @@ def test_reward_plasticity_does_not_mint_energy() -> None:
     state.eligibility.fill_(1.0)
     state.edge_eligibility.fill_(1.0)
     before = state.energy.clone()
-    _, after, _ = model.tick(
+    _, after, diagnostics = model.tick(
         state, token=None, reward=torch.ones(1)
     )
-    assert torch.all(after.energy <= before)
+    assert after.energy.sum().item() <= before.sum().item() + 1e-6
+    assert diagnostics["energy_input"].item() == 0
 
 
 def test_structural_probe_measures_a_causal_candidate_effect() -> None:
@@ -1461,6 +1605,9 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["reward_baseline"]
     del payload["trainer"]["field_state"]["backward_credit"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
+    del payload["trainer"]["model_config"]["energy_transport_rate"]
+    del payload["trainer"]["model_config"]["quiescence_energy"]
+    del payload["trainer"]["model_config"]["full_activity_energy"]
     del payload["trainer"]["structural_config"]
     del payload["trainer"]["structural_probation"]
     del payload["trainer"]["prequential_advantage_ema"]
@@ -1484,6 +1631,9 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
         resumed.model.structural_edge_credit
     ).item() == 0
     assert resumed.model.total_rewires.item() == 0
+    assert resumed.model.cfg.energy_transport_rate == pytest.approx(0.50)
+    assert resumed.model.cfg.quiescence_energy == pytest.approx(0.01)
+    assert resumed.model.cfg.full_activity_energy == pytest.approx(0.05)
     assert torch.allclose(
         resumed.state.reward_baseline,
         torch.full_like(
@@ -1538,6 +1688,11 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert result["metrics"]["cellCredit"] > 0
     assert result["metrics"]["edgeCredit"] > 0
     assert result["metrics"]["energy"] >= 0
+    assert 0 <= result["metrics"]["viability"] <= 1
+    assert 0 <= result["metrics"]["quiescentFraction"] <= 1
+    assert result["metrics"]["energyInput"] >= 0
+    assert result["metrics"]["energySpent"] >= 0
+    assert result["metrics"]["energyTransportDrift"] <= 1e-6
     assert result["metrics"]["fastWeight"] >= 0
     assert 0 <= result["metrics"]["fastSaturation"] <= 1
     snapshot = organism.snapshot()
@@ -1545,6 +1700,8 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
     assert snapshot["metrics"]["rewardBaseline"] > 0
     assert "backwardCredit" in snapshot["metrics"]
+    assert 0 <= snapshot["metrics"]["viability"] <= 1
+    assert 0 <= snapshot["metrics"]["quiescentFraction"] <= 1
     assert snapshot["metrics"]["structuralRewires"] == 0
     assert "probeSources" in snapshot["topology"]
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
@@ -1683,6 +1840,14 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
     assert all("mean_probe_flow" in value for value in metrics.values())
     assert all(
         "mean_backward_credit" in value
+        for value in metrics.values()
+    )
+    assert all("mean_viability" in value for value in metrics.values())
+    assert all("quiescent_fraction" in value for value in metrics.values())
+    assert all("energy_input" in value for value in metrics.values())
+    assert all("energy_spent" in value for value in metrics.values())
+    assert all(
+        value["energy_transport_drift"] <= 1e-6
         for value in metrics.values()
     )
     assert all("total_rewires" in value for value in metrics.values())

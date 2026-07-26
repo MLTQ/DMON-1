@@ -53,6 +53,11 @@ tensor shapes.
 ### Metabolism and eligibility tests
 - **Does**: Proves unstimulated energy depletion and delayed reward dependence on a
   remembered event trace.
+- **Does**: Proves directed edge/probe energy transport conserves energy exactly, recurrent
+  stimulation is not food, reported external input accounts for the only inflow, and
+  low-energy cells quiesce then recover from new sensory energy without new parameters.
+- **Does**: Requires an unfed active population to reach complete quiescence in a finite
+  number of ticks and remain frozen until funded again.
 - **Does**: Proves output reward launches a persistent credit wave that moves against
   signed target-owned axons to their named sources, affects only cells with remembered
   eligibility, cannot appear from zero reward, and adds no parameters.
@@ -99,6 +104,8 @@ tensor shapes.
   and causal-transformer controls are stateful and genuinely parameter matched.
 - **Does**: Requires evaluation to report fast synaptic efficacy and shuffle every
   target-owned cell and edge state together.
+- **Does**: Requires training, held-out evaluation, and the local bridge to expose
+  viability, quiescence, energy input/spending, and transport provenance.
 - **Does**: Zeroes only fast efficacy during held-out inference to prove whether the
   trained organism causally uses online synaptic memory.
 - **Does**: Restores deterministic birth sources for one held-out pass and proves both

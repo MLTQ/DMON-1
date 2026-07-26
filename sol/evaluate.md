@@ -12,6 +12,8 @@ including controls that test whether persistent cellular state is doing useful w
   measured edge flow plus edge eligibility, mean fast synaptic efficacy, and saturation
   together with causal-probe flow/eligibility, backward-credit magnitude, and total
   structural rewrites.
+- **Does**: Reports viability, quiescence, external energy input, spending, and
+  transport drift on the same scored tokens.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
 
 ### `evaluate_sol`

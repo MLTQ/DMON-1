@@ -11,7 +11,8 @@ causally measured exploratory axon probes.
 
 ### `SolConfig`
 - **Does**: Holds field size, directed topology, recurrence, eligibility, energy, and
-  optional backward-credit transport constants.
+  optional backward-credit transport constants, including energy transport and
+  reversible quiescence thresholds.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 
 ### `FieldState`
@@ -32,6 +33,8 @@ causally measured exploratory axon probes.
   estimate without removing exploratory traffic.
 - **Does**: Retains token-wise signed reward relative to each lane's surprise baseline
   so post-graft probation measures observed prequential advantage.
+- **Does**: Retains external energy input, actual spending, transport drift, mean
+  viability, and quiescent fraction so metabolism is auditable beside behavior.
 
 ### `SparseAxonField`
 - **Does**: Applies one shared GRU rule at every cell while messages travel only through
@@ -63,6 +66,15 @@ causally measured exploratory axon probes.
 - **Rationale**: Reward can travel against the directed causal path without inventing a
   second all-to-all teaching network.
 
+### `_transport_energy`
+- **Does**: Redistributes source-owned energy through named dendrites and active
+  candidate probes, normalizing total outbound demand so a source cannot spend more
+  than it owns.
+- **Does**: Scales accepted transfer by each target's remaining capacity; unaccepted
+  transfer stays with its source, so transport conserves total energy exactly.
+- **Rationale**: Recurrent stimulation may carry information but cannot become food;
+  only external input can increase total energy.
+
 ### `tick`
 - **Does**: Consumes one optional streamed character, performs recurrent graph updates,
   tags individual dendrites and causal probes from local activity, applies delayed
@@ -78,6 +90,15 @@ causally measured exploratory axon probes.
 - **Backward credit**: When enabled, pending scalar reward enters output cells once,
   propagates toward source cells against signed axons, persists across stream windows,
   and affects a cell only where it meets that cell's remembered eligibility.
+- **Energy provenance**: A character's novelty supplies one bounded external budget to
+  sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
+  no internal path may mint or discard energy.
+- **Viability**: Energy maps through a parameter-free ramp from quiescent to fully
+  active. Quiescent cells stop updating and emitting but can recover from later sensory
+  or incoming axonal energy.
+- **Finite starvation**: Any non-quiescent cell pays full basal maintenance, ensuring
+  silence crosses the lower threshold in finite time instead of asymptotically hovering
+  just above it.
 - **Ablation contract**: `allow_fast_plasticity=False` forces zero efficacy through the
   tick without disabling edge-tag measurement or the rest of the recurrent field.
 
@@ -96,6 +117,7 @@ causally measured exploratory axon probes.
 | Tests and diagnostics | `sources[target, slot]` is the authoritative fixed-fan-in directed graph | Topology representation |
 | `structure.py` | Probe sources are non-edges and structural buffers retain fixed shapes | Buffer shapes |
 | Future modalities | A modality injects cell-aligned stimulus and causal stimulation | Replacing `tick` semantics |
+| Metabolic experiments | Total energy can rise only by reported external input | Energy update or transport normalization |
 
 ## Notes
 
@@ -110,7 +132,8 @@ causally measured exploratory axon probes.
 - Fast efficacy uses a scaled `tanh` homeostat rather than a hard clamp. Small updates
   remain nearly linear, while values approaching the bound receive increasing
   contraction instead of accumulating as clipped, effectively frozen synapses.
-- Energy currently modulates computation but does not kill or reproduce cells.
+- Energy now governs reversible quiescence but does not yet cause irreversible death,
+  cell birth, or reproduction.
 - Backward credit is parameter-neutral and disabled by default for checkpoint
   compatibility. It supplements or replaces the direct broadcast reward according to
   explicit gains.

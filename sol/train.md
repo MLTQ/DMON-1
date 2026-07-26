@@ -12,6 +12,8 @@ one-character-at-a-time organism path used during training.
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
   bounded rewiring counts, including mean first-order probe fitness and persistent
   backward-credit magnitude.
+- **Does**: Reports mean viability, quiescent fraction, external energy input, actual
+  metabolic spending, and transport drift for every continuous training window.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
   accumulated prequential improvement, raw advantage, and developmental baseline.
 - **Does**: Reports exploratory-traffic arm exposure, per-arm observations and reward,

@@ -60,12 +60,22 @@ def _split_corpus(path: Path, fraction: float = 0.9) -> tuple[str, str]:
 
 
 def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
-    metabolic = {} if not args.no_metabolism else {
-        "energy_start": 1.0,
-        "basal_cost": 0.0,
-        "activity_cost": 0.0,
-        "stimulation_gain": 0.0,
+    metabolic = {
+        "stimulation_gain": args.external_energy_gain,
+        "energy_transport_rate": args.energy_transport_rate,
+        "quiescence_energy": args.quiescence_energy,
+        "full_activity_energy": args.full_activity_energy,
     }
+    if args.no_metabolism:
+        metabolic.update(
+            {
+                "energy_start": 1.0,
+                "basal_cost": 0.0,
+                "activity_cost": 0.0,
+                "stimulation_gain": 0.0,
+                "energy_transport_rate": 0.0,
+            }
+        )
     reward: dict[str, float] = {
         "reward_gain": args.cell_reward_gain,
         "fast_plasticity_gain": args.fast_plasticity_gain,
@@ -195,6 +205,7 @@ def _run_sol(
                 f"[sol:{update:6d}] loss={metrics.loss:.4f} "
                 f"bpc={metrics.loss / math.log(2.0):.3f} "
                 f"energy={metrics.mean_energy:.3f} "
+                f"viable={metrics.mean_viability:.3f} "
                 f"cell={metrics.cell_credit:.2e} edge={metrics.edge_credit:.2e}"
             )
 
@@ -538,6 +549,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
+    parser.add_argument("--energy-transport-rate", type=float, default=0.50)
+    parser.add_argument("--external-energy-gain", type=float, default=0.05)
+    parser.add_argument("--quiescence-energy", type=float, default=0.01)
+    parser.add_argument("--full-activity-energy", type=float, default=0.05)
     parser.add_argument("--structural-probe-gain", type=float, default=0.03)
     parser.add_argument("--structural-interval", type=int, default=100)
     parser.add_argument("--structural-warmup", type=int, default=500)
@@ -642,6 +657,16 @@ def parse_args() -> argparse.Namespace:
         parser.error("--freeze-edges cannot be combined with rewiring")
     if not 0 <= args.reward_baseline_decay < 1:
         parser.error("--reward-baseline-decay must be in [0, 1)")
+    if not 0 <= args.energy_transport_rate <= 1:
+        parser.error("--energy-transport-rate must be in [0, 1]")
+    if args.external_energy_gain < 0:
+        parser.error("--external-energy-gain must be non-negative")
+    if not (
+        0 <= args.quiescence_energy < args.full_activity_energy <= 1
+    ):
+        parser.error(
+            "energy thresholds must satisfy 0 <= quiescence < full activity <= 1"
+        )
     if args.max_final_regression_bpc < 0:
         parser.error("--max-final-regression-bpc must be non-negative")
     if not 0 <= args.structural_credit_decay < 1:
