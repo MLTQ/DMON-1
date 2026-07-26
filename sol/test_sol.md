@@ -31,7 +31,7 @@ tensor shapes.
 
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU
-  control is genuinely parameter matched.
+  and causal-transformer controls are stateful and genuinely parameter matched.
 
 ## Contracts
 

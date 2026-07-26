@@ -38,11 +38,12 @@ python -m sol.train --updates 300
 python -m sol.train --file path/to/corpus.txt --device cuda --updates 10000
 python -m sol.benchmark --model sol --out-dir sol/runs/sol-main
 python -m sol.benchmark --model gru --out-dir sol/runs/gru-control
+python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-control
 ```
 
 `sol.benchmark` uses a fixed 90/10 contiguous split, records held-out bits per
 character and state ablations, and writes complete resumable checkpoints. The intended
-dual-GPU arrangement is SOL on the 4090 and the matched GRU/control work on the 2070S;
+dual-GPU arrangement is SOL on the 4090 and matched conventional controls on the 2070S;
 synchronous data parallelism across mismatched cards would idle the faster device.
 
 ## Falsification
@@ -62,5 +63,3 @@ The prototype has failed if any of these are true:
 - Energy modulates cell computation but does not yet govern viability.
 - Eligibility is neural event memory, not a full online parameter-gradient algorithm.
   Exact gradients remain truncated to the current optimizer window.
-- The current benchmark control is a parameter-matched GRU. A causal transformer
-  control remains required before declaring S0 competitive.

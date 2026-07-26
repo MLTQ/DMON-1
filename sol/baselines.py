@@ -61,6 +61,111 @@ def match_gru_hidden_size(
     )
 
 
+class CausalCharacterTransformer(nn.Module):
+    """A compact NanoGPT-style control with a bounded continuous token context."""
+
+    def __init__(
+        self,
+        vocab_size: int,
+        hidden_size: int,
+        *,
+        layers: int = 2,
+        heads: int = 4,
+        context: int = 128,
+    ):
+        super().__init__()
+        if hidden_size % heads:
+            raise ValueError("hidden_size must be divisible by heads")
+        if context < 2:
+            raise ValueError("context must be at least two")
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
+        self.layers = layers
+        self.heads = heads
+        self.context = context
+        self.token_embedding = nn.Embedding(vocab_size, hidden_size)
+        self.position_embedding = nn.Embedding(context, hidden_size)
+        layer = nn.TransformerEncoderLayer(
+            hidden_size,
+            heads,
+            dim_feedforward=hidden_size * 4,
+            dropout=0.0,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.blocks = nn.TransformerEncoder(
+            layer, layers, enable_nested_tensor=False
+        )
+        self.norm = nn.LayerNorm(hidden_size)
+        self.readout = nn.Linear(hidden_size, vocab_size)
+
+    def initial_state(
+        self, batch_size: int, device: torch.device | str
+    ) -> torch.Tensor:
+        return torch.empty(batch_size, 0, dtype=torch.long, device=device)
+
+    def forward(
+        self, tokens: torch.Tensor, state: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if tokens.ndim != 2:
+            raise ValueError("tokens must have shape (batch, time)")
+        if tokens.shape[1] > self.context:
+            raise ValueError("token chunk must not exceed transformer context")
+        combined = torch.cat((state, tokens), dim=1)[:, -self.context :]
+        new_token_offset = combined.shape[1] - tokens.shape[1]
+        positions = torch.arange(combined.shape[1], device=combined.device)
+        hidden = (
+            self.token_embedding(combined)
+            + self.position_embedding(positions).unsqueeze(0)
+        )
+        causal_mask = torch.triu(
+            torch.ones(
+                combined.shape[1],
+                combined.shape[1],
+                dtype=torch.bool,
+                device=combined.device,
+            ),
+            diagonal=1,
+        )
+        hidden = self.blocks(hidden, mask=causal_mask)
+        logits = self.readout(self.norm(hidden[:, new_token_offset:]))
+        next_state = combined[:, -(self.context - 1) :].detach()
+        return logits, next_state
+
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters())
+
+
+def match_transformer_hidden_size(
+    vocab_size: int,
+    target_parameters: int,
+    *,
+    layers: int = 2,
+    heads: int = 4,
+    context: int = 128,
+    maximum: int = 512,
+) -> int:
+    """Find a head-compatible transformer width nearest the target parameter count."""
+
+    if target_parameters < 1:
+        raise ValueError("target_parameters must be positive")
+    candidates = range(heads * 2, maximum + 1, heads)
+    return min(
+        candidates,
+        key=lambda hidden: abs(
+            CausalCharacterTransformer(
+                vocab_size,
+                hidden,
+                layers=layers,
+                heads=heads,
+                context=context,
+            ).parameter_count()
+            - target_parameters
+        ),
+    )
+
+
 @torch.no_grad()
 def evaluate_gru(
     model: CharacterGRU,
@@ -70,6 +175,46 @@ def evaluate_gru(
     warmup: int,
 ) -> dict[str, float | int]:
     """Score a contiguous held-out stream after warming recurrent state."""
+
+    device = next(model.parameters()).device
+    encoded_text = encoded_text.to(device)
+    available = encoded_text.numel() - 1
+    scored = min(tokens, max(1, available - min(warmup, available - 1)))
+    warmup = min(warmup, available - scored)
+    state = model.initial_state(1, device)
+    total_loss = 0.0
+    correct = 0
+    was_training = model.training
+    model.eval()
+    for index in range(warmup + scored):
+        logits, state = model(encoded_text[index : index + 1].view(1, 1), state)
+        if index >= warmup:
+            target = encoded_text[index + 1 : index + 2]
+            token_logits = logits[:, -1]
+            total_loss += float(
+                nn.functional.cross_entropy(token_logits, target).item()
+            )
+            correct += int(token_logits.argmax(dim=-1).item() == target.item())
+    model.train(was_training)
+    nll = total_loss / scored
+    return {
+        "nll": nll,
+        "bits_per_character": nll / math.log(2.0),
+        "perplexity": math.exp(min(20.0, nll)),
+        "accuracy": correct / scored,
+        "tokens": scored,
+    }
+
+
+@torch.no_grad()
+def evaluate_transformer(
+    model: CausalCharacterTransformer,
+    encoded_text: torch.Tensor,
+    *,
+    tokens: int,
+    warmup: int,
+) -> dict[str, float | int]:
+    """Score held-out text through the transformer's persistent context buffer."""
 
     device = next(model.parameters()).device
     encoded_text = encoded_text.to(device)

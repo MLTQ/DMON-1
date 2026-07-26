@@ -14,7 +14,14 @@ from typing import Any
 import torch
 from torch.nn import functional as F
 
-from .baselines import CharacterGRU, evaluate_gru, match_gru_hidden_size
+from .baselines import (
+    CausalCharacterTransformer,
+    CharacterGRU,
+    evaluate_gru,
+    evaluate_transformer,
+    match_gru_hidden_size,
+    match_transformer_hidden_size,
+)
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
@@ -294,9 +301,131 @@ def _run_gru(
     return summary
 
 
+def _run_transformer(
+    args: argparse.Namespace,
+    train_text: str,
+    validation_text: str,
+    vocabulary: CharacterVocabulary,
+) -> dict[str, Any]:
+    device = torch.device(args.device)
+    sol = SparseAxonField(_sol_config(args, len(vocabulary)))
+    target_parameters = sum(parameter.numel() for parameter in sol.parameters())
+    del sol
+    hidden_size = match_transformer_hidden_size(
+        len(vocabulary),
+        target_parameters,
+        layers=args.transformer_layers,
+        heads=args.transformer_heads,
+        context=args.transformer_context,
+    )
+    model = CausalCharacterTransformer(
+        len(vocabulary),
+        hidden_size,
+        layers=args.transformer_layers,
+        heads=args.transformer_heads,
+        context=args.transformer_context,
+    ).to(device)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=args.learning_rate, weight_decay=1e-4
+    )
+    stream = ContinuousCharStream(train_text, vocabulary, args.batch, device)
+    state = model.initial_state(args.batch, device)
+    parameter_count = model.parameter_count()
+    started = time.monotonic()
+    best_bpc = math.inf
+    last_eval: dict[str, Any] = {}
+
+    print(
+        f"[transformer] hidden={hidden_size} params={parameter_count:,} "
+        f"target={target_parameters:,} context={args.transformer_context} "
+        f"device={device}"
+    )
+    for update in range(1, args.updates + 1):
+        inputs, targets = stream.next(args.chunk)
+        optimizer.zero_grad(set_to_none=True)
+        logits, state = model(inputs, state)
+        loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+
+        if update == 1 or update % args.log_every == 0:
+            elapsed = time.monotonic() - started
+            row = {
+                "kind": "train",
+                "model": "transformer",
+                "update": update,
+                "tokens": update * args.batch * args.chunk,
+                "tokens_per_second": (
+                    update * args.batch * args.chunk / max(elapsed, 1e-9)
+                ),
+                "loss": float(loss.item()),
+                "bits_per_character": float(loss.item()) / math.log(2.0),
+            }
+            _append_jsonl(args.out_dir / "metrics.jsonl", row)
+            print(
+                f"[transformer:{update:6d}] loss={loss.item():.4f} "
+                f"bpc={loss.item() / math.log(2.0):.3f}"
+            )
+
+        if update % args.eval_every == 0 or update == args.updates:
+            last_eval = evaluate_transformer(
+                model,
+                vocabulary.encode(validation_text),
+                tokens=args.eval_tokens,
+                warmup=args.eval_warmup,
+            )
+            best_bpc = min(
+                best_bpc, float(last_eval["bits_per_character"])
+            )
+            _append_jsonl(
+                args.out_dir / "metrics.jsonl",
+                {
+                    "kind": "evaluation",
+                    "model": "transformer",
+                    "update": update,
+                    "metrics": last_eval,
+                },
+            )
+            print(
+                f"[transformer:{update:6d}] "
+                f"heldout_bpc={last_eval['bits_per_character']:.3f}"
+            )
+
+    summary = {
+        "model": "transformer",
+        "parameters": parameter_count,
+        "target_parameters": target_parameters,
+        "hidden_size": hidden_size,
+        "layers": args.transformer_layers,
+        "heads": args.transformer_heads,
+        "context": args.transformer_context,
+        "updates": args.updates,
+        "best_bpc": best_bpc,
+        "evaluation": last_eval,
+    }
+    _write_json(args.out_dir / "summary.json", summary)
+    temporary = args.out_dir / "latest.pt.tmp"
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "state": state.cpu(),
+            "stream": stream.state_dict(),
+            "vocabulary": list(vocabulary.characters),
+            "summary": summary,
+        },
+        temporary,
+    )
+    os.replace(temporary, args.out_dir / "latest.pt")
+    return summary
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--model", choices=("sol", "gru"), default="sol")
+    parser.add_argument(
+        "--model", choices=("sol", "gru", "transformer"), default="sol"
+    )
     parser.add_argument("--file", type=Path, default=DEFAULT_CORPUS)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--updates", type=int, default=5000)
@@ -316,6 +445,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-tokens", type=int, default=2048)
     parser.add_argument("--eval-warmup", type=int, default=256)
     parser.add_argument("--checkpoint-every", type=int, default=250)
+    parser.add_argument("--transformer-layers", type=int, default=2)
+    parser.add_argument("--transformer-heads", type=int, default=4)
+    parser.add_argument("--transformer-context", type=int, default=128)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--prompt", default="ROMEO:")
     parser.add_argument("--generate", type=int, default=240)
@@ -325,6 +457,8 @@ def parse_args() -> argparse.Namespace:
     for name in ("log_every", "eval_every", "checkpoint_every"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
+    if args.chunk > args.transformer_context:
+        parser.error("--chunk must not exceed --transformer-context")
     return args
 
 
@@ -350,8 +484,10 @@ def main() -> None:
     _write_json(args.out_dir / "manifest.json", manifest)
     if args.model == "sol":
         _run_sol(args, train_text, validation_text, vocabulary)
-    else:
+    elif args.model == "gru":
         _run_gru(args, train_text, validation_text, vocabulary)
+    else:
+        _run_transformer(args, train_text, validation_text, vocabulary)
 
 
 if __name__ == "__main__":

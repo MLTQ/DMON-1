@@ -8,7 +8,14 @@ from pathlib import Path
 import torch
 from torch.nn import functional as F
 
-from .baselines import CharacterGRU, evaluate_gru, match_gru_hidden_size
+from .baselines import (
+    CausalCharacterTransformer,
+    CharacterGRU,
+    evaluate_gru,
+    evaluate_transformer,
+    match_gru_hidden_size,
+    match_transformer_hidden_size,
+)
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
@@ -167,6 +174,28 @@ def test_gru_control_matches_budget_and_scores_stream() -> None:
     nearest_error = abs(model.parameter_count() - target)
     assert nearest_error / target < 0.08
     metrics = evaluate_gru(
+        model, vocabulary.encode(text), tokens=12, warmup=4
+    )
+    assert metrics["tokens"] == 12
+    assert metrics["bits_per_character"] > 0
+
+
+def test_transformer_control_is_causal_matched_and_stateful() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    target = sum(parameter.numel() for parameter in _model().parameters())
+    hidden = match_transformer_hidden_size(
+        len(vocabulary), target, layers=1, heads=2, context=16, maximum=64
+    )
+    model = CausalCharacterTransformer(
+        len(vocabulary), hidden, layers=1, heads=2, context=16
+    )
+    assert abs(model.parameter_count() - target) / target < 0.20
+    state = model.initial_state(1, "cpu")
+    logits, state = model(vocabulary.encode("ab").view(1, -1), state)
+    assert logits.shape == (1, 2, len(vocabulary))
+    assert state.shape == (1, 2)
+    metrics = evaluate_transformer(
         model, vocabulary.encode(text), tokens=12, warmup=4
     )
     assert metrics["tokens"] == 12

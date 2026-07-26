@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Runs reproducible Tiny Shakespeare experiments for SOL and a parameter-matched GRU on
-identical continuous train/validation streams, with checkpointing and append-only metrics.
+Runs reproducible Tiny Shakespeare experiments for SOL, a parameter-matched GRU, and a
+parameter-matched causal transformer on identical continuous train/validation streams,
+with checkpointing and append-only metrics.
 
 ## Components
 
@@ -17,6 +18,11 @@ identical continuous train/validation streams, with checkpointing and append-onl
   optimizer family, token budget, held-out split, and evaluation window.
 - **Interacts with**: `CharacterGRU` in `baselines.py`.
 
+### `_run_transformer`
+- **Does**: Trains a parameter-matched causal transformer with a rolling context on the
+  same lanes, token budget, split, and evaluation window.
+- **Interacts with**: `CausalCharacterTransformer` in `baselines.py`.
+
 ### CLI
 - **Does**: Records a manifest, JSONL history, summary, and local checkpoint beneath an
   explicit output directory.
@@ -27,7 +33,7 @@ identical continuous train/validation streams, with checkpointing and append-onl
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Dual-GPU launch | `--model sol|gru` lets each GPU run one independent job | CLI names |
+| Dual-GPU launch | `--model sol|gru|transformer` lets each GPU run one independent job | CLI names |
 | Local UI backend | `best.pt` is a complete SOL checkpoint with evaluation metadata | Checkpoint selection |
 | Scientific report | Both models see the first 90% for training and final 10% for validation | Split semantics |
 
