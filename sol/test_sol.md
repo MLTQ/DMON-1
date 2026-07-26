@@ -9,6 +9,7 @@ tensor shapes.
 
 ### Topology tests
 - **Does**: Proves the graph is sparse, directed, and connects sensory cells to outputs.
+- **Does**: Requires complete sensory reachability and reports shortest output paths.
 
 ### Stream and persistence tests
 - **Does**: Proves optimizer windows are adjacent and prior characters affect later

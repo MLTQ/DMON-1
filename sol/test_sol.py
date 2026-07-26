@@ -24,6 +24,7 @@ from .model import SolConfig, SparseAxonField
 from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
 from .stream import CharacterVocabulary, ContinuousCharStream
+from .topology import analyze_topology
 from .train import ContinuousTrainer
 
 
@@ -55,6 +56,13 @@ def test_topology_is_sparse_directed_and_output_reachable() -> None:
         for source in row
     }
     assert any((target, source) not in edges for source, target in edges)
+    metrics = analyze_topology(
+        model.sources, model.sensory_indices, model.output_indices
+    )
+    assert metrics.directed_edges == model.cfg.cells * model.cfg.dendrites
+    assert metrics.output_reachable_fraction == 1.0
+    assert metrics.reachable_fraction == 1.0
+    assert metrics.mean_output_distance is not None
 
 
 def test_stream_windows_are_adjacent_not_reset() -> None:

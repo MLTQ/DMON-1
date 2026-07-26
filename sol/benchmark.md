@@ -22,6 +22,11 @@ with checkpointing and append-only metrics.
   against controls rather than ride on the shared cell rule; delayed eligibility
   feedback must likewise improve prediction rather than merely sound plausible.
 
+### Topology report
+- **Does**: Records sensory reachability, output reachability, self-edge count, and mean
+  sensory-to-output distance in every SOL summary.
+- **Interacts with**: `analyze_topology` in `topology.py`.
+
 ### `_run_gru`
 - **Does**: Trains a parameter-matched GRU with the same batch lanes, chunk length,
   optimizer family, token budget, held-out split, and evaluation window.

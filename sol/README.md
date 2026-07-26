@@ -54,9 +54,10 @@ alive across prompts, measures real prompt gradients for the console's credit te
 and never exposes the service beyond the local machine unless explicitly reconfigured.
 
 `sol.benchmark` uses a fixed 90/10 contiguous split, records held-out bits per
-character and state ablations, and writes complete resumable checkpoints. The intended
-dual-GPU arrangement is SOL on the 4090 and matched conventional controls on the 2070S;
-synchronous data parallelism across mismatched cards would idle the faster device.
+character, state ablations, and directed sensory/output reachability, and writes complete
+resumable checkpoints. The intended dual-GPU arrangement is SOL on the 4090 and matched
+conventional controls on the 2070S; synchronous data parallelism across mismatched cards
+would idle the faster device.
 
 ## Falsification
 

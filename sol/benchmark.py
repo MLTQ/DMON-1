@@ -26,6 +26,7 @@ from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
 from .stream import CharacterVocabulary, ContinuousCharStream
+from .topology import analyze_topology
 from .train import ContinuousTrainer, generate
 
 DEFAULT_CORPUS = Path("data/tinyshakespeare/input.txt")
@@ -204,6 +205,11 @@ def _run_sol(
         "evaluation": last_eval,
         "config": asdict(trainer.model.cfg),
         "frozen_parameters": list(trainer.frozen_parameters),
+        "topology": analyze_topology(
+            trainer.model.sources,
+            trainer.model.sensory_indices,
+            trainer.model.output_indices,
+        ).to_dict(),
     }
     _write_json(args.out_dir / "summary.json", summary)
     return summary
