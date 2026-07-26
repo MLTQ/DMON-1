@@ -47,6 +47,10 @@ python -m sol.report \
   --run sol=sol/runs/sol-main \
   --run gru=sol/runs/gru-control \
   --output sol/runs/S0-COMPARISON.md
+python -m sol.promote \
+  --run sol/runs/sol-main \
+  --run sol/runs/fixed-edge-control
+python -m sol.serve
 ```
 
 The checkpoint bridge binds to `127.0.0.1:8765` by default. It keeps one organism lane

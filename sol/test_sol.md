@@ -33,6 +33,8 @@ tensor shapes.
   trainable after resume.
 - **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and
   requires nonzero measured prompt credit.
+- **Does**: Validates multiple completed candidates, promotes the lowest-BPC checkpoint,
+  and reloads the atomic destination.
 
 ### Evaluation and control tests
 - **Does**: Exercises persistent/reset/shuffled held-out policies and verifies the GRU

@@ -226,7 +226,9 @@ def make_handler(organism: LiveOrganism) -> type[BaseHTTPRequestHandler]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--checkpoint", type=Path, default=Path("sol/runs/live.pt")
+    )
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)

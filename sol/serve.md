@@ -26,10 +26,15 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 - **Does**: Serves `GET /health`, `GET /snapshot`, and `POST /generate`.
 - **Rationale**: The Python standard library is sufficient for a single-user local bridge.
 
+### CLI
+- **Does**: Loads `sol/runs/live.pt` by default or an explicit `--checkpoint`.
+- **Interacts with**: `promote.py`.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `sol/ui/app/api/generate/route.ts` | `/generate` returns `output`, `mode`, and legacy metric keys | Response shape |
 | Local operator | Default host is loopback-only | Changing bind default |
+| `promote.py` | Default checkpoint path is `sol/runs/live.pt` | Path mismatch |
 | UI telemetry | Cell and edge credit are measured prompt gradients | Replacing backward pass with proxy values |

@@ -23,7 +23,8 @@ To connect a trained checkpoint, start the loopback Python bridge from the repos
 root in another terminal:
 
 ```bash
-python -m sol.serve --checkpoint sol/runs/<run>/best.pt
+python -m sol.promote --run sol/runs/<run>
+python -m sol.serve
 ```
 
 The UI automatically uses `http://127.0.0.1:8765`; set `SOL_BACKEND_URL` only when

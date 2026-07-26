@@ -21,6 +21,7 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
 from .serve import LiveOrganism
 from .stream import CharacterVocabulary, ContinuousCharStream
@@ -210,6 +211,52 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert result["metrics"]["cellCredit"] > 0
     assert result["metrics"]["edgeCredit"] > 0
     assert result["metrics"]["energy"] >= 0
+
+
+def test_checkpoint_promotion_validates_and_selects_lowest_bpc(
+    tmp_path: Path,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    trainer.step()
+    runs = []
+    for name, bpc in (("first", 2.8), ("second", 2.4)):
+        run = tmp_path / name
+        run.mkdir()
+        save_checkpoint(run / "best.pt", trainer, {"best_bpc": bpc})
+        (run / "summary.json").write_text(
+            json.dumps(
+                {
+                    "model": "sol",
+                    "best_bpc": bpc,
+                    "updates": trainer.updates,
+                    "parameters": sum(
+                        parameter.numel()
+                        for parameter in trainer.model.parameters()
+                    ),
+                    "evaluation": {
+                        "persistent": {"bits_per_character": bpc}
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        runs.append(run)
+    destination = tmp_path / "live.pt"
+    manifest = promote_best_checkpoint(runs, destination)
+    assert manifest["source_run"] == str(runs[1])
+    assert manifest["best_bpc"] == 2.4
+    assert destination.exists()
+    assert destination.with_suffix(".json").exists()
+    promoted = LiveOrganism(destination)
+    assert promoted.loaded.updates == trainer.updates
 
 
 def test_heldout_evaluation_reports_state_ablations() -> None:
