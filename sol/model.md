@@ -12,7 +12,8 @@ causally measured exploratory axon probes.
 ### `SolConfig`
 - **Does**: Holds field size, directed topology, recurrence, eligibility, energy, and
   optional backward-credit transport constants, including energy transport and
-  reversible quiescence thresholds.
+  reversible quiescence thresholds. An optional maintenance-flow floor moves only
+  existing energy along installed non-self axons when information traffic is silent.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 
 ### `FieldState`
@@ -70,6 +71,9 @@ causally measured exploratory axon probes.
 - **Does**: Redistributes source-owned energy through named dendrites and active
   candidate probes, normalizing total outbound demand so a source cannot spend more
   than it owns.
+- **Does**: Optionally adds a parameter-free maintenance request on installed non-self
+  axons so low-activity tissue can receive externally sourced energy without undirected
+  diffusion. Candidate probes receive no maintenance subsidy.
 - **Does**: Scales accepted transfer by each target's remaining capacity; unaccepted
   transfer stays with its source, so transport conserves total energy exactly.
 - **Rationale**: Recurrent stimulation may carry information but cannot become food;
@@ -93,6 +97,9 @@ causally measured exploratory axon probes.
 - **Energy provenance**: A character's novelty supplies one bounded external budget to
   sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
   no internal path may mint or discard energy.
+- **Maintenance provenance**: Maintenance flow is an optional directed redistribution
+  request, not an inflow. It remains subject to the same per-source budget and
+  per-target capacity normalization as activity-driven transport.
 - **Viability**: Energy maps through a parameter-free ramp from quiescent to fully
   active. Quiescent cells stop updating and emitting but can recover from later sensory
   or incoming axonal energy.

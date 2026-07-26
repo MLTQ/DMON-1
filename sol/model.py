@@ -47,6 +47,7 @@ class SolConfig:
     activity_cost: float = 0.003
     stimulation_gain: float = 0.05
     energy_transport_rate: float = 0.50
+    energy_maintenance_flow: float = 0.0
     quiescence_energy: float = 0.01
     full_activity_energy: float = 0.05
 
@@ -102,6 +103,8 @@ class SolConfig:
             raise ValueError("metabolic costs and input gain must be nonnegative")
         if not 0 <= self.energy_transport_rate <= 1:
             raise ValueError("energy_transport_rate must be in [0, 1]")
+        if not 0 <= self.energy_maintenance_flow <= 1:
+            raise ValueError("energy_maintenance_flow must be in [0, 1]")
         if not (
             0
             <= self.quiescence_energy
@@ -533,7 +536,16 @@ class SparseAxonField(nn.Module):
         if cfg.energy_transport_rate == 0:
             return energy, torch.zeros(batch, device=energy.device)
 
-        flow = torch.cat((edge_flow, probe_flow.unsqueeze(2)), dim=2)
+        targets = torch.arange(
+            cfg.cells,
+            device=self.sources.device,
+        ).unsqueeze(1)
+        nonself = (self.sources != targets).to(edge_flow.dtype)
+        named_flow = (
+            edge_flow
+            + cfg.energy_maintenance_flow * nonself.unsqueeze(0)
+        )
+        flow = torch.cat((named_flow, probe_flow.unsqueeze(2)), dim=2)
         sources = torch.cat(
             (self.sources, self.probe_sources.unsqueeze(1)),
             dim=1,

@@ -63,6 +63,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
     metabolic = {
         "stimulation_gain": args.external_energy_gain,
         "energy_transport_rate": args.energy_transport_rate,
+        "energy_maintenance_flow": args.energy_maintenance_flow,
         "quiescence_energy": args.quiescence_energy,
         "full_activity_energy": args.full_activity_energy,
     }
@@ -74,6 +75,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
                 "activity_cost": 0.0,
                 "stimulation_gain": 0.0,
                 "energy_transport_rate": 0.0,
+                "energy_maintenance_flow": 0.0,
             }
         )
     reward: dict[str, float] = {
@@ -550,6 +552,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--energy-transport-rate", type=float, default=0.50)
+    parser.add_argument("--energy-maintenance-flow", type=float, default=0.0)
     parser.add_argument("--external-energy-gain", type=float, default=0.05)
     parser.add_argument("--quiescence-energy", type=float, default=0.01)
     parser.add_argument("--full-activity-energy", type=float, default=0.05)
@@ -659,6 +662,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--reward-baseline-decay must be in [0, 1)")
     if not 0 <= args.energy_transport_rate <= 1:
         parser.error("--energy-transport-rate must be in [0, 1]")
+    if not 0 <= args.energy_maintenance_flow <= 1:
+        parser.error("--energy-maintenance-flow must be in [0, 1]")
     if args.external_energy_gain < 0:
         parser.error("--external-energy-gain must be non-negative")
     if not (

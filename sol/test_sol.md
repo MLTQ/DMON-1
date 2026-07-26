@@ -56,6 +56,8 @@ tensor shapes.
 - **Does**: Proves directed edge/probe energy transport conserves energy exactly, recurrent
   stimulation is not food, reported external input accounts for the only inflow, and
   low-energy cells quiesce then recover from new sensory energy without new parameters.
+- **Does**: Proves optional maintenance flow funds a silent target only through installed
+  non-self axons, remains exactly conservative, and is absent from the default control.
 - **Does**: Requires an unfed active population to reach complete quiescence in a finite
   number of ticks and remain frozen until funded again.
 - **Does**: Proves output reward launches a persistent credit wave that moves against

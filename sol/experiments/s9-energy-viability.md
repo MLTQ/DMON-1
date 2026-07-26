@@ -81,3 +81,39 @@ capability claim. Healthy continuous input funds the complete body; finite silen
 drives it through the viability ramp to quiescence, and later input can recover it. The
 next matched GPU experiment must determine whether the benefit survives 64-cell,
 5,000-update training.
+
+## Full-scale seed-7 GPU result
+
+After rebooting the GPU host to recover a failed RTX 2070 Super driver context, both
+arms ran sequentially on the RTX 4090. They used 64 cells and channels, eight
+dendrites, eight sensory and output cells, three message steps, batch 16, chunk 32,
+5,000 updates, and 2,048-token held-out evaluations every 250 updates. Both arms
+disabled fast efficacy. The candidate used the selected conserved economy; the control
+used exact energy-one `--no-metabolism` behavior.
+
+| Measure | Conserved metabolism | Energy-one control | Candidate delta |
+|---|---:|---:|---:|
+| Best BPC | 2.45957 | 2.44573 | +0.01384 |
+| Final BPC | 2.56175 | 2.52740 | +0.03435 |
+| All-evaluation mean BPC | 2.68683 | 2.69648 | -0.00964 |
+| Second-half mean BPC | 2.55246 | 2.54708 | +0.00538 |
+| Late-six mean BPC | 2.52683 | 2.52889 | -0.00206 |
+
+The candidate won 13 of 20 paired evaluations and accelerated early learning: through
+update 2,500 it won 9 of 10 checkpoints with mean advantage 0.02467 BPC. That advantage
+did not become a capability win. It won only 4 of 10 second-half checkpoints, had a
+worse best and final value, and remained 0.02032 BPC behind the existing 2.43925 live
+checkpoint. Both runs passed the stability gate, so no checkpoint was promoted.
+
+The conserved run retained full directed reachability and numerical energy provenance.
+Its final held-out stream had mean energy 0.94252, mean viability 0.984375, quiescent
+fraction 0.015625, external input 0.44779, spending 0.44755, and transport drift
+7.8e-8. One of 64 cells became chronically quiescent from update 2,000 onward.
+
+Before that quiescence appeared, the candidate averaged 0.02296 BPC better than the
+control. Afterward its mean advantage collapsed to 0.00247 BPC. This association does
+not prove that losing one cell caused the late crossover, but it motivates the next
+calibration: increase only externally attributable novelty energy enough to preserve
+64-cell capacity, while keeping transport conserved and preserving the early
+regularization benefit. A full-scale intake adjustment must beat the completed
+energy-one control in second-half, best, and final BPC before replication or promotion.

@@ -181,6 +181,53 @@ def test_directed_energy_transport_never_mints_and_follows_named_axons() -> None
     assert isolated_drift.item() == pytest.approx(0.0, abs=1e-6)
 
 
+def test_directed_maintenance_flow_funds_silent_named_targets() -> None:
+    model = _model(
+        energy_transport_rate=0.5,
+        energy_maintenance_flow=0.1,
+    )
+    control = _model(
+        energy_transport_rate=0.5,
+        energy_maintenance_flow=0.0,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    energy = torch.zeros(1, model.cfg.cells)
+    energy[0, source] = 0.8
+    silent_edges = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    silent_probes = torch.zeros(1, model.cfg.cells)
+
+    maintained, drift = model._transport_energy(
+        energy,
+        silent_edges,
+        silent_probes,
+    )
+    unmaintained, control_drift = control._transport_energy(
+        energy,
+        silent_edges,
+        silent_probes,
+    )
+
+    assert maintained[0, target] > 0
+    assert maintained[0, source] < energy[0, source]
+    assert torch.equal(unmaintained, energy)
+    assert maintained.sum().item() == pytest.approx(
+        energy.sum().item(),
+        abs=1e-6,
+    )
+    assert drift.item() == pytest.approx(0.0, abs=1e-6)
+    assert control_drift.item() == pytest.approx(0.0, abs=1e-6)
+
+
 def test_recurrent_stimulation_cannot_mint_metabolic_energy() -> None:
     model = _model(
         basal_cost=0.0,
@@ -1606,6 +1653,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["backward_credit"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
     del payload["trainer"]["model_config"]["energy_transport_rate"]
+    del payload["trainer"]["model_config"]["energy_maintenance_flow"]
     del payload["trainer"]["model_config"]["quiescence_energy"]
     del payload["trainer"]["model_config"]["full_activity_energy"]
     del payload["trainer"]["structural_config"]
@@ -1632,6 +1680,7 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     ).item() == 0
     assert resumed.model.total_rewires.item() == 0
     assert resumed.model.cfg.energy_transport_rate == pytest.approx(0.50)
+    assert resumed.model.cfg.energy_maintenance_flow == pytest.approx(0.0)
     assert resumed.model.cfg.quiescence_energy == pytest.approx(0.01)
     assert resumed.model.cfg.full_activity_energy == pytest.approx(0.05)
     assert torch.allclose(
