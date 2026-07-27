@@ -2,7 +2,8 @@
 
 ## Purpose
 
-Defines the visual system and responsive layout for the SOL scientific instrument.
+Defines the visual system and responsive layout for the SOL scientific instrument,
+including signed-edge legend and continuous output states.
 
 ## Components
 
@@ -11,8 +12,8 @@ Defines the visual system and responsive layout for the SOL scientific instrumen
   ambient background.
 
 ### Instrument panels
-- **Does**: Styles the connectome canvas, telemetry, energy gauge, cell inspector,
-  composer, and output stream.
+- **Does**: Styles the connectome canvas, measured signed-edge legend, telemetry,
+  energy gauge, expanded cell inspector, composer, and scrolling output stream.
 
 ### Responsive behavior
 - **Does**: Reflows telemetry and prompt/output panels for tablet and mobile widths.

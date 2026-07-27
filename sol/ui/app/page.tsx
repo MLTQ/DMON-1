@@ -1,270 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-type Metrics = {
-  energy: number;
-  novelty: number;
-  cellCredit: number;
-  edgeCredit: number;
-  perplexity: number;
-};
+import { NetworkField } from "./network-field";
+import {
+  EMPTY_METRICS,
+  type OrganismPayload,
+} from "./organism-types";
 
-type NodeSpec = {
-  id: number;
-  role: "sensory" | "interior" | "output";
-  x: number;
-  y: number;
-};
-
-const CELL_COUNT = 36;
-const DENDRITES = 4;
 const EXAMPLES = [
   "to be, or not to be",
   "the field remembers",
   "what happens during silence?",
 ];
-
-const INITIAL_METRICS: Metrics = {
-  energy: 0.62,
-  novelty: 0.18,
-  cellCredit: 0.000158,
-  edgeCredit: 0.000114,
-  perplexity: 1.94,
-};
-
-function makeNodes(): NodeSpec[] {
-  return Array.from({ length: CELL_COUNT }, (_, id) => {
-    if (id < 4) {
-      return { id, role: "sensory", x: 0.075, y: 0.2 + id * 0.2 };
-    }
-    if (id >= CELL_COUNT - 4) {
-      return {
-        id,
-        role: "output",
-        x: 0.925,
-        y: 0.2 + (id - CELL_COUNT + 4) * 0.2,
-      };
-    }
-    const local = id - 4;
-    const column = local % 7;
-    const row = Math.floor(local / 7);
-    return {
-      id,
-      role: "interior",
-      x: 0.19 + column * 0.105 + (row % 2) * 0.018,
-      y: 0.17 + row * 0.22 + Math.sin(id * 2.17) * 0.025,
-    };
-  });
-}
-
-function makeEdges() {
-  const edges: Array<{ source: number; target: number; slot: number }> = [];
-  for (let target = 0; target < CELL_COUNT; target += 1) {
-    const sources = [
-      target,
-      (target - 1 + CELL_COUNT) % CELL_COUNT,
-      (target - 6 + CELL_COUNT) % CELL_COUNT,
-      (target * 7 + 3) % CELL_COUNT,
-    ];
-    if (target >= CELL_COUNT - 4) {
-      sources[3] = target - (CELL_COUNT - 4);
-    }
-    sources.forEach((source, slot) => edges.push({ source, target, slot }));
-  }
-  return edges;
-}
-
-function NetworkField({
-  activeCharacter,
-  tick,
-  running,
-  selectedCell,
-  onSelectCell,
-}: {
-  activeCharacter: string;
-  tick: number;
-  running: boolean;
-  selectedCell: number;
-  onSelectCell: (cell: number) => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const nodes = useMemo(() => makeNodes(), []);
-  const edges = useMemo(() => makeEdges(), []);
-  const animationRef = useRef<number | null>(null);
-  const stateRef = useRef({ activeCharacter, tick, running, selectedCell });
-
-  useEffect(() => {
-    stateRef.current = { activeCharacter, tick, running, selectedCell };
-  }, [activeCharacter, tick, running, selectedCell]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      const scale = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(rect.width * scale));
-      canvas.height = Math.max(1, Math.floor(rect.height * scale));
-      context.setTransform(scale, 0, 0, scale, 0, 0);
-    };
-
-    const observer = new ResizeObserver(resize);
-    observer.observe(canvas);
-    resize();
-
-    const draw = (time: number) => {
-      const rect = canvas.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
-      const current = stateRef.current;
-      const code = current.activeCharacter.charCodeAt(0) || 7;
-
-      context.clearRect(0, 0, width, height);
-      context.fillStyle = "#07100f";
-      context.fillRect(0, 0, width, height);
-
-      context.strokeStyle = "rgba(172, 237, 204, 0.035)";
-      context.lineWidth = 1;
-      for (let x = 24; x < width; x += 32) {
-        context.beginPath();
-        context.moveTo(x, 0);
-        context.lineTo(x, height);
-        context.stroke();
-      }
-      for (let y = 24; y < height; y += 32) {
-        context.beginPath();
-        context.moveTo(0, y);
-        context.lineTo(width, y);
-        context.stroke();
-      }
-
-      edges.forEach((edge, edgeIndex) => {
-        const source = nodes[edge.source];
-        const target = nodes[edge.target];
-        const sx = source.x * width;
-        const sy = source.y * height;
-        const tx = target.x * width;
-        const ty = target.y * height;
-        const active =
-          ((edgeIndex * 17 + code + current.tick * 3) % 19) < 5;
-
-        context.beginPath();
-        context.moveTo(sx, sy);
-        context.lineTo(tx, ty);
-        context.strokeStyle = active
-          ? "rgba(117, 232, 178, 0.29)"
-          : "rgba(126, 159, 147, 0.095)";
-        context.lineWidth = active ? 1.15 : 0.65;
-        context.stroke();
-
-        if (current.running && active && edge.source !== edge.target) {
-          const phase =
-            (time * 0.00021 + ((edgeIndex + code) % 13) / 13) % 1;
-          const px = sx + (tx - sx) * phase;
-          const py = sy + (ty - sy) * phase;
-          context.beginPath();
-          context.arc(px, py, 1.8, 0, Math.PI * 2);
-          context.fillStyle =
-            edge.slot % 2 === 0 ? "#8bf5bd" : "#58d7da";
-          context.fill();
-        }
-      });
-
-      nodes.forEach((node) => {
-        const x = node.x * width;
-        const y = node.y * height;
-        const oscillation =
-          0.5 + 0.5 * Math.sin(time * 0.002 + node.id * 1.91 + code);
-        const selected = node.id === current.selectedCell;
-        const stimulated =
-          current.running &&
-          ((node.id * 11 + code + current.tick) % 17) < 6;
-        const radius = selected ? 8.5 : stimulated ? 6.4 : 4.6;
-
-        if (selected || stimulated) {
-          const glow = context.createRadialGradient(
-            x,
-            y,
-            0,
-            x,
-            y,
-            selected ? 24 : 17,
-          );
-          glow.addColorStop(
-            0,
-            selected
-              ? "rgba(217,255,154,.34)"
-              : "rgba(102,237,180,.20)",
-          );
-          glow.addColorStop(1, "rgba(79,211,171,0)");
-          context.fillStyle = glow;
-          context.beginPath();
-          context.arc(x, y, selected ? 24 : 17, 0, Math.PI * 2);
-          context.fill();
-        }
-
-        context.beginPath();
-        context.arc(x, y, radius, 0, Math.PI * 2);
-        if (node.role === "sensory") {
-          context.fillStyle = stimulated ? "#72e5e8" : "#285c60";
-        } else if (node.role === "output") {
-          context.fillStyle = stimulated ? "#d9ff9a" : "#687a45";
-        } else {
-          const green = Math.round(105 + oscillation * 86);
-          context.fillStyle = stimulated
-            ? `rgb(92, ${green + 44}, 145)`
-            : `rgb(36, ${green}, 86)`;
-        }
-        context.fill();
-        context.strokeStyle = selected
-          ? "#f2ffd3"
-          : "rgba(222,255,230,.28)";
-        context.lineWidth = selected ? 1.5 : 0.7;
-        context.stroke();
-      });
-
-      animationRef.current = requestAnimationFrame(draw);
-    };
-
-    animationRef.current = requestAnimationFrame(draw);
-    return () => {
-      observer.disconnect();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [edges, nodes]);
-
-  function selectNode(event: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-    let nearest = -1;
-    let distance = Number.POSITIVE_INFINITY;
-    nodes.forEach((node) => {
-      const value = Math.hypot(node.x - x, node.y - y);
-      if (value < distance) {
-        nearest = node.id;
-        distance = value;
-      }
-    });
-    if (nearest >= 0 && distance < 0.04) onSelectCell(nearest);
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="network-canvas"
-      aria-label="Animated directed neural field. Click a cell to inspect it."
-      onPointerDown={selectNode}
-      data-testid="network-canvas"
-    />
-  );
-}
 
 function Metric({
   label,
@@ -287,88 +41,158 @@ function Metric({
 export default function Home() {
   const [prompt, setPrompt] = useState(EXAMPLES[0]);
   const [output, setOutput] = useState("");
-  const [activeCharacter, setActiveCharacter] = useState("t");
-  const [tick, setTick] = useState(21_408);
+  const [organism, setOrganism] = useState<OrganismPayload | null>(null);
   const [running, setRunning] = useState(true);
   const [pending, setPending] = useState(false);
   const [selectedCell, setSelectedCell] = useState(17);
-  const [metrics, setMetrics] = useState<Metrics>(INITIAL_METRICS);
-  const [fieldMode, setFieldMode] = useState<"local-demo" | "live-checkpoint">(
-    "local-demo",
-  );
+  const [fieldMode, setFieldMode] = useState<
+    "connecting" | "offline" | "live-checkpoint"
+  >("connecting");
   const [notice, setNotice] = useState(
-    "Ready. Start the local checkpoint bridge for live organism output.",
+    "Connecting to the local checkpoint bridge…",
+  );
+  const clockBusy = useRef(false);
+
+  const metrics = organism?.metrics ?? EMPTY_METRICS;
+  const topology = organism?.topology ?? null;
+  const cellCount = organism?.checkpoint.cells ?? 0;
+  const dendrites = organism?.checkpoint.dendrites ?? 0;
+  const tick = organism?.clock.ticks ?? 0;
+  const activeCharacter = organism?.clock.lastOutput ?? "";
+
+  const sensoryCells = useMemo(
+    () => new Set(topology?.sensoryCells ?? []),
+    [topology?.sensoryCells],
+  );
+  const outputCells = useMemo(
+    () => new Set(topology?.outputCells ?? []),
+    [topology?.outputCells],
+  );
+  const selectedRole = sensoryCells.has(selectedCell)
+    ? "sensory"
+    : outputCells.has(selectedCell)
+      ? "output"
+      : "interior";
+  const selectedActivity = topology?.cellActivity[selectedCell] ?? 0;
+  const selectedEnergy = topology?.cellEnergy[selectedCell] ?? 0;
+
+  const applyPayload = useCallback(
+    (payload: OrganismPayload, appendOutput: boolean) => {
+      setOrganism(payload);
+      setFieldMode("live-checkpoint");
+      setSelectedCell((current) =>
+        payload.checkpoint.cells <= current ? 0 : current,
+      );
+      if (appendOutput && payload.output) {
+        setOutput((current) =>
+          (current + payload.output).slice(-2400),
+        );
+      }
+    },
+    [],
   );
 
-  const selectedRole =
-    selectedCell < 4
-      ? "sensory"
-      : selectedCell >= CELL_COUNT - 4
-        ? "output"
-        : "interior";
+  useEffect(() => {
+    let cancelled = false;
+    async function connect() {
+      try {
+        const response = await fetch("/api/organism", {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("bridge offline");
+        const payload = (await response.json()) as OrganismPayload;
+        if (cancelled) return;
+        applyPayload(payload, false);
+        setNotice(
+          payload.checkpoint.metabolismEnabled
+            ? "Live connectome loaded. The organism clock is running through genuine no-input intervals."
+            : "Live connectome loaded. This language checkpoint has metabolism disabled, so silent ticks do not deplete energy.",
+        );
+      } catch {
+        if (cancelled) return;
+        setFieldMode("offline");
+        setNotice(
+          "Checkpoint bridge offline. Start `python -m sol.serve`; no synthetic network is being shown.",
+        );
+      }
+    }
+    void connect();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyPayload]);
+
+  useEffect(() => {
+    if (!running || pending || fieldMode !== "live-checkpoint") return;
+    let cancelled = false;
+
+    async function advance() {
+      if (clockBusy.current) return;
+      clockBusy.current = true;
+      try {
+        const response = await fetch("/api/organism", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ steps: 1, temperature: 0.8 }),
+        });
+        if (!response.ok) throw new Error("clock failed");
+        const payload = (await response.json()) as OrganismPayload;
+        if (cancelled) return;
+        applyPayload(payload, true);
+        setNotice(
+          payload.checkpoint.metabolismEnabled
+            ? "Clock running · no sensory token · output sampled from the evolving field."
+            : "Clock running · no sensory token · metabolism is disabled in this checkpoint.",
+        );
+      } catch {
+        if (!cancelled) {
+          setFieldMode("offline");
+          setNotice("The local organism clock lost its checkpoint bridge.");
+        }
+      } finally {
+        clockBusy.current = false;
+      }
+    }
+
+    void advance();
+    const interval = window.setInterval(() => void advance(), 250);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [applyPayload, fieldMode, pending, running]);
 
   async function generate() {
     const cleanPrompt = prompt.trim();
     if (!cleanPrompt || pending) return;
     setPending(true);
-    setRunning(true);
     setOutput("");
-    setNotice("Streaming the prompt into the field…");
+    setNotice("Streaming the prompt through the sensory organ…");
 
     try {
-      for (const character of cleanPrompt.slice(-16)) {
-        setActiveCharacter(character);
-        setTick((value) => value + 1);
-        await new Promise((resolve) => window.setTimeout(resolve, 20));
-      }
-
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prompt: cleanPrompt, length: 180 }),
       });
       if (!response.ok) throw new Error("generation request failed");
-      const result = (await response.json()) as {
-        output: string;
-        metrics: Metrics;
-        mode: string;
-        checkpoint?: { name: string; updates: number };
-      };
-      setFieldMode(
-        result.mode === "live-checkpoint" ? "live-checkpoint" : "local-demo",
-      );
-
-      setNotice("Reading the output organ one character at a time.");
-      for (let index = 0; index < result.output.length; index += 1) {
-        const character = result.output[index];
-        setOutput(result.output.slice(0, index + 1));
-        setActiveCharacter(character);
-        setTick((value) => value + 1);
-        if (index % 4 === 0) {
-          setMetrics((current) => ({
-            ...current,
-            energy: Math.max(
-              0.12,
-              result.metrics.energy +
-                Math.sin(index * 0.41) * 0.035,
-            ),
-            novelty: Math.max(
-              0.01,
-              result.metrics.novelty +
-                Math.cos(index * 0.29) * 0.018,
-            ),
-          }));
-        }
+      const result = (await response.json()) as OrganismPayload;
+      if (result.mode !== "live-checkpoint") {
+        throw new Error("checkpoint bridge unavailable");
+      }
+      applyPayload(result, false);
+      setNotice("Reading the real output organ one character at a time.");
+      for (let index = 0; index < (result.output?.length ?? 0); index += 1) {
+        setOutput(result.output?.slice(0, index + 1) ?? "");
         await new Promise((resolve) => window.setTimeout(resolve, 18));
       }
-      setMetrics(result.metrics);
       setNotice(
-        result.mode === "browser-demo"
-          ? "Complete · local demonstration. Start `python -m sol.serve` to connect a checkpoint."
-          : `Complete · live ${result.checkpoint?.name ?? "SOL checkpoint"} at update ${result.checkpoint?.updates?.toLocaleString() ?? "unknown"}.`,
+        `Stimulus complete · ${result.checkpoint.name} at training update ${result.checkpoint.updates.toLocaleString()} · autonomous clock resumes.`,
       );
     } catch {
-      setNotice("The field could not answer. Try the prompt again.");
+      setNotice(
+        "The live field could not answer. Check the local Python bridge.",
+      );
     } finally {
       setPending(false);
     }
@@ -390,20 +214,24 @@ export default function Home() {
           <span className="status-light" aria-hidden="true" />
           {fieldMode === "live-checkpoint"
             ? "CHECKPOINT ONLINE"
-            : "LOCAL DEMO"}
-          <span className="tick-count">TICK {tick.toLocaleString()}</span>
+            : fieldMode === "connecting"
+              ? "CONNECTING"
+              : "BRIDGE OFFLINE"}
+          <span className="tick-count">
+            ORGANISM TICK {tick.toLocaleString()}
+          </span>
         </div>
       </header>
 
       <section className="intro">
         <div>
-          <p className="eyebrow">Persistent neural field · streamed input</p>
-          <h1>Watch a thought move.</h1>
+          <p className="eyebrow">Actual connectome · persistent clock</p>
+          <h1>Watch the organism run.</h1>
         </div>
         <p className="intro-copy">
-          Characters enter through sensory cells. Directed axons carry activity
-          across a persistent field. The output organ answers one character at
-          a time.
+          Every visible node and dendrite belongs to the loaded checkpoint.
+          Edge brightness is measured message flow from its latest tick; the
+          geometric layout is only a readable projection.
         </p>
       </section>
 
@@ -415,21 +243,29 @@ export default function Home() {
               <h2>Directed field</h2>
             </div>
             <div className="field-actions">
-              <span>{CELL_COUNT} cells</span>
-              <span>{CELL_COUNT * DENDRITES} dendrites</span>
+              <span>{cellCount || "—"} cells</span>
+              <span>
+                {cellCount && dendrites ? cellCount * dendrites : "—"} dendrites
+              </span>
               <button
                 type="button"
                 className="text-button"
-                onClick={() => setRunning((value) => !value)}
+                onClick={() => {
+                  setRunning((value) => !value);
+                  setNotice(
+                    running
+                      ? "Organism frozen. Persistent state is retained exactly."
+                      : "Organism clock resumed.",
+                  );
+                }}
                 aria-pressed={!running}
               >
-                {running ? "Pause field" : "Resume field"}
+                {running ? "Freeze organism" : "Run organism"}
               </button>
             </div>
           </div>
           <NetworkField
-            activeCharacter={activeCharacter}
-            tick={tick}
+            topology={topology}
             running={running}
             selectedCell={selectedCell}
             onSelectCell={setSelectedCell}
@@ -444,8 +280,14 @@ export default function Home() {
             <span>
               <i className="output-dot" /> Output
             </span>
+            <span>
+              <i className="positive-edge" /> Positive edge
+            </span>
+            <span>
+              <i className="negative-edge" /> Negative edge
+            </span>
             <span className="active-token">
-              ACTIVE TOKEN <b>{JSON.stringify(activeCharacter)}</b>
+              LAST OUTPUT <b>{JSON.stringify(activeCharacter || "—")}</b>
             </span>
           </div>
         </article>
@@ -456,14 +298,16 @@ export default function Home() {
               <p className="panel-kicker">ORGANISM STATE</p>
               <h2>Telemetry</h2>
             </div>
-            <span className="sampling-badge">60 Hz</span>
+            <span className="sampling-badge">
+              {running ? "4 Hz clock" : "frozen"}
+            </span>
           </div>
 
           <div
             className="energy-gauge"
             style={
               {
-                "--energy-angle": `${metrics.energy * 360}deg`,
+                "--energy-angle": `${Math.max(0, Math.min(1, metrics.energy)) * 360}deg`,
               } as React.CSSProperties
             }
           >
@@ -477,22 +321,26 @@ export default function Home() {
             <Metric
               label="NOVELTY"
               value={metrics.novelty.toFixed(3)}
-              detail="input delta"
+              detail="zero during silence"
             />
             <Metric
               label="PERPLEXITY"
-              value={metrics.perplexity.toFixed(2)}
-              detail="character stream"
+              value={
+                Number.isFinite(metrics.perplexity)
+                  ? metrics.perplexity.toFixed(2)
+                  : "—"
+              }
+              detail="last stimulus"
             />
             <Metric
               label="CELL CREDIT"
               value={metrics.cellCredit.toExponential(1)}
-              detail="backward signal"
+              detail="last prompt gradient"
             />
             <Metric
-              label="EDGE CREDIT"
-              value={metrics.edgeCredit.toExponential(1)}
-              detail="signed synapse"
+              label="EDGE FLOW"
+              value={metrics.edgeFlow.toExponential(1)}
+              detail="latest real tick"
             />
           </div>
 
@@ -507,12 +355,28 @@ export default function Home() {
                 <dd>{selectedRole}</dd>
               </div>
               <div>
-                <dt>STATE</dt>
-                <dd>{running ? "firing" : "retained"}</dd>
+                <dt>ACTIVITY</dt>
+                <dd>{selectedActivity.toFixed(3)}</dd>
+              </div>
+              <div>
+                <dt>ENERGY</dt>
+                <dd>{selectedEnergy.toFixed(3)}</dd>
               </div>
               <div>
                 <dt>DENDRITES</dt>
-                <dd>{DENDRITES}</dd>
+                <dd>{dendrites || "—"}</dd>
+              </div>
+              <div>
+                <dt>VIABILITY</dt>
+                <dd>
+                  {(topology?.cellViability[selectedCell] ?? 0).toFixed(3)}
+                </dd>
+              </div>
+              <div>
+                <dt>METABOLISM</dt>
+                <dd>
+                  {organism?.checkpoint.metabolismEnabled ? "enabled" : "disabled"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -526,7 +390,7 @@ export default function Home() {
               <p className="panel-kicker">STIMULUS</p>
               <h2>Talk to the field</h2>
             </div>
-            <span>⌘ + ENTER TO RUN</span>
+            <span>⌘ + ENTER TO STIMULATE</span>
           </div>
           <label htmlFor="prompt">Prompt</label>
           <textarea
@@ -558,7 +422,11 @@ export default function Home() {
               type="button"
               className="run-button"
               onClick={() => void generate()}
-              disabled={!prompt.trim() || pending}
+              disabled={
+                !prompt.trim() ||
+                pending ||
+                fieldMode !== "live-checkpoint"
+              }
             >
               {pending ? "FIELD RUNNING" : "STIMULATE FIELD"}
               <span aria-hidden="true">→</span>
@@ -572,8 +440,12 @@ export default function Home() {
               <p className="panel-kicker">OUTPUT ORGAN</p>
               <h2>Response stream</h2>
             </div>
-            <span className={pending ? "streaming active" : "streaming"}>
-              {pending ? "STREAMING" : "READY"}
+            <span
+              className={
+                running || pending ? "streaming active" : "streaming"
+              }
+            >
+              {pending ? "STIMULATED" : running ? "AUTONOMOUS" : "FROZEN"}
             </span>
           </div>
           <div
@@ -583,10 +455,12 @@ export default function Home() {
           >
             {output || (
               <span>
-                The field is retaining state. Send a prompt to stimulate it.
+                Waiting for the first no-input clock tick from the output organ.
               </span>
             )}
-            {pending && <i className="cursor" aria-hidden="true" />}
+            {(running || pending) && (
+              <i className="cursor" aria-hidden="true" />
+            )}
           </div>
           <p className="notice">{notice}</p>
         </div>
@@ -594,10 +468,9 @@ export default function Home() {
 
       <footer>
         <p>
-          ONE SHARED STATE · DIRECTED TRAFFIC · CONTINUOUS CREDIT · PERSISTENT
-          MEMORY
+          EXACT TOPOLOGY · MEASURED FLOW · NO-INPUT CLOCK · PERSISTENT MEMORY
         </p>
-        <span>Prototype field 0.1</span>
+        <span>Prototype field 0.2</span>
       </footer>
     </main>
   );

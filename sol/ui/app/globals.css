@@ -289,6 +289,21 @@ h2 {
   background: var(--acid);
 }
 
+.field-legend .positive-edge,
+.field-legend .negative-edge {
+  width: 10px;
+  height: 2px;
+  border-radius: 0;
+}
+
+.positive-edge {
+  background: var(--cyan);
+}
+
+.negative-edge {
+  background: var(--warm);
+}
+
 .active-token {
   margin-left: auto;
   color: #819b8e;
@@ -428,7 +443,7 @@ h2 {
 .cell-inspector dl {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 12px 8px;
   margin: 14px 0 0;
 }
 
@@ -573,6 +588,8 @@ textarea::placeholder {
 
 .response-text {
   min-height: 170px;
+  max-height: 320px;
+  overflow-y: auto;
   color: #d8eee0;
   font-family: var(--font-geist-mono), monospace;
   font-size: 15px;

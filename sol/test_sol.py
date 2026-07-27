@@ -1790,6 +1790,30 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert snapshot["metrics"]["structuralRewires"] == 0
     assert "probeSources" in snapshot["topology"]
     assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
+    assert len(snapshot["topology"]["sources"]) == trainer.model.cfg.cells
+    assert len(snapshot["topology"]["edgeFlow"]) == trainer.model.cfg.cells
+    assert all(
+        len(row) == trainer.model.cfg.dendrites
+        for row in snapshot["topology"]["edgeFlow"]
+    )
+    assert len(snapshot["topology"]["cellActivity"]) == trainer.model.cfg.cells
+    assert snapshot["checkpoint"]["cells"] == trainer.model.cfg.cells
+    assert snapshot["checkpoint"]["dendrites"] == trainer.model.cfg.dendrites
+
+    energy_before_silence = snapshot["metrics"]["energy"]
+    clock_before_silence = snapshot["clock"]["ticks"]
+    silent = organism.advance_silence(2, seed=5)
+    assert len(silent["output"]) == 2
+    assert silent["clock"]["ticks"] == clock_before_silence + 2
+    assert silent["clock"]["lastInput"] is None
+    assert silent["metrics"]["novelty"] == 0
+    assert silent["metrics"]["energyInput"] == 0
+    assert silent["metrics"]["energy"] <= energy_before_silence
+    assert any(
+        flow > 0
+        for row in silent["topology"]["edgeFlow"]
+        for flow in row
+    )
 
 
 def test_checkpoint_promotion_validates_and_selects_lowest_bpc(

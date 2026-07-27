@@ -2,13 +2,14 @@
 
 An interactive instrument for the SOL character-organ prototype.
 
-The console visualizes a sparse directed field as a character stream moves through it,
-shows energy, novelty, cell credit, and edge credit, and lets a user submit a prompt and
-watch the output organ answer one character at a time.
+The console visualizes every cell and dendrite in the loaded sparse directed field,
+maps measured per-edge message flow and retained cell stimulation onto the canvas, shows
+energy and credit telemetry, and lets a user submit a prompt or watch the output organ
+continue through genuine no-input clock ticks.
 
-The local endpoint is a deterministic behavioral demonstration and identifies itself as
-such in the interface. `app/api/generate/route.ts` is the integration seam for the local
-PyTorch organism.
+The generation endpoint retains an explicitly labeled deterministic fallback for
+frontend development. The connectome and autonomous clock never fabricate a fallback:
+they appear only while the local PyTorch bridge is connected.
 
 ```bash
 npm install
@@ -29,3 +30,9 @@ python -m sol.serve
 
 The UI automatically uses `http://127.0.0.1:8765`; set `SOL_BACKEND_URL` only when
 choosing another local port.
+
+`Freeze organism` stops browser-driven no-input ticks without resetting its persistent
+state. `Run organism` resumes at four ticks per second. Geometric cell positions are a
+readable abstract projection because SOL currently learns connectivity, not physical
+coordinates; cell identities, roles, dendrites, signed weights, activity, energy, and
+edge flow are exact checkpoint data.

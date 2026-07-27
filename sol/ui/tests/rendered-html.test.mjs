@@ -36,15 +36,16 @@ test("server-renders the SOL character console", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>SOL · Character Organ<\/title>/i);
-  assert.match(html, /Watch a thought move\./);
+  assert.match(html, /Watch the organism run\./);
   assert.match(html, /Directed field/);
   assert.match(html, /Talk to the field/);
   assert.match(html, /Response stream/);
+  assert.match(html, /EXACT TOPOLOGY/);
   assert.match(html, /data-testid="network-canvas"/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
-test("generation endpoint validates and returns a deterministic continuation", async () => {
+test("generation endpoint validates and returns character output", async () => {
   const app = await worker();
   const valid = await app.fetch(
     new Request("http://localhost/api/generate", {
@@ -57,7 +58,7 @@ test("generation endpoint validates and returns a deterministic continuation", a
   );
   assert.equal(valid.status, 200);
   const payload = await valid.json();
-  assert.equal(payload.mode, "browser-demo");
+  assert.ok(["browser-demo", "live-checkpoint"].includes(payload.mode));
   assert.equal(payload.output.length, 48);
   assert.equal(typeof payload.metrics.energy, "number");
   assert.equal(typeof payload.metrics.edgeCredit, "number");
@@ -76,4 +77,19 @@ test("generation endpoint validates and returns a deterministic continuation", a
     await new URL("app/page.tsx", templateRoot).pathname,
     /app\/page\.tsx$/,
   );
+});
+
+test("organism clock rejects impossible tick counts before proxying", async () => {
+  const app = await worker();
+  const response = await app.fetch(
+    new Request("http://localhost/api/organism", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ steps: 65 }),
+    }),
+    environment(),
+    context,
+  );
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /steps must be/);
 });

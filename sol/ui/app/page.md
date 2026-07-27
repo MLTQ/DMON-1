@@ -2,27 +2,24 @@
 
 ## Purpose
 
-Provides the interactive SOL character-organ console: a directed-field visualization,
-prompt composer, streamed response, and organism telemetry.
+Provides the interactive SOL character-organ console: exact checkpoint state,
+stimulus composer, autonomous output stream, clock control, and organism telemetry.
 
 ## Components
 
-### `NetworkField`
-- **Does**: Renders cells, directed axons, measured-role colors, traffic pulses, and
-  selectable cells on an HTML canvas.
-- **Rationale**: Canvas keeps the network a functional visualization rather than a
-  decorative illustration.
-
 ### `Home`
-- **Does**: Owns prompt, response streaming, selected-cell state, and live telemetry.
-- **Interacts with**: `POST /api/generate` in `api/generate/route.ts`.
-- **Rationale**: It labels live-checkpoint output separately from the local deterministic
-  fallback and exposes checkpoint name/update without changing the visual instrument.
+- **Does**: Loads the real bridge snapshot, advances genuine no-input ticks at 4 Hz,
+  appends sampled output, and freezes/resumes the organism without resetting state.
+- **Interacts with**: `NetworkField`, `GET/POST /api/organism`, and
+  `POST /api/generate`.
+- **Rationale**: Training update, organism clock tick, and rendered animation are kept
+  distinct so the UI does not imply false activity.
 
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Users | Prompt submission streams a visible response and network activity | Control labels and response semantics |
+| Users | Output continues during run and stops without state reset when frozen | Clock semantics |
 | Browser tests | `network-canvas` and `response-output` test IDs remain stable | Removing test IDs |
-| Live SOL bridge | JSON response contains `output`, `mode`, and `metrics` | API response shape |
+| `network-field.tsx` | Receives only bridge-provided topology and flow | Synthetic fallback |
+| Live SOL bridge | JSON follows `OrganismPayload` | API response shape |

@@ -26,6 +26,25 @@ class LiveOrganism:
         self.loaded: LoadedOrganism = load_organism(self.checkpoint, device)
         self.device = torch.device(device)
         self.lock = threading.Lock()
+        model = self.loaded.model
+        self.clock_ticks = 0
+        self.last_output = ""
+        self.last_input: str | None = None
+        self.last_cell_credit = 0.0
+        self.last_edge_credit = 0.0
+        self.last_perplexity = self._fallback_perplexity()
+        self.last_novelty = 0.0
+        self.last_edge_flow = torch.zeros(
+            model.cfg.cells,
+            model.cfg.dendrites,
+            dtype=self.loaded.state.energy.dtype,
+        )
+        self.last_probe_flow = torch.zeros(
+            model.cfg.cells,
+            dtype=self.loaded.state.energy.dtype,
+        )
+        self.generator = torch.Generator(device=self.device)
+        self.generator.seed()
 
     def _fallback_perplexity(self) -> float:
         evaluation = self.loaded.metadata.get("evaluation", {})
@@ -35,6 +54,105 @@ class LiveOrganism:
             else {}
         )
         return float(persistent.get("perplexity", math.nan))
+
+    def _remember_diagnostics(
+        self,
+        diagnostics: dict[str, torch.Tensor],
+    ) -> None:
+        self.last_novelty = float(diagnostics["novelty"].mean().item())
+        self.last_edge_flow = diagnostics["edge_flow"].detach().cpu()
+        self.last_probe_flow = diagnostics["probe_flow"].detach().cpu()
+
+    def _snapshot_unlocked(self) -> dict[str, Any]:
+        state = self.loaded.state
+        model = self.loaded.model
+        viability = model._viability(state.energy)
+        metabolism_enabled = (
+            model.cfg.basal_cost > 0
+            or model.cfg.activity_cost > 0
+            or model.cfg.stimulation_gain > 0
+        )
+        return {
+            "mode": "live-checkpoint",
+            "checkpoint": {
+                "name": self.checkpoint.name,
+                "updates": self.loaded.updates,
+                "cells": model.cfg.cells,
+                "dendrites": model.cfg.dendrites,
+                "metabolismEnabled": metabolism_enabled,
+            },
+            "clock": {
+                "ticks": self.clock_ticks,
+                "lastInput": self.last_input,
+                "lastOutput": self.last_output,
+            },
+            "metrics": {
+                "energy": float(state.energy.mean().item()),
+                "viability": float(viability.mean().item()),
+                "quiescentFraction": float(
+                    (
+                        state.energy
+                        <= model.cfg.quiescence_energy
+                    )
+                    .to(state.energy.dtype)
+                    .mean()
+                    .item()
+                ),
+                "stimulation": float(state.stimulation.mean().item()),
+                "eligibility": float(state.eligibility.abs().mean().item()),
+                "backwardCredit": float(
+                    state.backward_credit.abs().mean().item()
+                ),
+                "edgeEligibility": float(
+                    state.edge_eligibility.abs().mean().item()
+                ),
+                "fastWeight": float(state.fast_weight.abs().mean().item()),
+                "fastSaturation": float(
+                    (
+                        state.fast_weight.abs()
+                        >= 0.95 * model.cfg.fast_weight_limit
+                    )
+                    .to(state.fast_weight.dtype)
+                    .mean()
+                    .item()
+                ),
+                "rewardBaseline": float(
+                    state.reward_baseline.mean().item()
+                ),
+                "probeEligibility": float(
+                    state.probe_eligibility.abs().mean().item()
+                ),
+                "structuralRewires": int(model.total_rewires.item()),
+                "novelty": self.last_novelty,
+                "cellCredit": self.last_cell_credit,
+                "edgeCredit": self.last_edge_credit,
+                "perplexity": self.last_perplexity,
+                "edgeFlow": float(self.last_edge_flow.mean().item()),
+            },
+            "topology": {
+                "sources": model.sources.cpu().tolist(),
+                "probeSources": model.probe_sources.cpu().tolist(),
+                "structuralEdgeCredit": (
+                    model.structural_edge_credit.cpu().tolist()
+                ),
+                "structuralProbeCredit": (
+                    model.structural_probe_credit.cpu().tolist()
+                ),
+                "weights": torch.tanh(
+                    model.edge_weight.detach()
+                )
+                .cpu()
+                .tolist(),
+                "fastWeights": state.fast_weight[0].cpu().tolist(),
+                "edgeFlow": self.last_edge_flow.tolist(),
+                "probeFlow": self.last_probe_flow.tolist(),
+                "cellActivity": state.stimulation[0].cpu().tolist(),
+                "cellEnergy": state.energy[0].cpu().tolist(),
+                "cellViability": viability[0].cpu().tolist(),
+                "sensoryCells": model.sensory_indices.cpu().tolist(),
+                "outputCells": model.output_indices.cpu().tolist(),
+            },
+        }
 
     def generate(
         self,
@@ -58,6 +176,7 @@ class LiveOrganism:
             vocabulary = self.loaded.vocabulary
             encoded = vocabulary.encode(prompt, self.device).unsqueeze(0)
             state = self.loaded.state.detached()
+            elapsed_ticks = 0
             model.zero_grad(set_to_none=True)
             cell_credit = 0.0
             edge_credit = 0.0
@@ -83,17 +202,19 @@ class LiveOrganism:
                 perplexity = math.exp(min(20.0, float(prompt_loss.item())))
                 state = state.detached()
                 model.zero_grad(set_to_none=True)
+                elapsed_ticks += encoded.shape[1] - 1
 
-            generator = torch.Generator(device=self.device)
             if seed is None:
-                generator.seed()
+                generator = self.generator
             else:
+                generator = torch.Generator(device=self.device)
                 generator.manual_seed(seed)
             output: list[int] = []
             with torch.no_grad():
                 logits, state, diagnostics = model.tick(
                     state, encoded[:, -1]
                 )
+                elapsed_ticks += 1
                 novelty_values = [
                     float(diagnostics["novelty"].mean().item())
                 ]
@@ -140,6 +261,7 @@ class LiveOrganism:
                     ).squeeze(1)
                     output.append(int(token.item()))
                     logits, state, diagnostics = model.tick(state, token)
+                    elapsed_ticks += 1
                     novelty_values.append(
                         float(diagnostics["novelty"].mean().item())
                     )
@@ -185,11 +307,19 @@ class LiveOrganism:
                         float(diagnostics["probe_flow"].mean().item())
                     )
 
+            decoded = vocabulary.decode(output)
             self.loaded.state = state.detached()
-            return {
-                "output": vocabulary.decode(output),
-                "mode": "live-checkpoint",
-                "metrics": {
+            self.clock_ticks += elapsed_ticks
+            self.last_output = decoded[-1:] if decoded else ""
+            self.last_input = self.last_output or prompt[-1:]
+            self.last_cell_credit = cell_credit
+            self.last_edge_credit = edge_credit
+            self.last_perplexity = perplexity
+            self._remember_diagnostics(diagnostics)
+            payload = self._snapshot_unlocked()
+            payload["output"] = decoded
+            payload["metrics"].update(
+                {
                     "energy": float(state.energy.mean().item()),
                     "viability": (
                         sum(viability_values) / len(viability_values)
@@ -230,87 +360,95 @@ class LiveOrganism:
                     "structuralRewires": int(
                         model.total_rewires.item()
                     ),
-                },
-                "checkpoint": {
-                    "name": self.checkpoint.name,
-                    "updates": self.loaded.updates,
-                    "cells": model.cfg.cells,
-                    "dendrites": model.cfg.dendrites,
-                },
-            }
+                }
+            )
+            return payload
+
+    def advance_silence(
+        self,
+        steps: int = 1,
+        *,
+        temperature: float = 0.8,
+        seed: int | None = None,
+    ) -> dict[str, Any]:
+        """Advance genuine no-input ticks and sample the output organ."""
+
+        if not 1 <= steps <= 64:
+            raise ValueError("steps must be in [1, 64]")
+        if temperature <= 0:
+            raise ValueError("temperature must be positive")
+
+        with self.lock:
+            model = self.loaded.model
+            vocabulary = self.loaded.vocabulary
+            state = self.loaded.state.detached()
+            if seed is None:
+                generator = self.generator
+            else:
+                generator = torch.Generator(device=self.device)
+                generator.manual_seed(seed)
+            output: list[int] = []
+            novelty_values: list[float] = []
+            viability_values: list[float] = []
+            energy_input_values: list[float] = []
+            energy_spent_values: list[float] = []
+
+            with torch.no_grad():
+                for _ in range(steps):
+                    logits, state, diagnostics = model.tick(state, None)
+                    probabilities = torch.softmax(
+                        logits / temperature, dim=-1
+                    )
+                    token = torch.multinomial(
+                        probabilities,
+                        1,
+                        generator=generator,
+                    ).squeeze(1)
+                    output.append(int(token.item()))
+                    novelty_values.append(
+                        float(diagnostics["novelty"].mean().item())
+                    )
+                    viability_values.append(
+                        float(
+                            diagnostics["mean_viability"].mean().item()
+                        )
+                    )
+                    energy_input_values.append(
+                        float(diagnostics["energy_input"].mean().item())
+                    )
+                    energy_spent_values.append(
+                        float(diagnostics["energy_spent"].mean().item())
+                    )
+
+            decoded = vocabulary.decode(output)
+            self.loaded.state = state.detached()
+            self.clock_ticks += steps
+            self.last_input = None
+            self.last_output = decoded[-1:] if decoded else ""
+            self._remember_diagnostics(diagnostics)
+            payload = self._snapshot_unlocked()
+            payload["output"] = decoded
+            payload["metrics"].update(
+                {
+                    "novelty": sum(novelty_values) / len(novelty_values),
+                    "viability": (
+                        sum(viability_values) / len(viability_values)
+                    ),
+                    "energyInput": (
+                        sum(energy_input_values)
+                        / len(energy_input_values)
+                    ),
+                    "energySpent": (
+                        sum(energy_spent_values)
+                        / len(energy_spent_values)
+                    ),
+                }
+            )
+            return payload
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
-            state = self.loaded.state
-            viability = self.loaded.model._viability(state.energy)
-            return {
-                "mode": "live-checkpoint",
-                "checkpoint": {
-                    "name": self.checkpoint.name,
-                    "updates": self.loaded.updates,
-                },
-                "metrics": {
-                    "energy": float(state.energy.mean().item()),
-                    "viability": float(viability.mean().item()),
-                    "quiescentFraction": float(
-                        (
-                            state.energy
-                            <= self.loaded.model.cfg.quiescence_energy
-                        )
-                        .to(state.energy.dtype)
-                        .mean()
-                        .item()
-                    ),
-                    "stimulation": float(state.stimulation.mean().item()),
-                    "eligibility": float(state.eligibility.abs().mean().item()),
-                    "backwardCredit": float(
-                        state.backward_credit.abs().mean().item()
-                    ),
-                    "edgeEligibility": float(
-                        state.edge_eligibility.abs().mean().item()
-                    ),
-                    "fastWeight": float(
-                        state.fast_weight.abs().mean().item()
-                    ),
-                    "fastSaturation": float(
-                        (
-                            state.fast_weight.abs()
-                            >= 0.95
-                            * self.loaded.model.cfg.fast_weight_limit
-                        )
-                        .to(state.fast_weight.dtype)
-                        .mean()
-                        .item()
-                    ),
-                    "rewardBaseline": float(
-                        state.reward_baseline.mean().item()
-                    ),
-                    "probeEligibility": float(
-                        state.probe_eligibility.abs().mean().item()
-                    ),
-                    "structuralRewires": int(
-                        self.loaded.model.total_rewires.item()
-                    ),
-                },
-                "topology": {
-                    "sources": self.loaded.model.sources.cpu().tolist(),
-                    "probeSources": (
-                        self.loaded.model.probe_sources.cpu().tolist()
-                    ),
-                    "structuralEdgeCredit": (
-                        self.loaded.model.structural_edge_credit.cpu().tolist()
-                    ),
-                    "structuralProbeCredit": (
-                        self.loaded.model.structural_probe_credit.cpu().tolist()
-                    ),
-                    "weights": torch.tanh(
-                        self.loaded.model.edge_weight.detach()
-                    )
-                    .cpu()
-                    .tolist(),
-                    "fastWeights": state.fast_weight[0].cpu().tolist(),
-                },
-            }
+            return self._snapshot_unlocked()
 
 
 def make_handler(organism: LiveOrganism) -> type[BaseHTTPRequestHandler]:
@@ -339,7 +477,7 @@ def make_handler(organism: LiveOrganism) -> type[BaseHTTPRequestHandler]:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
         def do_POST(self) -> None:  # noqa: N802
-            if self.path != "/generate":
+            if self.path not in {"/generate", "/advance"}:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
                 return
             try:
@@ -347,21 +485,28 @@ def make_handler(organism: LiveOrganism) -> type[BaseHTTPRequestHandler]:
                 if content_length > 64_000:
                     raise ValueError("request is too large")
                 payload = json.loads(self.rfile.read(content_length) or b"{}")
-                prompt = payload.get("prompt")
-                if not isinstance(prompt, str) or not prompt.strip():
-                    raise ValueError("prompt is required")
-                length = int(payload.get("length", 160))
-                length = max(1, min(512, length))
                 temperature = float(payload.get("temperature", 0.8))
                 seed = payload.get("seed")
                 if seed is not None:
                     seed = int(seed)
-                response = organism.generate(
-                    prompt.strip()[:2000],
-                    length,
-                    temperature=temperature,
-                    seed=seed,
-                )
+                if self.path == "/generate":
+                    prompt = payload.get("prompt")
+                    if not isinstance(prompt, str) or not prompt.strip():
+                        raise ValueError("prompt is required")
+                    length = int(payload.get("length", 160))
+                    length = max(1, min(512, length))
+                    response = organism.generate(
+                        prompt.strip()[:2000],
+                        length,
+                        temperature=temperature,
+                        seed=seed,
+                    )
+                else:
+                    response = organism.advance_silence(
+                        int(payload.get("steps", 1)),
+                        temperature=temperature,
+                        seed=seed,
+                    )
             except (ValueError, KeyError, json.JSONDecodeError) as error:
                 self._json(
                     HTTPStatus.BAD_REQUEST, {"error": str(error)}

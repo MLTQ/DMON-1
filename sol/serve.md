@@ -21,16 +21,25 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 - **Rationale**: UI credit telemetry comes from a real reverse signal rather than a
   fabricated animation metric.
 
+### `LiveOrganism.advance_silence`
+- **Does**: Advances one or more genuine `token=None` intervals, samples the output
+  organ without feeding a sensory token, and retains the resulting state.
+- **Does**: Reports zero novelty/input energy plus the real per-dendrite message flow
+  produced by each silent tick.
+- **Rationale**: The local run/pause clock must exercise the organism rather than animate
+  a static checkpoint.
+
 ### `LiveOrganism.snapshot`
-- **Does**: Returns energy, stimulation, cell/edge eligibility, directed sources, slow
-  signed edge weights, per-stream fast weights, candidate sources, retained structural
-  credit, backward-credit magnitude, rewrite count, and reward surprise baseline for
-  live visualization.
+- **Does**: Returns exact cell/dendrite counts, energy, stimulation, cell/edge
+  eligibility, directed sources, slow signed weights, per-stream fast weights, latest
+  measured edge/probe flow, per-cell activity/energy/viability, role indices, clock
+  state, structural credit, backward-credit magnitude, and rewrite count.
 - **Does**: Derives current viability and quiescent fraction from the checkpoint lane's
   actual cell energies without mutating it.
 
 ### HTTP handler
-- **Does**: Serves `GET /health`, `GET /snapshot`, and `POST /generate`.
+- **Does**: Serves `GET /health`, `GET /snapshot`, `POST /generate`, and
+  `POST /advance`.
 - **Rationale**: The Python standard library is sufficient for a single-user local bridge.
 
 ### CLI
@@ -41,7 +50,8 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| `sol/ui/app/api/generate/route.ts` | `/generate` returns `output`, `mode`, legacy metric keys, and additive `fastWeight` | Response shape |
+| `sol/ui/app/api/generate/route.ts` | `/generate` returns output plus the complete live snapshot | Response shape |
+| `sol/ui/app/api/organism/route.ts` | `/snapshot` and `/advance` expose exact topology and no-input ticks | Endpoint or payload shape |
 | Local operator | Default host is loopback-only | Changing bind default |
 | `promote.py` | Default checkpoint path is `sol/runs/live.pt` | Path mismatch |
-| UI telemetry | Cell and edge credit are measured prompt gradients | Replacing backward pass with proxy values |
+| UI telemetry | Credit, activity, and flow are measured; geometric positions alone are illustrative | Replacing model values with animation proxies |

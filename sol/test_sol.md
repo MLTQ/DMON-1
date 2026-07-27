@@ -101,6 +101,9 @@ tensor shapes.
 - **Does**: Loads an inference-only lane through `LiveOrganism`, generates output, and
   requires nonzero measured prompt credit plus real edge-eligibility and fast-weight
   telemetry.
+- **Does**: Advances genuine no-input bridge ticks, requires zero novelty and input
+  energy, samples the output organ, and exposes the exact cell/dendrite counts with
+  per-cell activity and per-dendrite measured flow.
 - **Does**: Validates multiple completed candidates, promotes the lowest-BPC checkpoint,
   rejects a transient best from a collapsed run, and reloads the atomic destination.
 
@@ -132,4 +135,4 @@ tensor shapes.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| SOL development | All causal, metabolic, learning, resume, and control paths remain real | Removing assertions or replacing measured state with synthetic diagnostics |
+| SOL development | All causal, metabolic, learning, resume, bridge-clock, and control paths remain real | Removing assertions or replacing measured state with synthetic diagnostics |
