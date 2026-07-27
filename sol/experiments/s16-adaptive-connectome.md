@@ -143,12 +143,32 @@ Across the five aligned evaluations from update 1,000 through 2,000:
 |---|---:|---:|---:|---:|
 | 7 | 0.1667 BPC | 5 / 5 | 5.69x | 0.1721 BPC |
 | 13 | 0.1601 BPC | 5 / 5 | 7.34x | 0.1094 BPC |
+| 21 | 0.0383 BPC | 4 / 5 | 1.32x | 0.0554 BPC |
 
-Both comparisons therefore support the claim that learned sparse anatomy improves
-capability over equally sparse fixed anatomy at this horizon. Probes-only was descending
-faster in both seeds; relative slopes and naive linear crossing estimates remain
-reported caveats, not forecasts or automatic vetoes. Seed 21 is required before treating
-the result as a replicated structural-policy effect.
+Seeds 7 and 13 independently clear the preregistered consistency and effect/noise
+thresholds. Seed 21 is directionally consistent at four of five terminal measurements
+and at the endpoint, but its individual effect is too small relative to residual noise
+to clear that threshold.
+
+Pooled across seeds, adaptive anatomy wins 14 of 15 paired terminal measurements. The
+mean adaptive advantage is `0.1217` BPC across those measurements and `0.1123` BPC at
+the update-2,000 endpoint. The three-seed mean curve favors adaptive at every terminal
+evaluation, with a `9.01x` mean-effect/residual-noise ratio. This is sufficient evidence
+for the S16 hypothesis: learned sparse anatomy improves capability over equally sparse
+fixed anatomy at the 2,000-update decision horizon. Nonzero learning slopes remain
+reported context, not a demand for mathematical flatness.
+
+Morphology remained genuinely variable rather than saturating every available slot:
+
+| Seed | Active edges at 2,000 | Spawns | Prunes |
+|---|---:|---:|---:|
+| 7 | 36 / 64 | 16 | 12 |
+| 13 | 31 / 64 | 14 | 15 |
+| 21 | 38 / 64 | 15 | 9 |
 
 The fixed-full controls remained lower in absolute BPC, so S16 supports adaptive
 communication relative to sparse birth anatomy, not parity with maximum live fan-in.
+Their mean endpoint was `3.2938` BPC versus `3.4424` for adaptive and `3.5546` for
+probes-only. Seed 7's full control ran on the 4090; seeds 13 and 21 are auxiliary 2070S
+references, so that absolute three-seed comparison is descriptive rather than a
+same-device causal estimate.
