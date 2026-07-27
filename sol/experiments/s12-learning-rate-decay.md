@@ -65,3 +65,31 @@ comparison is the completed S9 energy-one seed-7 run.
 The candidate launched on the RTX 4090 after S11 completed. Its update-250 held-out BPC
 is bit-for-bit identical to the completed constant-rate control, establishing an exact
 pre-intervention trajectory rather than merely a seed-matched one.
+
+## Full-scale result
+
+The candidate completed all 5,000 updates and remained bit-for-bit identical to the
+constant-rate control through update 2,500. After decay began, it won nine of ten aligned
+evaluations. The sole loss was `+0.00300` BPC at update 2,750.
+
+| Measure | Constant rate | Late decay | Candidate delta |
+|---|---:|---:|---:|
+| Best BPC | 2.44573 | 2.33179 | -0.11393 |
+| Final BPC | 2.52740 | 2.33179 | -0.19561 |
+| Post-boundary mean delta | — | — | -0.10560 |
+| Final regression from best | 0.08168 | 0.00000 | -0.08168 |
+
+Across all 20 evaluations, including ten exact pre-boundary ties, mean candidate-minus-
+control BPC was `-0.05280`. The post-boundary paired range was `-0.23540` to `+0.00300`.
+The final checkpoint was also the best checkpoint, so it passed the stricter `0.1` BPC
+promotion stability audit with zero final or worst post-best regression.
+
+The final persistent-state evaluation reached `2.33179` BPC and 50.98% next-character
+accuracy. Resetting state every token worsened BPC to `6.87665`; shuffling cell identity
+worsened it to `6.41442`. The gain therefore still depends on streamed organism state and
+the learned arrangement of differentiated cells rather than only decoder bias.
+
+This checkpoint improves the previous S11 live checkpoint by `0.08336` BPC. It was
+promoted to the local-only live bridge, where prompt generation produced nonzero
+prompt-tied cell and edge credit while preserving full viability. Replication remains
+necessary before treating the full-scale magnitude as seed-general.

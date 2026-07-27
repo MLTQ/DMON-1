@@ -136,3 +136,36 @@ whole-body survival. A candidate win is insufficient if subsequent held-out BPC 
 the configured regression threshold before the next intervention. A frozen-topology
 organism may still be recorded for context, but it must not decide whether the living
 body accepts an organ change.
+
+## Full GPU seed-13 result
+
+After GPU recovery, seed 13 completed the 64-cell protocol on the RTX 2070 Super. The
+original 5,000-update boundary landed 100 windows into an eighth trial, so the same
+checkpointed organism continued to update 5,200 rather than abandoning a candidate
+organ mid-evaluation.
+
+The clean final ledger contains eight resolved trials:
+
+- five commits and three rejections;
+- exactly 150 candidate-on and 150 incumbent-only windows per trial;
+- mean within-organism decision advantage `+0.002494`;
+- eight of eight decision-aligned whole-body survival passes;
+- zero pending or unstable trials;
+- five real rewires with exact fixed fan-in and complete directed reachability.
+
+Individual advantages were:
+
+`-0.001695, +0.001276, +0.009552, +0.000784, -0.000194, -0.000733,
++0.003963, +0.007000`.
+
+Every rejection left topology and body energy unchanged. Each commit paid the configured
+growth cost once; live body energy after the last commit was `0.99922`, with full
+viability. The organism
+remained stable at `2.45638` best and `2.53128` final BPC, with final regression
+`0.07490`. Resetting state worsened final BPC to `10.93587`, and shuffling cell identity
+worsened it to `5.05249`.
+
+This seed passes the living-organism morphology gate: exploratory traffic can accept and
+reject candidate axons selectively while the shared body learns continuously, and every
+resolved grafted/rejected body survives. It does not establish a global language benefit
+from rewiring; seed-7 and seed-21 replications remain queued.
