@@ -21,6 +21,7 @@ from .baselines import (
 )
 from .benchmark import _device_memory
 from .checkpoint import load_checkpoint, save_checkpoint
+from .convergence import summarize_convergence
 from .evaluate import (
     _shuffle_cell_state,
     evaluate_state_ablations,
@@ -61,6 +62,44 @@ def _model(**overrides) -> SparseAxonField:
 
 def test_device_memory_is_explicit_for_cpu() -> None:
     assert _device_memory(torch.device("cpu")) == {"device_type": "cpu"}
+
+
+def test_convergence_rejects_a_still_improving_horizon() -> None:
+    summary = summarize_convergence(
+        [
+            (100, 5.0),
+            (200, 4.8),
+            (300, 4.6),
+            (400, 4.4),
+            (500, 4.2),
+        ],
+        window=5,
+        max_terminal_slope_bpc_per_100_updates=0.01,
+    )
+    assert summary["status"] == "still_improving"
+    assert not summary["horizon_informative"]
+    assert summary["terminal_slope_bpc_per_100_updates"] == pytest.approx(
+        -0.2
+    )
+    assert summary["terminal_rmse_bpc"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_convergence_requires_a_supported_practical_plateau() -> None:
+    summary = summarize_convergence(
+        [
+            (100, 4.0),
+            (200, 4.0),
+            (300, 4.0),
+            (400, 4.0),
+            (500, 4.0),
+        ],
+        window=5,
+        max_terminal_slope_bpc_per_100_updates=0.01,
+    )
+    assert summary["status"] == "plateau_supported"
+    assert summary["horizon_informative"]
+    assert summary["terminal_slope_ci95_low"] == pytest.approx(0.0)
+    assert summary["terminal_slope_ci95_high"] == pytest.approx(0.0)
 
 
 def test_topology_is_sparse_directed_and_output_reachable() -> None:

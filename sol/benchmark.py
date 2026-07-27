@@ -23,6 +23,7 @@ from .baselines import (
     match_transformer_hidden_size,
 )
 from .checkpoint import load_checkpoint, save_checkpoint
+from .convergence import summarize_convergence
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
 from .schedule import (
@@ -392,6 +393,13 @@ def _run_sol(
         ),
         "stability": summarize_stability(
             evaluation_history, args.max_final_regression_bpc
+        ),
+        "convergence": summarize_convergence(
+            evaluation_history,
+            window=args.convergence_window,
+            max_terminal_slope_bpc_per_100_updates=(
+                args.max_terminal_slope_bpc_per_100
+            ),
         ),
         "exploratory_survival": summarize_exploratory_survival(
             evaluation_history,
@@ -768,6 +776,15 @@ def parse_args() -> argparse.Namespace:
         default=0.0,
     )
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
+    parser.add_argument("--convergence-window", type=int, default=5)
+    parser.add_argument(
+        "--max-terminal-slope-bpc-per-100",
+        type=float,
+        default=0.01,
+        help=(
+            "practical-equivalence bound for the terminal validation slope"
+        ),
+    )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--log-every", type=int, default=25)
@@ -870,6 +887,12 @@ def parse_args() -> argparse.Namespace:
         )
     if args.max_final_regression_bpc < 0:
         parser.error("--max-final-regression-bpc must be non-negative")
+    if args.convergence_window < 3:
+        parser.error("--convergence-window must be at least 3")
+    if args.max_terminal_slope_bpc_per_100 < 0:
+        parser.error(
+            "--max-terminal-slope-bpc-per-100 must be non-negative"
+        )
     if args.structural_min_active_dendrites < 1:
         parser.error("--structural-min-active-dendrites must be positive")
     if (

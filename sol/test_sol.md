@@ -49,6 +49,8 @@ tensor shapes.
 ### Stream and persistence tests
 - **Does**: Proves optimizer windows are adjacent and prior characters affect later
   predictions.
+- **Does**: Requires terminal-trend analysis to reject a still-improving horizon and
+  accept only a statistically supported practical plateau.
 - **Does**: Proves optional cosine learning-rate decay is disabled by default, uses
   absolute update boundaries, reaches its configured floor, updates every optimizer
   group, and rejects malformed policies.
@@ -142,6 +144,8 @@ tensor shapes.
   correct reset/shuffle penalties before a winner can be named.
 - **Does**: Distinguishes ordinary early learning from post-best collapse and deduplicates
   repeated evaluation updates after resume.
+- **Does**: Separates stability from convergence so a non-collapsing run cannot be
+  mistaken for an informative stopping horizon.
 - **Does**: Aligns each real exploratory intervention with validation before and after
   it, excludes virtual controls, and distinguishes survived from unstable bodies.
 

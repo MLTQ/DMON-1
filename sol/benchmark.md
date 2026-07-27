@@ -94,11 +94,16 @@ with checkpointing and append-only metrics.
 ### Stability report
 - **Does**: Measures final and worst post-best BPC regression across completed
   validations and marks runs unstable beyond `--max-final-regression-bpc`.
+- **Does**: Fits the final `--convergence-window` held-out evaluations and records
+  terminal slope, residual noise, a 95% slope interval, and whether that interval lies
+  inside `--max-terminal-slope-bpc-per-100`.
 - **Does**: Aligns every non-virtual exploratory-traffic decision with held-out
   validation before and after that trial, stopping before the next intervention, and
   records trial-level body survival in the final summary.
 - **Rationale**: A transient best checkpoint does not establish a viable continuous
   organism if the same uninterrupted run later collapses.
+- **Rationale**: An endpoint comparison does not establish relative capability while
+  the terminal curves are still moving materially.
 
 ### `_run_gru`
 - **Does**: Trains a parameter-matched GRU with the same batch lanes, chunk length,
@@ -129,6 +134,7 @@ with checkpointing and append-only metrics.
 | `promote.py` | SOL summaries and JSONL history expose completed-run stability | Stability fields or evaluation rows |
 | S6 analysis | Summary includes the full traffic ledger and decision-aligned survival | `exploratory_survival` schema |
 | Schedule experiments | Disabled decay reproduces the historical constant rate | Schedule defaults or update indexing |
+| Experiment horizon | Every meaningful SOL result exposes an explicit terminal-trend verdict | Convergence summary keys |
 
 ## Notes
 

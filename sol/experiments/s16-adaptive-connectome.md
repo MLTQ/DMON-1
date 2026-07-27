@@ -45,7 +45,7 @@ mature incumbent.
 
 ## Protected contracts
 
-The local suite currently passes 68 tests. New tests require:
+The local suite currently passes 71 tests. New tests require:
 
 - dormant slots to carry no traffic or transient synaptic state;
 - topology metrics to count only active anatomy;
@@ -102,3 +102,29 @@ credit threshold, and weak locality gain on seed 7. Require:
 The 2070S may run matched controls only after both cards remain stable under isolated
 PyTorch initialization. The primary adaptive comparison remains on the 4090 to avoid
 cross-architecture causality claims.
+
+## Four-hundred-update horizon check
+
+Three adaptive/probes-only pairs ran on the 4090 at seeds 7, 13, and 21. The fixed
+four-live-edge control ran on the 4090 for seed 7 and, as explicitly auxiliary
+cross-architecture references, on the 2070S for seeds 13 and 21.
+
+At update 400, adaptive sparse beat probes-only in two of three seeds and by `0.0793`
+BPC on the three-seed mean. Fixed full fan-in was lower than adaptive in every seed.
+Those rankings are not yet capability conclusions:
+
+| Condition | Mean BPC at 400 | Mean change, updates 300–400 |
+|---|---:|---:|
+| Adaptive sparse | 4.1750 | -0.2162 |
+| Probes-only sparse | 4.2543 | -0.2309 |
+| Fixed full fan-in | 3.8525 | -0.1764 |
+
+Every run ended at its best measured checkpoint and every three-seed mean was still
+falling much faster than the `0.01` BPC-per-100 practical plateau bound. The
+adaptive/probes endpoint gap was smaller than either condition's movement over the last
+100 updates. The 400-update horizon is therefore explicitly **uninformative** about
+converged relative capability.
+
+Resume these exact organisms rather than restarting them. Use longer validation windows
+and require complete curves plus terminal slope/noise intervals before deciding whether
+global-fitness or stricter vector-credit gating is the next structural intervention.
