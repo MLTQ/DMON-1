@@ -113,3 +113,73 @@ capability ordering.
 
 The local gate therefore permits the reduced matched GPU run. Cross-seed phase
 decorrelation and anatomy cadence matching remain unproven until that run completes.
+
+### Matched RTX 4090 result
+
+Three seed-matched organisms ran concurrently on the RTX 4090. The first 1,000-update
+gate passed: all corresponding schedules differed across seeds, only one of 15 trial
+signs was unanimous, morphology remained live, and the capability curve was non-adverse.
+The same checkpoints then continued without resetting to 2,000 updates. All services
+completed successfully and released the GPU.
+
+Across the complete horizon, each seed resolved 31 routing trials:
+
+| Seed | Commit / reject | Final mutations | Spawn / prune | Final output reachability |
+|---:|---:|---:|---:|---:|
+| 7 | 2 / 29 | 32 | 18 / 14 | 4 / 4 |
+| 13 | 2 / 29 | 25 | 12 / 13 | 4 / 4 |
+| 21 | 5 / 26 | 12 | 5 / 7 | 4 / 4 |
+
+Nine of 93 trials cleared `p <= 0.10`, close to the `8.72` expected from a discrete
+five-block null alone. This is not population-level evidence that arbitrary routing
+proposals help. The nine exact-positive local decisions remain useful as bounded online
+interventions; their downstream capability must still earn a matched improvement.
+
+#### Causal-validity verdict
+
+Randomization removed the fixed corpus phase:
+
+| Seed pair | S22 advantage correlation | S23 correlation | S23 sign match | Identical schedules |
+|---|---:|---:|---:|---:|
+| 7 / 13 | 0.882 | -0.380 | 14 / 31 | 1 / 31 |
+| 7 / 21 | 0.874 | 0.276 | 16 / 31 | 2 / 31 |
+| 13 / 21 | 0.821 | 0.012 | 17 / 31 | 0 / 31 |
+
+Only eight of 31 aligned trial updates had one sign across all three seeds, almost
+exactly the `31 / 4 = 7.75` expected from independent binary signs. S22 produced 14 of
+15. S23 therefore passes the causal-validity gate.
+
+Structural decision opportunities remained cadence-matched to S17. Cumulative mutation
+counts matched at 23 of 24 seed/evaluation points; seed 13 made one mutation one
+evaluation later and matched again thereafter. That transient divergence is an allowed
+downstream consequence of changed reverse credit, not a frozen-organ confound. Every
+final topology retained all cells and outputs.
+
+#### Capability and horizon
+
+Over the last five held-out evaluations:
+
+| Seed | Mean S23 - S17 BPC | Endpoint | S23 wins |
+|---:|---:|---:|---:|
+| 7 | -0.000058 | -0.000236 | 3 / 5 |
+| 13 | -0.000856 | -0.000771 | 5 / 5 |
+| 21 | +0.000027 | +0.000010 | 1 / 5 |
+| Three-seed mean curve | **-0.000296** | **-0.000332** | **4 / 5** |
+
+The apparent mean advantage is only `0.034` times combined terminal residual noise.
+S23 and S17 still improve at `-0.01600` and `-0.01594` BPC per 100 updates
+respectively, with a relative slope of only `-0.000062` BPC per 100. All runs are stable
+and finish at their best checkpoint, but the capability ordering is inconclusive.
+
+Do not extend S23 further and do not promote it as a capability improvement. It solved
+the measurement defect it was designed to solve; its routing preferences are
+capability-neutral at this scale.
+
+### Next falsifiable step
+
+The same audit exposes the next confound in the adaptive communication organ:
+structural exploratory probation still uses fixed ABBA traffic. At shared trial starts,
+its advantage correlations are `0.767` for seeds 7/13 and `0.791` for seeds 13/21;
+the latter shares the same sign in 12 of 13 trials. S24 should apply checkpointed
+block randomization and exact inference to axon/dendrite spawn and prune decisions
+while keeping S23 routing, ordinary learning, and both organ cadences live.
