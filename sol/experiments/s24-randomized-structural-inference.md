@@ -83,5 +83,57 @@ outputs as sensory-reachable, and finished with 31 active directed edges.
 
 Held-out BPC improved from `5.0847` at update 200 to `4.6828` at update 400. With only
 two evaluations this is explicitly an implementation/survival gate, not a convergence
-or capability result. The matched multi-seed GPU comparison against S23 remains
-pending.
+or capability result. It qualified the matched multi-seed GPU comparison against S23.
+
+### Matched GPU result
+
+Seeds 7, 13, and 21 ran concurrently on the same RTX 4090 as their S23 controls. The
+preregistered reduced stop was 1,000 updates; its graph showed complete schedule
+decorrelation and unresolved capability movement, so each exact checkpoint resumed to
+2,000 updates. Validation used 4,096 tokens every 250 updates.
+
+Randomization removed the fixed structural phase:
+
+| Aligned seed pair | S23 advantage correlation | S24 advantage correlation | Identical schedules, S23 → S24 |
+|---|---:|---:|---:|
+| 7 / 13 | +0.767 | +0.220 | 31/31 → 2/32 |
+| 7 / 21 | +0.409 | −0.588 | 17/17 → 0/21 |
+| 13 / 21 | +0.791 | −0.476 | 13/13 → 1/22 |
+
+The mean signed schedule correlations in S24 were `+0.013`, `−0.124`, and `+0.200`;
+the negative reward correlations therefore did not come from systematically
+complementary schedules. Across trial starts shared by all three organisms, unanimous
+advantage signs fell from 9/13 in S23 to 2/19 in S24. The causal decorrelation gate
+passed.
+
+The more reliable gate also changed development substantially:
+
+| Policy | Structural trials | Growth commits | Prunes | Total mutations |
+|---|---:|---:|---:|---:|
+| S23 fixed ABBA + positive advantage | 87 | 35 | 34 | 69 |
+| S24 randomized + exact `p <= 0.10` | 95 | 10 | 25 | 35 |
+
+All six runs retained complete cell and output reachability. S24 ended with 26, 29, and
+26 active edges for seeds 7, 13, and 21, versus 36, 31, and 30 in S23.
+
+Capability paid for the lower mutation rate. S24 minus S23 mean held-out BPC was:
+
+| Update | 250 | 500 | 750 | 1,000 | 1,250 | 1,500 | 1,750 | 2,000 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Mean gap | +0.155 | +0.085 | +0.082 | +0.134 | +0.087 | +0.132 | +0.080 | +0.077 |
+
+Over the final five evaluations, S23 won all five mean points by `0.1021 BPC` on
+average; the effect/noise ratio was `6.14`, so the comparison horizon supports S23 even
+though neither mean curve is flat. S24 was improving faster (`−0.02077` versus
+`−0.01600 BPC / 100 updates`), and seed 7 crossed S23 by `0.00046 BPC` at the endpoint.
+Seed 13 remained `0.0333` worse and seed 21 `0.1994` worse. A linear continuation would
+close the mean gap after roughly another 1,624 updates, but that is a diagnostic
+extrapolation, not evidence to extend this experiment.
+
+## Decision
+
+S24 succeeds as a causal measurement intervention and fails as a capability promotion.
+The next experiment should preserve randomized assignments and raw exact inference while
+separating the inference threshold from developmental mutation rate. A small
+`p`-threshold sweep can test whether S24 is simply too conservative, without returning
+to the phase-locked fixed schedule or scaling unrelated input/output organs.
