@@ -17,6 +17,8 @@ connectome.
   energy transport and reversible quiescence thresholds. An optional maintenance-flow
   floor moves only existing energy along installed non-self axons when information
   traffic is silent.
+- **Does**: Optionally routes channel-shaped reverse credit toward installed sources
+  whose remembered event eligibility aligns with the signed corrective contribution.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 - **Does**: Separates maximum dendrite-slot capacity from the number active at birth;
   the disabled default activates every slot for historical checkpoint equivalence.
@@ -85,8 +87,15 @@ connectome.
 - **Does**: Applies the transpose of the learned forward `message_value` transform,
   multiplies by each target-owned signed message coefficient, and scatter-adds the
   resulting channel vector into the named source cell.
+- **Does**: When eligibility routing is enabled, scores each installed branch from the
+  signed reverse contribution's alignment with source event memory, then normalizes
+  multipliers within the target dendrite fan. Equal evidence reproduces historical
+  transport scale and dormant slots receive no credit.
 - **Rationale**: The reverse signal preserves which hidden-state directions would
   correct the decoder instead of collapsing error to one scalar.
+- **Rationale**: Persistent credit should preferentially reach cells tied to the event
+  being corrected, without creating a second learned network or changing parameter
+  count.
 
 ### `observe_prediction`
 - **Does**: Converts decoder error to both the existing scalar surprise-relative reward
@@ -130,6 +139,9 @@ connectome.
   launched from output cells, moves sourceward through the transpose of the actual
   forward message transform, and contributes only where its channels align with a
   cell's eligibility trace.
+- **Eligibility-routed output credit**: The optional router uses that same source event
+  memory to distribute reverse credit among installed dendrites. It is disabled by
+  default for checkpoint and experiment compatibility.
 - **Energy provenance**: A character's novelty supplies one bounded external budget to
   sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
   no internal path may mint or discard energy.

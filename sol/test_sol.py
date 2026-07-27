@@ -787,6 +787,83 @@ def test_output_error_credit_transposes_signed_message_transport() -> None:
     assert torch.count_nonzero(transported).item() == 0
 
 
+def test_output_error_credit_routes_toward_matching_source_memory() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    routed = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(
+            torch.eye(control.cfg.channels)
+        )
+        routed.message_value.weight.copy_(
+            torch.eye(routed.cfg.channels)
+        )
+    credit = torch.zeros(1, routed.cfg.cells, routed.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        routed.cfg.cells,
+        routed.cfg.dendrites,
+    )
+    source_memory = torch.zeros_like(credit)
+    target = 4
+    sources = routed.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    source_memory[0, sources[0]] = 1.0
+    source_memory[0, sources[1]] = -1.0
+
+    baseline = control._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    equal_evidence = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        torch.zeros_like(source_memory),
+    )
+    transported = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+
+    assert torch.allclose(equal_evidence, baseline)
+    assert transported[0, sources[0], 0] > baseline[0, sources[0], 0]
+    assert transported[0, sources[1], 0] < baseline[0, sources[1], 0]
+    assert sum(p.numel() for p in routed.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_eligibility_router_excludes_dormant_credit_paths() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+        model.active_edges[4, 0] = False
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    source_memory = torch.ones_like(credit)
+    credit[0, 4] = 1.0
+    coefficient[0, 4, 0] = 1.0
+
+    transported = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+
+    assert torch.count_nonzero(transported).item() == 0
+
+
 def test_output_error_credit_meets_channel_specific_event_memory() -> None:
     model = _model(
         reward_gain=0.0,
@@ -1900,6 +1977,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
             reward_gain=0.0,
             backward_credit_gain=0.25,
             output_error_credit_gain=0.25,
+            eligibility_routed_output_credit=True,
         ),
         text,
         vocabulary,
@@ -1973,6 +2051,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
         trainer.model.structural_edge_age,
     )
     assert resumed.structural_config == trainer.structural_config
+    assert resumed.model.cfg.eligibility_routed_output_credit
 
 
 def test_checkpoint_resume_preserves_active_probation(tmp_path: Path) -> None:

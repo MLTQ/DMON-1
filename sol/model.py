@@ -40,6 +40,7 @@ class SolConfig:
     backward_credit_decay: float = 0.80
     output_error_credit_gain: float = 0.0
     output_error_credit_decay: float = 0.80
+    eligibility_routed_output_credit: bool = False
     fast_weight_decay: float = 0.995
     fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
@@ -614,8 +615,9 @@ class SparseAxonField(nn.Module):
         self,
         credit: torch.Tensor,
         coefficient: torch.Tensor,
+        source_eligibility: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Transpose forward message transport for channel-shaped target credit."""
+        """Transpose messages and optionally route credit by source event memory."""
 
         batch = credit.shape[0]
         expected_credit = (batch, self.cfg.cells, self.cfg.channels)
@@ -634,6 +636,21 @@ class SparseAxonField(nn.Module):
                 "message coefficient must have shape "
                 "(batch, cells, dendrites)"
             )
+        if (
+            source_eligibility is not None
+            and source_eligibility.shape != expected_credit
+        ):
+            raise ValueError(
+                "source eligibility must have shape "
+                "(batch, cells, channels)"
+            )
+        if (
+            self.cfg.eligibility_routed_output_credit
+            and source_eligibility is None
+        ):
+            raise ValueError(
+                "eligibility-routed output credit requires source eligibility"
+            )
 
         target_credit = credit.unsqueeze(2).expand(
             -1, -1, self.cfg.dendrites, -1
@@ -642,9 +659,24 @@ class SparseAxonField(nn.Module):
             target_credit,
             self.message_value.weight.transpose(0, 1),
         )
-        contribution = (
-            coefficient.unsqueeze(-1) * sourceward
-        ).flatten(1, 2)
+        edge_sourceward = coefficient.unsqueeze(-1) * sourceward
+        if self.cfg.eligibility_routed_output_credit:
+            source_memory = source_eligibility[:, self.sources]
+            alignment = torch.tanh(
+                (edge_sourceward * source_memory).mean(dim=3)
+                * math.sqrt(self.cfg.channels)
+            )
+            active = self.active_edges.unsqueeze(0)
+            routing = torch.softmax(
+                alignment.masked_fill(~active, float("-inf")),
+                dim=2,
+            )
+            routing = (
+                routing
+                * active.sum(dim=2, keepdim=True).to(routing.dtype)
+            )
+            edge_sourceward = edge_sourceward * routing.unsqueeze(-1)
+        contribution = edge_sourceward.flatten(1, 2)
         source_index = (
             self.sources.flatten()
             .view(1, -1, 1)
@@ -1088,6 +1120,7 @@ class SparseAxonField(nn.Module):
                     self._transport_output_error_credit(
                         output_error_credit,
                         coefficient,
+                        eligibility,
                     )
                 )
                 output_error_credit = torch.tanh(

@@ -76,6 +76,10 @@ tensor shapes.
   output cells, moves through the signed transpose of the actual message transform,
   acts only where its channels meet event eligibility, cannot appear without an
   observed target, and adds no parameters.
+- **Does**: Proves optional eligibility routing sends more decoder credit through an
+  otherwise equal branch whose source remembers a matching event, less through a
+  misaligned branch, reproduces historical transport when evidence is equal, excludes
+  dormant slots, and adds no parameters.
 - **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
   topology metrics count only active anatomy, a qualified decoder-credit candidate can
   spawn into dormant capacity, and a redundant unused edge can be pruned without

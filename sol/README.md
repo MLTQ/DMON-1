@@ -27,6 +27,10 @@ probabilities out. It is not a transformer imitation.
 - An optional persistent credit wave enters output cells and travels backward through
   the signed directed axons, meeting event eligibility at upstream cells without
   introducing a separate teaching network.
+- A complementary channel-shaped decoder correction follows the transpose of installed
+  message paths. An experimental router can favor dendrites whose source cells remember
+  an event aligned with that correction while equal evidence preserves the historical
+  transport scale.
 - One weak exploratory source per target is measured by running the shared cell rule
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is
@@ -57,6 +61,8 @@ python -m sol.benchmark --model transformer --out-dir sol/runs/transformer-contr
 python -m sol.benchmark --model sol --freeze-edges --out-dir sol/runs/fixed-edge-control
 python -m sol.benchmark --model sol --no-metabolism --out-dir sol/runs/capability-control
 python -m sol.benchmark --model sol --no-reward --out-dir sol/runs/reward-control
+python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
+  --eligibility-routed-output-credit --out-dir sol/runs/routed-credit
 python -m sol.benchmark --model sol --no-fast-plasticity \
   --structural-plasticity --out-dir sol/runs/growing-connectome
 python -m sol.benchmark --model sol --no-fast-plasticity \

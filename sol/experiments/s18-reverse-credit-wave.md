@@ -48,3 +48,47 @@ directional effect that is large relative to observed noise.
 
 Promote the reverse scalar wave only if its capability benefit replicates. A nonzero
 credit metric without improved held-out prediction is mechanistic activity, not success.
+
+## Results
+
+All three matched runs completed update 2,000 on the RTX 4090. Reverse credit remained
+bounded and active, with final mean absolute cell credit of `0.0519`, `0.0685`, and
+`0.0535` for seeds 7, 13, and 21.
+
+Capability did not replicate:
+
+| Seed | Mean treatment − control BPC | Terminal wins | Effect / residual noise | Endpoint treatment − control |
+|---|---:|---:|---:|---:|
+| 7 | -0.0083 | 4 / 5 | 0.64x | -0.0220 |
+| 13 | -0.0030 | 3 / 5 | 0.13x | -0.0024 |
+| 21 | +0.0453 | 1 / 5 | 0.96x | +0.0301 |
+
+Across all seed/checkpoint pairs, reverse credit wins 8 of 15. The pooled terminal mean
+regresses by `0.0113` BPC and the mean endpoint regresses by `0.0019` BPC. Its pooled
+effect/noise ratio is only `0.65x`, well below the `2x` comparison gate. The large seed
+21 regression at update 1,000 recovers partially but remains adverse at four of five
+terminal measurements.
+
+Anatomy remains live rather than frozen:
+
+| Seed | Active edges at 2,000 | Spawns | Prunes |
+|---|---:|---:|---:|
+| 7 | 35 / 64 | 15 | 12 |
+| 13 | 33 / 64 | 14 | 13 |
+| 21 | 29 / 64 | 4 | 7 |
+
+Persistent state remains important: final reset-each-token BPC is `4.7304`, `4.7802`,
+and `5.3634`, while shuffled-cell BPC is `4.7152`, `4.6157`, and `4.9043`.
+
+## Decision
+
+Reject scalar reverse-credit gain `0.25` for the working organism. The mechanism is
+functioning, but its signal is not selective or stable enough to improve capability on
+top of decoder-shaped credit and global-loss-gated morphology. Retain S17's zero scalar
+gain as the adaptive baseline.
+
+The next backward-credit intervention should improve selectivity rather than merely
+reduce this scalar gain: credit should be channel-specific, normalized at branch points,
+and tied to the remembered event that actually influenced the output. This points toward
+learned or eligibility-normalized vector transport over axons, not another broadcast
+amplitude sweep.

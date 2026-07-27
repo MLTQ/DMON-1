@@ -151,6 +151,9 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "backward_credit_decay": args.backward_credit_decay,
         "output_error_credit_gain": args.output_error_credit_gain,
         "output_error_credit_decay": args.output_error_credit_decay,
+        "eligibility_routed_output_credit": (
+            args.eligibility_routed_output_credit
+        ),
         "structural_probe_gain": (
             args.structural_probe_gain
             if args.structural_plasticity or args.structural_probes_only
@@ -697,6 +700,14 @@ def parse_args() -> argparse.Namespace:
         "--output-error-credit-decay",
         type=float,
         default=0.80,
+    )
+    parser.add_argument(
+        "--eligibility-routed-output-credit",
+        action="store_true",
+        help=(
+            "route decoder-shaped reverse credit toward installed sources "
+            "whose event eligibility aligns with that correction"
+        ),
     )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
