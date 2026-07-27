@@ -276,6 +276,9 @@ def _run_sol(
                 warmup_updates=args.routing_traffic_warmup,
                 trial_updates=args.routing_traffic_updates,
                 boundary_interval=args.eval_every,
+                randomization_alpha=(
+                    args.routing_traffic_randomization_alpha
+                ),
                 margin=args.routing_traffic_margin,
                 proposal_step=args.routing_traffic_step,
                 minimum_eligibility=(
@@ -785,6 +788,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--routing-traffic-interval", type=int, default=25)
     parser.add_argument("--routing-traffic-warmup", type=int, default=75)
     parser.add_argument("--routing-traffic-updates", type=int, default=20)
+    parser.add_argument(
+        "--routing-traffic-randomization-alpha",
+        type=float,
+        default=0.10,
+    )
     parser.add_argument("--routing-traffic-margin", type=float, default=0.0)
     parser.add_argument("--routing-traffic-step", type=float, default=0.05)
     parser.add_argument(
@@ -992,11 +1000,17 @@ def parse_args() -> argparse.Namespace:
                 "--routing-traffic-warmup must be non-negative"
             )
         if (
-            args.routing_traffic_updates < 2
-            or args.routing_traffic_updates % 2 != 0
+            args.routing_traffic_updates < 4
+            or args.routing_traffic_updates % 4 != 0
+            or args.routing_traffic_updates > 64
         ):
             parser.error(
-                "--routing-traffic-updates must be even and at least 2"
+                "--routing-traffic-updates must be 4 to 64 "
+                "and divisible by 4"
+            )
+        if not 0 < args.routing_traffic_randomization_alpha <= 1:
+            parser.error(
+                "--routing-traffic-randomization-alpha must be in (0, 1]"
             )
         if args.routing_traffic_margin < 0:
             parser.error(

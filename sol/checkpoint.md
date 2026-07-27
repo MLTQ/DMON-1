@@ -22,7 +22,9 @@ optimizer, corpus position, or random stream.
   Channel-shaped output-error credit and its configuration use disabled/zero defaults
   when absent. Reward-plastic and exploratory routing configuration is disabled, branch
   eligibility/preference tensors initialize to zero, and routing-traffic policy/trial
-  state initializes inactive when absent.
+  state initializes inactive when absent. An already-active pre-randomization routing
+  trial finishes under its historical fixed crossover rule; new trials use checkpointed
+  randomized blocks and exact inference.
 - **Compatibility**: Pre-growth checkpoints reconstruct every historical dendrite slot
   as active and initialize usage, vector-credit evidence, and spawn/prune counters to
   zero.

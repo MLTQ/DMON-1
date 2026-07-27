@@ -38,6 +38,13 @@ from .routing import (
     RoutingTrafficTrial,
     routing_traffic_due,
 )
+from .routing_randomization import (
+    crossover_schedule,
+    deterministic_assignment_code,
+    exact_one_sided_randomization_p_value,
+    exact_one_sided_randomization_test,
+    schedule_advantage,
+)
 from .schedule import (
     cosine_decay_learning_rate,
     set_optimizer_learning_rate,
@@ -1158,7 +1165,7 @@ def test_exploratory_routing_proposal_is_local_zero_sum_traffic() -> None:
     )
 
 
-def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
+def test_randomized_routing_commits_effect_and_rejects_harm() -> None:
     model = _model(
         output_error_credit_gain=1.0,
         exploratory_output_credit_routing=True,
@@ -1170,7 +1177,8 @@ def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
         enabled=True,
         interval=1,
         warmup_updates=0,
-        trial_updates=4,
+        trial_updates=20,
+        randomization_alpha=0.10,
         proposal_step=0.05,
         minimum_eligibility=1e-6,
     )
@@ -1179,11 +1187,13 @@ def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
 
     assert trial.begin(model, state, config, update=1)
     arms = []
-    for reward in (0.4, 0.1, 0.2, 0.5):
-        arms.append(trial.candidate_exposed)
-        trial.observe(reward, trial.candidate_exposed)
-    assert arms == [True, False, False, True]
-    assert trial.resolve(model, state, config, update=5)
+    for _ in range(config.trial_updates):
+        exposed = trial.candidate_exposed
+        arms.append(exposed)
+        trial.observe(1.0 if exposed else 0.0, exposed)
+    assert sum(arms) == config.trial_updates // 2
+    assert trial.resolve(model, state, config, update=21)
+    assert trial.last_randomization_p_value == pytest.approx(1 / 32)
     assert not torch.equal(state.credit_routing_preference, before)
     assert torch.allclose(
         state.credit_routing_preference[:, trial.last_target].sum(dim=1),
@@ -1196,10 +1206,11 @@ def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
     )
     committed = state.credit_routing_preference.clone()
 
-    assert trial.begin(model, state, config, update=6)
-    for reward in (0.1, 0.5, 0.4, 0.2):
-        trial.observe(reward, trial.candidate_exposed)
-    assert not trial.resolve(model, state, config, update=10)
+    assert trial.begin(model, state, config, update=22)
+    for _ in range(config.trial_updates):
+        exposed = trial.candidate_exposed
+        trial.observe(0.0 if exposed else 1.0, exposed)
+    assert not trial.resolve(model, state, config, update=42)
     assert torch.equal(state.credit_routing_preference, committed)
     assert trial.total_committed == 1
     assert trial.total_rejected == 1
@@ -1207,6 +1218,115 @@ def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
         "committed",
         "rejected",
     ]
+    assert all(
+        len(event["reward_observations"]) == config.trial_updates
+        for event in trial.trial_history
+    )
+
+
+def test_routing_assignments_are_balanced_trend_neutral_and_seeded() -> None:
+    rng_before = torch.get_rng_state().clone()
+    codes = [
+        deterministic_assignment_code(
+            topology_seed=seed,
+            trial_index=2,
+            target=10,
+            slot=1,
+            start_update=300,
+            trial_updates=20,
+        )
+        for seed in (7, 13, 21)
+    ]
+    assert torch.equal(torch.get_rng_state(), rng_before)
+    assert len(set(codes)) == 3
+
+    for code in codes:
+        schedule = crossover_schedule(code, 20)
+        assert sum(schedule) == 10
+        for offset in range(0, 20, 4):
+            block = schedule[offset : offset + 4]
+            signs = [1 if exposed else -1 for exposed in block]
+            assert sum(signs) == 0
+            assert sum(index * sign for index, sign in enumerate(signs)) == 0
+
+
+def test_exact_routing_randomization_rejects_null_and_ranks_effect() -> None:
+    schedule = crossover_schedule(13, 20)
+    null_rewards = [0.25] * 20
+    effect_rewards = [
+        1.0 if exposed else 0.0
+        for exposed in schedule
+    ]
+
+    assert schedule_advantage(null_rewards, schedule) == pytest.approx(0.0)
+    assert exact_one_sided_randomization_p_value(
+        null_rewards,
+        schedule,
+    ) == pytest.approx(1.0)
+    assert schedule_advantage(effect_rewards, schedule) == pytest.approx(1.0)
+    assert exact_one_sided_randomization_p_value(
+        effect_rewards,
+        schedule,
+    ) == pytest.approx(1 / 32)
+    result = exact_one_sided_randomization_test(
+        effect_rewards,
+        schedule,
+    )
+    assert result.observed_advantage == pytest.approx(1.0)
+    assert result.extreme_assignments == 1
+    assert result.total_assignments == 32
+
+
+def test_active_fixed_abba_checkpoint_finishes_legacy_verdict() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    state = model.initial_state(1)
+    state.credit_routing_eligibility[:, 4, 0] = 1.0
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=4,
+        randomization_alpha=0.10,
+        minimum_eligibility=0.0,
+    )
+    trial = RoutingTrafficTrial()
+    assert trial.begin(model, state, config, update=1)
+    payload = trial.state_dict()
+    payload.update(
+        {
+            "observations": 1,
+            "candidate_reward_sum": 0.4,
+            "candidate_observations": 1,
+        }
+    )
+    for name in (
+        "assignment_code",
+        "candidate_schedule",
+        "reward_observations",
+        "randomization_p_value",
+        "randomization_extreme_assignments",
+        "randomization_total_assignments",
+        "legacy_fixed_schedule",
+        "last_randomization_p_value",
+        "last_randomization_extreme_assignments",
+        "last_randomization_total_assignments",
+    ):
+        del payload[name]
+
+    restored = RoutingTrafficTrial.from_state_dict(payload, "cpu")
+    assert restored.legacy_fixed_schedule
+    for reward in (0.1, 0.2, 0.5):
+        restored.observe(reward, restored.candidate_exposed)
+
+    assert restored.resolve(model, state, config, update=5)
+    assert restored.trial_history[-1]["legacy_fixed_schedule"]
+    assert (
+        restored.trial_history[-1]["randomization_p_value"]
+        is None
+    )
 
 
 def test_routing_traffic_keeps_body_learning_and_sequences_structure(
@@ -1257,15 +1377,18 @@ def test_routing_traffic_keeps_body_learning_and_sequences_structure(
         "sol.train.apply_structural_phase",
         forbidden_structural_phase,
     )
-    candidate = trainer.step()
-    after_candidate = trainer.model.token_embedding.weight.detach().clone()
-    incumbent = trainer.step()
-    after_incumbent = trainer.model.token_embedding.weight.detach().clone()
+    first_expected = trainer.routing_traffic_trial.candidate_exposed
+    first = trainer.step()
+    after_first = trainer.model.token_embedding.weight.detach().clone()
+    second_expected = trainer.routing_traffic_trial.candidate_exposed
+    second = trainer.step()
+    after_second = trainer.model.token_embedding.weight.detach().clone()
 
-    assert candidate.routing_candidate_exposed
-    assert not incumbent.routing_candidate_exposed
-    assert not torch.equal(after_candidate, before)
-    assert not torch.equal(after_incumbent, after_candidate)
+    assert first.routing_candidate_exposed == first_expected
+    assert second.routing_candidate_exposed == second_expected
+    assert {first_expected, second_expected} == {True, False}
+    assert not torch.equal(after_first, before)
+    assert not torch.equal(after_second, after_first)
     assert torch.equal(trainer.model.sources, sources)
     assert trainer.routing_traffic_trial.active
     assert trainer.routing_traffic_trial.candidate_observations == 1
@@ -2808,8 +2931,9 @@ def test_checkpoint_resume_preserves_routing_traffic_arm(
         routing_config,
         update=0,
     )
+    schedule = list(trainer.routing_traffic_trial.candidate_schedule)
     first = trainer.step()
-    assert first.routing_candidate_exposed
+    assert first.routing_candidate_exposed == schedule[0]
     checkpoint = save_checkpoint(
         tmp_path / "routing-exploratory.pt",
         trainer,
@@ -2831,6 +2955,14 @@ def test_checkpoint_resume_preserves_routing_traffic_arm(
         row.routing_trial_resolved for row in expected
     ]
     assert resumed.routing_traffic_config == trainer.routing_traffic_config
+    assert (
+        resumed.routing_traffic_trial.candidate_schedule
+        == trainer.routing_traffic_trial.candidate_schedule
+    )
+    assert (
+        resumed.routing_traffic_trial.reward_observations
+        == trainer.routing_traffic_trial.reward_observations
+    )
     assert torch.equal(resumed.state.hidden, trainer.state.hidden)
     assert torch.equal(
         resumed.state.credit_routing_preference,
@@ -2847,6 +2979,10 @@ def test_checkpoint_resume_preserves_routing_traffic_arm(
     assert (
         resumed.routing_traffic_trial.trial_history
         == trainer.routing_traffic_trial.trial_history
+    )
+    assert (
+        resumed.routing_traffic_trial.last_randomization_p_value
+        == trainer.routing_traffic_trial.last_randomization_p_value
     )
 
 

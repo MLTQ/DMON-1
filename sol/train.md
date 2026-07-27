@@ -13,8 +13,9 @@ one-character-at-a-time organism path used during training.
   bounded rewiring counts, including mean first-order probe fitness and persistent
   scalar and channel-shaped backward-credit magnitudes plus reward-plastic routing
   eligibility, preference, and saturation.
-- **Does**: Reports routing-traffic trial phase, actual ABBA arm, target/slot, per-arm
-  observations and rewards, advantage, and cumulative commit/reject counts.
+- **Does**: Reports routing-traffic trial phase, actual randomized crossover arm,
+  target/slot, per-arm observations and rewards, advantage, exact p-value, and
+  cumulative commit/reject counts.
 - **Does**: Separately reports replacements, spawns, prunes, and their cumulative
   anatomical mutation counts.
 - **Does**: Reports mean viability, quiescent fraction, external energy input, actual
@@ -60,8 +61,9 @@ one-character-at-a-time organism path used during training.
   across optimizer windows so later prequential reward can assign fitness to an earlier
   decoder-credit routing event without pausing ordinary BPTT.
 - **Exploratory routing**: Applies a fixed zero-sum preference delta only during
-  checkpointed candidate windows, observes both ABBA arms after ordinary optimization,
-  and commits only a positive within-organism reward difference.
+  checkpointed candidate windows, randomizes balanced `ABBA`/`BAAB` blocks, observes
+  every reward after ordinary optimization, and commits only a positive
+  within-organism difference that clears exact randomization inference.
 - **Exploration order**: A routing trial may start only on a structural non-decision
   phase and that phase still accumulates confirmations. The routing trial resolves
   before the next structural decision phase; protected evaluation/checkpoint boundaries
@@ -74,8 +76,8 @@ one-character-at-a-time organism path used during training.
   random-number state.
 - **Does**: Includes the complete active graft backup and probation evidence so resume
   produces the same future commit or rollback, plus all completed trial records.
-- **Does**: Includes routing-traffic configuration, proposal tensor, exact next ABBA
-  arm, reward aggregates, counters, and decision ledger.
+- **Does**: Includes routing-traffic configuration, proposal tensor, exact next
+  crossover arm, raw rewards, null rank, counters, and decision ledger.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.

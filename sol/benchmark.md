@@ -53,10 +53,12 @@ with checkpointing and append-only metrics.
   exclusive with instantaneous eligibility routing.
 - **Does**: `--exploratory-output-credit-routing` instead uses branch eligibility only
   to propose a bounded zero-sum preference change, alternates that change on/off in one
-  live organism, and commits from candidate-minus-incumbent prequential reward.
-  Cadence, warmup, trial length, margin, proposal step, and minimum evidence are
-  explicit manifest fields. The benchmark also records `--eval-every` as the protected
-  routing boundary interval, preventing a new trial from starting or crossing a plotted
+  live organism using randomized balanced crossover blocks, and commits from
+  candidate-minus-incumbent prequential reward only when its exact one-sided
+  randomization p-value clears `--routing-traffic-randomization-alpha`. Cadence, warmup,
+  trial length, alpha, margin, proposal step, and minimum evidence are explicit
+  manifest fields. The benchmark also records `--eval-every` as the protected routing
+  boundary interval, preventing a new trial from starting or crossing a plotted
   checkpoint.
 - **Does**: Routing starts only on structural non-decision phases, which still update
   structural confirmations. It resolves before the next consolidation phase while
@@ -109,8 +111,8 @@ with checkpointing and append-only metrics.
   summary.
 - **Does**: Records probation activity, attempts, commits, rollbacks, observations, and
   mean observed advantage.
-- **Does**: Records the independent routing-traffic phase, proposal, ABBA reward
-  aggregates, commit/reject totals, and complete decision ledger.
+- **Does**: Records the independent routing-traffic phase, randomized assignment, raw
+  reward sequence, exact null rank, commit/reject totals, and complete decision ledger.
 - **Interacts with**: `analyze_topology` in `topology.py`.
 
 ### Stability report

@@ -3,23 +3,24 @@
 ## Purpose
 
 Runs bounded reverse-credit routing interventions inside one continuously adapting SOL
-organism. It treats branch alignment as a proposal and live ABBA traffic as the causal
-commit/reject signal.
+organism. It treats branch alignment as a proposal and block-randomized live crossover
+traffic as the causal commit/reject signal.
 
 ## Components
 
 ### `RoutingTrafficConfig`
-- **Does**: Defines cadence, warmup, balanced trial length, decision margin, bounded
-  preference step, minimum proposal evidence, and an optional protected reporting
-  boundary interval.
+- **Does**: Defines cadence, warmup, block-randomized trial length, exact-test alpha,
+  decision margin, bounded preference step, minimum proposal evidence, and an optional
+  protected reporting boundary interval.
 - **Rationale**: Experimental routing must be explicit, default-disabled, and
   checkpoint-reproducible.
 
 ### `RoutingTrafficTrial`
-- **Does**: Stores one target-owned zero-sum preference perturbation, its current ABBA
-  arm, reward aggregates, counters, and append-only decision ledger.
+- **Does**: Stores one target-owned zero-sum preference perturbation, randomized arm
+  schedule, every reward, provisional/exact null rank, counters, and decision ledger.
 - **Does**: Proposes from live branch routing eligibility, exposes the delta only in
-  candidate windows, and commits only a causally favorable bounded preference change.
+  candidate windows, and commits only a positive preference change that clears the
+  configured exact randomization threshold.
 - **Interacts with**: `ContinuousTrainer` in `train.py`, routing preference state in
   `model.py`, and structural probation in `structure.py`.
 - **Rationale**: Rejection retains all ordinary lived body adaptation while leaving the
@@ -43,7 +44,7 @@ commit/reject signal.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| `train.py` | Candidate delta is fixed during one trial and ABBA arms remain balanced | Phase or observation semantics |
+| `train.py` | Candidate delta is fixed and every crossover block remains balanced | Phase or observation semantics |
 | `model.py` | Delta has shape `(cells, dendrites)` and affects reverse-credit routing only | Tensor ownership or normalization |
 | Checkpoint resume | State dict restores the exact next arm and proposal tensor | Field names or schedule |
 | Experiment reports | Ledger identifies proposal, rewards, decision, and update bounds | Event schema |
@@ -56,3 +57,6 @@ commit/reject signal.
   changes, and ordinary learning retain their original cadence.
 - Preference commits are centered and smoothly bounded by the model's existing routing
   limit. They do not add trainable parameters.
+- S22 checkpoints with an already-active fixed `ABBA` trial finish under their
+  historical decision rule; every newly started trial uses randomized `ABBA`/`BAAB`
+  blocks.

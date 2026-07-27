@@ -54,6 +54,7 @@ class TrainMetrics:
     routing_trials_committed: int
     routing_trials_rejected: int
     routing_trial_advantage: float
+    routing_trial_randomization_p_value: float
     routing_trial_target: int
     routing_trial_slot: int
     routing_candidate_observations: int
@@ -582,6 +583,9 @@ class ContinuousTrainer:
             ),
             routing_trials_rejected=routing_update.total_rejected,
             routing_trial_advantage=routing_update.advantage,
+            routing_trial_randomization_p_value=(
+                routing_update.randomization_p_value
+            ),
             routing_trial_target=routing_update.target,
             routing_trial_slot=routing_update.slot,
             routing_candidate_observations=(
@@ -767,6 +771,11 @@ def main() -> None:
     parser.add_argument("--routing-traffic-interval", type=int, default=25)
     parser.add_argument("--routing-traffic-warmup", type=int, default=75)
     parser.add_argument("--routing-traffic-updates", type=int, default=20)
+    parser.add_argument(
+        "--routing-traffic-randomization-alpha",
+        type=float,
+        default=0.10,
+    )
     parser.add_argument("--routing-traffic-margin", type=float, default=0.0)
     parser.add_argument("--routing-traffic-step", type=float, default=0.05)
     parser.add_argument(
@@ -829,6 +838,9 @@ def main() -> None:
             interval=args.routing_traffic_interval,
             warmup_updates=args.routing_traffic_warmup,
             trial_updates=args.routing_traffic_updates,
+            randomization_alpha=(
+                args.routing_traffic_randomization_alpha
+            ),
             margin=args.routing_traffic_margin,
             proposal_step=args.routing_traffic_step,
             minimum_eligibility=(

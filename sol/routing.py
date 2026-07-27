@@ -7,6 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from .routing_randomization import (
+    crossover_schedule,
+    deterministic_assignment_code,
+    exact_one_sided_randomization_test,
+)
+
 if TYPE_CHECKING:
     from .model import FieldState, SparseAxonField
 
@@ -20,6 +26,7 @@ class RoutingTrafficConfig:
     warmup_updates: int = 75
     trial_updates: int = 20
     boundary_interval: int = 0
+    randomization_alpha: float = 0.10
     margin: float = 0.0
     proposal_step: float = 0.05
     minimum_eligibility: float = 1e-6
@@ -31,14 +38,22 @@ class RoutingTrafficConfig:
             raise ValueError(
                 "routing traffic warmup must be non-negative"
             )
-        if self.trial_updates < 2 or self.trial_updates % 2 != 0:
+        if (
+            self.trial_updates < 4
+            or self.trial_updates % 4 != 0
+            or self.trial_updates > 64
+        ):
             raise ValueError(
-                "routing traffic trial requires an even number "
-                "of at least two updates"
+                "routing traffic trial requires 4 to 64 updates "
+                "divisible by four"
             )
         if self.boundary_interval < 0:
             raise ValueError(
                 "routing traffic boundary interval must be non-negative"
+            )
+        if not 0 < self.randomization_alpha <= 1:
+            raise ValueError(
+                "routing traffic randomization alpha must be in (0, 1]"
             )
         if self.margin < 0:
             raise ValueError("routing traffic margin must be non-negative")
@@ -65,13 +80,14 @@ class RoutingTrafficUpdate:
     total_committed: int
     total_rejected: int
     advantage: float
+    randomization_p_value: float
     target: int
     slot: int
 
 
 @dataclass
 class RoutingTrafficTrial:
-    """Checkpointable ABBA evidence for one target-owned routing proposal."""
+    """Checkpointable randomized evidence for one routing proposal."""
 
     active: bool = False
     target: int = -1
@@ -84,10 +100,20 @@ class RoutingTrafficTrial:
     incumbent_reward_sum: float = 0.0
     candidate_observations: int = 0
     incumbent_observations: int = 0
+    assignment_code: int = 0
+    candidate_schedule: list[bool] = field(default_factory=list)
+    reward_observations: list[float] = field(default_factory=list)
+    randomization_p_value: float = 1.0
+    randomization_extreme_assignments: int = 0
+    randomization_total_assignments: int = 0
+    legacy_fixed_schedule: bool = False
     total_started: int = 0
     total_committed: int = 0
     total_rejected: int = 0
     last_mean_advantage: float = 0.0
+    last_randomization_p_value: float = 1.0
+    last_randomization_extreme_assignments: int = 0
+    last_randomization_total_assignments: int = 0
     last_target: int = -1
     last_slot: int = -1
     delta: torch.Tensor | None = None
@@ -107,9 +133,15 @@ class RoutingTrafficTrial:
 
     @property
     def candidate_exposed(self) -> bool:
-        """Use a balanced candidate/incumbent/incumbent/candidate schedule."""
+        """Return the checkpointed randomized arm for the next observation."""
 
-        return self.active and self.observations % 4 in (0, 3)
+        if not self.active:
+            return False
+        if self.candidate_schedule:
+            if self.observations >= len(self.candidate_schedule):
+                raise RuntimeError("routing traffic schedule is exhausted")
+            return self.candidate_schedule[self.observations]
+        return self.observations % 4 in (0, 3)
 
     def active_delta(self) -> torch.Tensor | None:
         """Return the fixed proposal only during candidate traffic windows."""
@@ -125,6 +157,12 @@ class RoutingTrafficTrial:
 
         if not self.active:
             return
+        scheduled_exposure = self.candidate_exposed
+        if candidate_exposed != scheduled_exposure:
+            raise RuntimeError(
+                "observed routing arm differs from checkpointed schedule"
+            )
+        self.reward_observations.append(float(advantage))
         if candidate_exposed:
             self.candidate_reward_sum += float(advantage)
             self.candidate_observations += 1
@@ -132,6 +170,21 @@ class RoutingTrafficTrial:
             self.incumbent_reward_sum += float(advantage)
             self.incumbent_observations += 1
         self.observations += 1
+        if (
+            not self.legacy_fixed_schedule
+            and self.observations % 4 == 0
+        ):
+            result = exact_one_sided_randomization_test(
+                self.reward_observations,
+                self.candidate_schedule[: self.observations],
+            )
+            self.randomization_p_value = result.p_value
+            self.randomization_extreme_assignments = (
+                result.extreme_assignments
+            )
+            self.randomization_total_assignments = (
+                result.total_assignments
+            )
 
     def state_dict(self) -> dict[str, Any]:
         """Serialize active phase, proposal, evidence, and decision ledger."""
@@ -148,11 +201,30 @@ class RoutingTrafficTrial:
         payload: dict[str, Any] | None,
         device: torch.device | str,
     ) -> "RoutingTrafficTrial":
-        """Restore the exact next ABBA arm on the requested device."""
+        """Restore the exact next crossover arm on the requested device."""
 
         if not payload:
             return cls()
         restored = dict(payload)
+        restored.setdefault("assignment_code", 0)
+        restored.setdefault("candidate_schedule", [])
+        restored.setdefault("reward_observations", [])
+        restored.setdefault("randomization_p_value", 1.0)
+        restored.setdefault("randomization_extreme_assignments", 0)
+        restored.setdefault("randomization_total_assignments", 0)
+        restored.setdefault(
+            "legacy_fixed_schedule",
+            bool(restored.get("active", False)),
+        )
+        restored.setdefault("last_randomization_p_value", 1.0)
+        restored.setdefault(
+            "last_randomization_extreme_assignments",
+            0,
+        )
+        restored.setdefault(
+            "last_randomization_total_assignments",
+            0,
+        )
         delta = restored.get("delta")
         restored["delta"] = (
             None
@@ -220,6 +292,25 @@ class RoutingTrafficTrial:
         self.incumbent_reward_sum = 0.0
         self.candidate_observations = 0
         self.incumbent_observations = 0
+        self.assignment_code = deterministic_assignment_code(
+            topology_seed=model.cfg.topology_seed,
+            trial_index=self.total_started,
+            target=target,
+            slot=slot,
+            start_update=update,
+            trial_updates=config.trial_updates,
+        )
+        self.candidate_schedule = list(
+            crossover_schedule(
+                self.assignment_code,
+                config.trial_updates,
+            )
+        )
+        self.reward_observations = []
+        self.randomization_p_value = 1.0
+        self.randomization_extreme_assignments = 0
+        self.randomization_total_assignments = 0
+        self.legacy_fixed_schedule = False
         self.delta = delta
         self.total_started += 1
         return True
@@ -241,10 +332,37 @@ class RoutingTrafficTrial:
             or self.incumbent_observations == 0
         ):
             raise RuntimeError(
-                "routing traffic trial requires both ABBA arms"
+                "routing traffic trial requires both crossover arms"
             )
         advantage = self.mean_advantage
-        committed = advantage > config.margin
+        if self.legacy_fixed_schedule:
+            randomization_p_value = 1.0
+            randomization_extreme_assignments = 0
+            randomization_total_assignments = 0
+            clears_randomization = True
+        else:
+            if len(self.reward_observations) != config.trial_updates:
+                raise RuntimeError(
+                    "randomized routing trial requires every reward observation"
+                )
+            result = exact_one_sided_randomization_test(
+                self.reward_observations,
+                self.candidate_schedule,
+            )
+            randomization_p_value = result.p_value
+            randomization_extreme_assignments = (
+                result.extreme_assignments
+            )
+            randomization_total_assignments = (
+                result.total_assignments
+            )
+            clears_randomization = (
+                randomization_p_value
+                <= config.randomization_alpha
+            )
+        committed = (
+            advantage > config.margin and clears_randomization
+        )
         if committed:
             preference = (
                 state.credit_routing_preference
@@ -301,12 +419,50 @@ class RoutingTrafficTrial:
                 ),
                 "decision_advantage": advantage,
                 "decision_margin": config.margin,
+                "assignment_code": self.assignment_code,
+                "candidate_schedule": list(
+                    self.candidate_schedule
+                ),
+                "reward_observations": list(
+                    self.reward_observations
+                ),
+                "randomization_p_value": (
+                    None
+                    if self.legacy_fixed_schedule
+                    else randomization_p_value
+                ),
+                "randomization_extreme_assignments": (
+                    None
+                    if self.legacy_fixed_schedule
+                    else randomization_extreme_assignments
+                ),
+                "randomization_total_assignments": (
+                    None
+                    if self.legacy_fixed_schedule
+                    else randomization_total_assignments
+                ),
+                "randomization_alpha": config.randomization_alpha,
+                "legacy_fixed_schedule": self.legacy_fixed_schedule,
                 "active_slots": int(
                     model.active_edges[self.target].sum().item()
                 ),
             }
         )
         self.last_mean_advantage = advantage
+        self.randomization_p_value = randomization_p_value
+        self.last_randomization_p_value = randomization_p_value
+        self.randomization_extreme_assignments = (
+            randomization_extreme_assignments
+        )
+        self.randomization_total_assignments = (
+            randomization_total_assignments
+        )
+        self.last_randomization_extreme_assignments = (
+            randomization_extreme_assignments
+        )
+        self.last_randomization_total_assignments = (
+            randomization_total_assignments
+        )
         self.last_target = self.target
         self.last_slot = self.slot
         self.active = False
@@ -363,6 +519,11 @@ def routing_traffic_update(
         total_committed=trial.total_committed,
         total_rejected=trial.total_rejected,
         advantage=trial.mean_advantage,
+        randomization_p_value=(
+            trial.randomization_p_value
+            if trial.active
+            else trial.last_randomization_p_value
+        ),
         target=trial.target,
         slot=trial.slot,
     )
@@ -383,6 +544,9 @@ def routing_traffic_summary(
         "proposal_evidence": trial.proposal_evidence,
         "started_update": trial.started_update,
         "observations": trial.observations,
+        "assignment_code": trial.assignment_code,
+        "candidate_schedule": list(trial.candidate_schedule),
+        "reward_observations": list(trial.reward_observations),
         "candidate_observations": trial.candidate_observations,
         "incumbent_observations": trial.incumbent_observations,
         "mean_candidate_reward": (
@@ -394,6 +558,21 @@ def routing_traffic_summary(
             / max(1, trial.incumbent_observations)
         ),
         "mean_advantage": trial.mean_advantage,
+        "randomization_p_value": (
+            trial.randomization_p_value
+            if trial.active
+            else trial.last_randomization_p_value
+        ),
+        "randomization_extreme_assignments": (
+            trial.randomization_extreme_assignments
+            if trial.active
+            else trial.last_randomization_extreme_assignments
+        ),
+        "randomization_total_assignments": (
+            trial.randomization_total_assignments
+            if trial.active
+            else trial.last_randomization_total_assignments
+        ),
         "total_started": trial.total_started,
         "total_committed": trial.total_committed,
         "total_rejected": trial.total_rejected,

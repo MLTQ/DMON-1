@@ -87,10 +87,11 @@ tensor shapes.
   count, and cannot coexist with instantaneous routing.
 - **Does**: Proves exploratory routing preserves committed preference without
   correlational reward updates, proposes a local zero-sum fan perturbation, maintains
-  total reverse-credit scale, commits/rejects from balanced ABBA evidence, keeps shared
-  body learning active in both arms, preserves every structural decision and reporting
-  boundary, still runs structural confirmation on routing-start phases, and resumes the
-  exact next arm and outcome.
+  total reverse-credit scale, assigns balanced trend-neutral crossover blocks without
+  consuming global RNG, commits only an exact-ranked positive effect, rejects null or
+  harmful evidence, keeps shared body learning active in both arms, preserves every
+  structural decision and reporting boundary, still runs structural confirmation on
+  routing-start phases, and resumes the exact next arm and outcome.
 - **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
   topology metrics count only active anatomy, a qualified decoder-credit candidate can
   spawn into dormant capacity, and a redundant unused edge can be pruned without
@@ -125,12 +126,14 @@ tensor shapes.
   policy/credit/global-fitness/confirmation buffers, and metadata.
 - **Does**: Includes branch routing eligibility/preference in exact resume, probation
   rollback, old-checkpoint additive initialization, and target-owned cell shuffling.
-- **Does**: Includes exploratory routing policy and active trial proposal, phase,
-  aggregates, counters, and ledger in exact resume and old-checkpoint compatibility.
+- **Does**: Includes exploratory routing policy and active trial proposal, randomized
+  schedule, raw rewards, exact null rank, counters, and ledger in exact resume and
+  old-checkpoint compatibility.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
-- **Does**: Resumes midway through an exploratory ABBA trial with the same next traffic
-  arm, losses, shared body state, topology decision, and reward aggregates.
+- **Does**: Resumes midway through a randomized exploratory crossover trial with the
+  same next traffic arm, losses, shared body state, topology decision, raw rewards, and
+  exact verdict.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

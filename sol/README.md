@@ -37,9 +37,9 @@ probabilities out. It is not a transformer imitation.
   This closes a local forward-event/backward-credit/future-fitness loop with persistent
   state and no new model parameters.
 - A counterfactual router can instead use alignment only to propose a bounded branch
-  preference, alternate candidate/incumbent reverse-credit traffic inside the same
-  continuously learning organism, and commit from the measured prequential reward
-  difference.
+  preference, run randomized balanced candidate/incumbent crossover blocks inside the
+  same continuously learning organism, and commit only when the measured prequential
+  reward difference clears exact randomization inference.
 - One weak exploratory source per target is measured by running the shared cell rule
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is
