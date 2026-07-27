@@ -171,4 +171,54 @@ performed seven mutations (five spawns and two prunes), ending at 27 active edge
 two evaluations this remains a mechanism smoke, not a capability or convergence claim.
 
 Corrected verification: 98 repository tests pass with four pre-existing DMON
-return-value warnings. The matched 1,000-update launch can proceed.
+return-value warnings.
+
+#### Corrected 1,000-update result
+
+All three corrected RTX 4090 services completed successfully and released the GPU.
+Every 250-update evaluation boundary was trial-free. At each boundary, S22 exactly
+matched S17's cumulative structural commit/reject, spawn, prune, and total-mutation
+counts:
+
+| Seed | Mutations at 250 / 500 / 750 / 1,000 | Final spawns | Final prunes |
+|---:|---|---:|---:|
+| 7 | 5 / 10 / 12 / 18 | 11 | 7 |
+| 13 | 4 / 6 / 6 / 9 | 5 | 4 |
+| 21 | 2 / 4 / 8 / 8 | 3 | 5 |
+
+Against S17 over the last three preflight evaluations:
+
+| Seed | Mean S22 − S17 BPC | Endpoint | S22 wins | Effect / noise |
+|---:|---:|---:|---:|---:|
+| 7 | +0.000020 | +0.000035 | 0 / 3 | 0.0011 |
+| 13 | -0.000033 | +0.000026 | 2 / 3 | 0.0030 |
+| 21 | +0.000068 | +0.000184 | 1 / 3 | 0.0032 |
+| Three-seed mean curve | **+0.000018** | **+0.000081** | **2 / 3** | **0.0064** |
+
+Pooled across seed/checkpoint pairs, S22 wins 3 of 9. Both mean curves are still
+improving at about `-0.0544` BPC per 100 updates, but their relative slope is only
+`+0.0000165` BPC per 100. Capability is indistinguishable at this horizon.
+
+The mechanism is active and bounded:
+
+| Seed | Trials | Commit / reject | Mean routing deviation | Maximum deviation | Saturation |
+|---:|---:|---:|---:|---:|---:|
+| 7 | 15 | 10 / 5 | 0.88% | 11.42% | 0% |
+| 13 | 15 | 10 / 5 | 1.51% | 10.79% | 0% |
+| 21 | 15 | 9 / 6 | 1.46% | 9.41% | 0% |
+
+However, the supposed causal decisions are dominated by shared corpus phase. Seeds 7
+and 13 make the same commit/reject decision in all 15 trials; seed 21 differs only once.
+Fourteen of fifteen updates are unanimous across all three independently routed
+organisms. Pairwise advantage correlations are `0.82–0.88`, despite different proposals
+and weak/inconsistent proposal-evidence correlations.
+
+This phase locking fails the causal-validity gate even though capability is non-adverse.
+Do not resume S22 to 2,000 updates and do not promote it. A longer run would accumulate
+more preferences selected mostly by which fixed ABBA windows happen to contain easier
+corpus segments.
+
+The next trial must randomize and checkpoint ABBA/BAAB block orientation independently
+per proposal, retain the individual reward sequence, and require an exact
+randomization-inference threshold before committing. That makes corpus-window phase a
+measured null rather than a hidden fitness signal.
