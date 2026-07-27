@@ -75,16 +75,33 @@ def deterministic_assignment_code(
 ) -> int:
     """Choose one reproducible crossover schedule from proposal identity."""
 
+    return deterministic_crossover_assignment_code(
+        topology_seed=topology_seed,
+        identity=(
+            trial_index,
+            target,
+            slot,
+            start_update,
+        ),
+        trial_updates=trial_updates,
+    )
+
+
+def deterministic_crossover_assignment_code(
+    *,
+    topology_seed: int,
+    identity: Sequence[int],
+    trial_updates: int,
+) -> int:
+    """Key one reproducible crossover schedule by arbitrary identity."""
+
     blocks = trial_updates // 4
     crossover_schedule(0, trial_updates)
+    if not identity:
+        raise ValueError("routing assignment identity must not be empty")
     mask = (1 << blocks) - 1
     value = 0
-    for component in (
-        trial_index,
-        target,
-        slot,
-        start_update,
-    ):
+    for component in identity:
         value = _splitmix64(
             value ^ (int(component) & _MASK_64)
         )

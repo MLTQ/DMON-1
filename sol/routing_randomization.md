@@ -19,6 +19,12 @@ creating another organism or consuming the training RNG.
 - **Rationale**: Schedule assignment must differ across organisms while exact resume and
   global RNG state remain unchanged.
 
+### `deterministic_crossover_assignment_code`
+- **Does**: Applies the same stable mixer to an arbitrary nonempty identity tuple.
+- **Interacts with**: Randomized structural probation in `structure.py`.
+- **Rationale**: Routing and morphology need the same exact null while retaining their
+  own proposal identities and checkpoint contracts.
+
 ### `schedule_advantage`
 - **Does**: Computes candidate-minus-incumbent mean reward for a balanced assignment.
 
@@ -39,6 +45,7 @@ creating another organism or consuming the training RNG.
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `routing.py` | Boolean schedule length equals trial length and null rank is exact | Block encoding or tail convention |
+| `structure.py` | Candidate source participates in structural assignment identity | Identity ordering |
 | Checkpoint resume | Assignment code recreates the stored schedule without RNG | Integer mixing or schedule layout |
 | Experiment analysis | Each four-window block is balanced and trend-neutral | `ABBA` / `BAAB` patterns |
 

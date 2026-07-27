@@ -23,7 +23,8 @@ one-character-at-a-time organism path used during training.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
   accumulated prequential improvement, raw advantage, and developmental baseline.
 - **Does**: Reports exploratory-traffic arm exposure, per-arm observations and reward,
-  within-organism advantage, and rejected candidates.
+  within-organism advantage, exact structural randomization p-value, and rejected
+  candidates.
 
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
@@ -44,9 +45,11 @@ one-character-at-a-time organism path used during training.
   update. It passes the exact resolution update into the permanent trial ledger.
   Ordinary body learning is never paused.
 - **Exploratory probation**: Before each streamed window, gates only the selected
-  candidate probe according to a checkpointed ABBA schedule. Both arms update the same
-  persistent body and optimizer; all unselected probes remain live. Resolution compares
-  candidate-on and candidate-off reward before any anatomical mutation.
+  candidate probe according to a checkpointed crossover schedule. Both arms update the
+  same persistent body and optimizer; all unselected probes remain live. Fixed ABBA is
+  the historical policy; randomized ABBA/BAAB blocks require exact one-sided evidence.
+  Resolution compares candidate-on and candidate-off reward before any anatomical
+  mutation.
 - **Developmental baseline**: Tracks signed reward outside and during probation with a
   checkpointed EMA. A graft is judged by improvement over the body's pre-graft trend,
   not by reward that ordinary learning would have produced anyway.
@@ -75,7 +78,8 @@ one-character-at-a-time organism path used during training.
   vocabulary, structural policy and buffers, hyperparameters, update count, and
   random-number state.
 - **Does**: Includes the complete active graft backup and probation evidence so resume
-  produces the same future commit or rollback, plus all completed trial records.
+  produces the same future commit or rollback, plus the structural assignment, next
+  arm, raw rewards, exact null rank, and all completed trial records.
 - **Does**: Includes routing-traffic configuration, proposal tensor, exact next
   crossover arm, raw rewards, null rank, counters, and decision ledger.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.

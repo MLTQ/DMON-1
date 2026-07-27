@@ -88,6 +88,10 @@ with checkpointing and append-only metrics.
   anatomy, alternates the selected candidate probe on/off across adjacent live stream
   windows, and commits from the within-organism reward difference. All other probes and
   all ordinary learning continue in both arms.
+- **Does**: `--structural-probation-randomized-traffic` replaces fixed structural ABBA
+  with checkpointed candidate-specific ABBA/BAAB blocks and requires exact one-sided
+  inference at `--structural-probation-randomization-alpha`. It is explicit and
+  default-disabled so historical checkpoints retain their causal policy.
 - **Rationale**: Rewiring must beat the same causal probes without topology mutation,
   rather than receiving free exploratory traffic unavailable to control.
 - **Rationale**: The fixed-topology run remains a diagnostic, but it is not the primary
@@ -110,7 +114,8 @@ with checkpointing and append-only metrics.
   sensory-to-output distance plus structural rewrite/credit telemetry in every SOL
   summary.
 - **Does**: Records probation activity, attempts, commits, rollbacks, observations, and
-  mean observed advantage.
+  mean observed advantage, plus randomized structural assignment, raw rewards, exact
+  p-value, and null rank when enabled.
 - **Does**: Records the independent routing-traffic phase, randomized assignment, raw
   reward sequence, exact null rank, commit/reject totals, and complete decision ledger.
 - **Interacts with**: `analyze_topology` in `topology.py`.

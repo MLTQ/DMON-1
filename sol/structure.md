@@ -77,9 +77,13 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
 - **Does**: In exploratory-traffic mode, assigns streamed windows in a balanced ABBA
   candidate-on/incumbent-only schedule, retains separate reward aggregates, and grafts
   only after the candidate wins within the same organism.
+- **Does**: An explicit randomized mode replaces fixed ABBA with checkpointed,
+  candidate-specific ABBA/BAAB blocks, retains every raw reward and exact null rank,
+  and requires a positive advantage plus the configured one-sided randomization
+  threshold before grafting.
 - **Does**: Appends every resolved trial to a checkpointed event ledger with the exact
-  candidate, traffic rewards, decision, and whole-body/endpoint energy before and after
-  the decision.
+  candidate, assignment, raw traffic rewards, inference result, decision, and
+  whole-body/endpoint energy before and after the decision.
 - **Rationale**: Failed anatomy can be removed without pretending the rest of the body
   did not experience and adapt during the trial.
 - **Rationale**: A frozen organ in a separate organism cannot serve as the primary
@@ -97,7 +101,7 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
 | `benchmark.py` | Fixed and growing runs retain identical parameter counts and slot capacity | Resizing tensors |
 | Checkpoint resume | Model buffers and trainer policy preserve exact future rewiring | Buffer or config keys |
 | Topology guard | All cells and outputs remain reachable from sensory cells | Removing viability test |
-| Survival analysis | Every resolved exploratory trial exposes start/resolution updates and decision evidence | Trial ledger keys |
+| Survival analysis | Every resolved exploratory trial exposes start/resolution updates, raw rewards, assignment, and decision evidence | Trial ledger keys |
 
 ## Notes
 
@@ -125,5 +129,9 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
 - Exploratory-traffic rejection never mutates anatomy or spends growth energy. The
   incumbent, hidden state, body parameters, and optimizer remain live in both arms; only
   the selected weak probe is gated, while every other exploratory probe continues.
+- Randomized structural traffic is separate and disabled by default. Historical fixed
+  ABBA checkpoints finish under their original rule; a randomized schedule is keyed by
+  topology seed and the complete trial/candidate identity without consuming training
+  RNG.
 - Endpoint energy is checked again at the actual commit boundary; developmental success
   cannot force a graft that the organism can no longer afford.

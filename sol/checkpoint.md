@@ -25,6 +25,10 @@ optimizer, corpus position, or random stream.
   state initializes inactive when absent. An already-active pre-randomization routing
   trial finishes under its historical fixed crossover rule; new trials use checkpointed
   randomized blocks and exact inference.
+- **Compatibility**: Randomized structural traffic is likewise additive and disabled
+  when absent. An active historical structural trial retains fixed ABBA; randomized
+  trials preserve their candidate-specific schedule, next arm, raw rewards, and exact
+  null evidence.
 - **Compatibility**: Pre-growth checkpoints reconstruct every historical dendrite slot
   as active and initialize usage, vector-credit evidence, and spawn/prune counters to
   zero.

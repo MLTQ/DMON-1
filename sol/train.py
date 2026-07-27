@@ -84,6 +84,7 @@ class TrainMetrics:
     probation_rolled_back: int
     probation_rejected: int
     probation_advantage: float
+    probation_randomization_p_value: float
     probation_candidate_exposed: bool
     probation_candidate_observations: int
     probation_incumbent_observations: int
@@ -398,6 +399,10 @@ class ContinuousTrainer:
                 self.structural_config.probation_margin,
                 self.structural_config.growth_cost,
                 self.structural_config.min_endpoint_energy,
+                randomization_alpha=(
+                    self.structural_config
+                    .probation_randomization_alpha
+                ),
                 resolved_update=next_update,
             )
             self.model.probe_sources.copy_(
@@ -642,6 +647,14 @@ class ContinuousTrainer:
             ),
             probation_advantage=(
                 self.structural_probation.mean_advantage
+            ),
+            probation_randomization_p_value=(
+                self.structural_probation.randomization_p_value
+                if self.structural_probation.active
+                else (
+                    self.structural_probation
+                    .last_randomization_p_value
+                )
             ),
             probation_candidate_exposed=candidate_exposed,
             probation_candidate_observations=(

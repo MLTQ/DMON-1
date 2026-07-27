@@ -44,6 +44,9 @@ probabilities out. It is not a transformer imitation.
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is
   better, both endpoints can pay, and full sensory/output reachability survives.
+- Structural candidates can be tested with checkpointed, candidate-specific balanced
+  crossover traffic inside the same live organism. Every reward is retained and a
+  spawn/graft requires a positive advantage that clears exact randomization inference.
 - Externally caused stimulation propagates along measured edge flow. Stimulation and
   energy decay when input stops.
 - Novel input is the only metabolic inflow. Energy is conserved while moving through
@@ -82,6 +85,12 @@ python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
   --out-dir sol/runs/counterfactual-routing
 python -m sol.benchmark --model sol --no-fast-plasticity \
   --structural-plasticity --out-dir sol/runs/growing-connectome
+python -m sol.benchmark --model sol --structural-plasticity \
+  --structural-variable-fan-in \
+  --structural-probation-exploratory-traffic \
+  --structural-probation-randomized-traffic \
+  --structural-probation-updates 20 \
+  --out-dir sol/runs/randomized-structural-traffic
 python -m sol.benchmark --model sol --no-fast-plasticity \
   --structural-probes-only --out-dir sol/runs/probes-only-control
 python -m sol.serve --checkpoint sol/runs/sol-main/best.pt

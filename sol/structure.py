@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from .routing_randomization import (
+    crossover_schedule,
+    deterministic_crossover_assignment_code,
+    exact_one_sided_randomization_test,
+)
 from .topology import analyze_topology
 
 if TYPE_CHECKING:
@@ -37,6 +42,8 @@ class StructuralConfig:
     probation_margin: float = 0.0
     probation_baseline_decay: float = 0.99
     probation_exploratory_traffic: bool = False
+    probation_randomized_traffic: bool = False
+    probation_randomization_alpha: float = 0.10
     variable_fan_in: bool = False
     min_active_dendrites: int = 1
     prune_usage_threshold: float = 0.0
@@ -95,6 +102,26 @@ class StructuralConfig:
                 "exploratory traffic probation requires an even number "
                 "of at least two updates"
             )
+        if (
+            self.probation_randomized_traffic
+            and not self.probation_exploratory_traffic
+        ):
+            raise ValueError(
+                "randomized structural traffic requires exploratory traffic"
+            )
+        if self.probation_randomized_traffic and (
+            self.probation_updates < 4
+            or self.probation_updates % 4 != 0
+            or self.probation_updates > 64
+        ):
+            raise ValueError(
+                "randomized structural probation requires 4 to 64 "
+                "updates divisible by four"
+            )
+        if not 0 < self.probation_randomization_alpha <= 1:
+            raise ValueError(
+                "structural probation randomization alpha must be in (0, 1]"
+            )
 
 
 @dataclass(frozen=True)
@@ -123,6 +150,7 @@ class StructuralProbation:
     active: bool = False
     virtual: bool = False
     exploratory_traffic: bool = False
+    randomized_traffic: bool = False
     target: int = -1
     slot: int = -1
     old_source: int = -1
@@ -140,9 +168,18 @@ class StructuralProbation:
     incumbent_reward_sum: float = 0.0
     candidate_observations: int = 0
     incumbent_observations: int = 0
+    assignment_code: int = 0
+    candidate_schedule: list[bool] = field(default_factory=list)
+    reward_observations: list[float] = field(default_factory=list)
+    randomization_p_value: float = 1.0
+    randomization_extreme_assignments: int = 0
+    randomization_total_assignments: int = 0
     candidate_edge_credit: float = 0.0
     candidate_vector_credit: float = 0.0
     last_mean_advantage: float = 0.0
+    last_randomization_p_value: float = 1.0
+    last_randomization_extreme_assignments: int = 0
+    last_randomization_total_assignments: int = 0
     edge_weight: torch.Tensor | None = None
     edge_bias: torch.Tensor | None = None
     edge_credit: torch.Tensor | None = None
@@ -174,6 +211,20 @@ class StructuralProbation:
             )
         return self.advantage_sum / max(1, self.observations)
 
+    @property
+    def candidate_exposed(self) -> bool:
+        """Return the assigned probe arm for the next observation."""
+
+        if not self.active or not self.exploratory_traffic:
+            return False
+        if self.randomized_traffic:
+            if self.observations >= len(self.candidate_schedule):
+                raise RuntimeError(
+                    "structural traffic schedule is exhausted"
+                )
+            return self.candidate_schedule[self.observations]
+        return self.observations % 4 in (0, 3)
+
     def observe(
         self,
         advantage: float,
@@ -185,6 +236,16 @@ class StructuralProbation:
                     raise ValueError(
                         "exploratory traffic observations require an arm"
                     )
+                if (
+                    self.randomized_traffic
+                    and candidate_exposed != self.candidate_exposed
+                ):
+                    raise RuntimeError(
+                        "observed structural arm differs from "
+                        "checkpointed schedule"
+                    )
+                if self.randomized_traffic:
+                    self.reward_observations.append(float(advantage))
                 if candidate_exposed:
                     self.candidate_reward_sum += float(advantage)
                     self.candidate_observations += 1
@@ -196,16 +257,31 @@ class StructuralProbation:
                     float(advantage) - self.baseline_advantage
                 )
             self.observations += 1
+            if (
+                self.randomized_traffic
+                and self.observations % 4 == 0
+            ):
+                result = exact_one_sided_randomization_test(
+                    self.reward_observations,
+                    self.candidate_schedule[: self.observations],
+                )
+                self.randomization_p_value = result.p_value
+                self.randomization_extreme_assignments = (
+                    result.extreme_assignments
+                )
+                self.randomization_total_assignments = (
+                    result.total_assignments
+                )
 
     def exploratory_probe_mask(
         self,
         model: "SparseAxonField",
     ) -> tuple[torch.Tensor | None, bool]:
-        """Gate one candidate probe with a balanced ABBA stream schedule."""
+        """Gate one candidate probe with its checkpointed traffic schedule."""
 
         if not self.active or not self.exploratory_traffic:
             return None, False
-        candidate_exposed = self.observations % 4 in (0, 3)
+        candidate_exposed = self.candidate_exposed
         mask = torch.ones(
             model.cfg.cells,
             device=model.sources.device,
@@ -251,6 +327,22 @@ class StructuralProbation:
         if not payload:
             return cls()
         restored = dict(payload)
+        restored.setdefault("randomized_traffic", False)
+        restored.setdefault("assignment_code", 0)
+        restored.setdefault("candidate_schedule", [])
+        restored.setdefault("reward_observations", [])
+        restored.setdefault("randomization_p_value", 1.0)
+        restored.setdefault("randomization_extreme_assignments", 0)
+        restored.setdefault("randomization_total_assignments", 0)
+        restored.setdefault("last_randomization_p_value", 1.0)
+        restored.setdefault(
+            "last_randomization_extreme_assignments",
+            0,
+        )
+        restored.setdefault(
+            "last_randomization_total_assignments",
+            0,
+        )
         device = torch.device(device)
         for name in (
             "edge_weight",
@@ -288,14 +380,21 @@ class StructuralProbation:
         update: int,
         virtual: bool,
         exploratory_traffic: bool = False,
+        randomized_traffic: bool = False,
+        trial_updates: int = 0,
         candidate_edge_credit: float = 0.0,
         candidate_vector_credit: float = 0.0,
     ) -> None:
         if self.active:
             raise RuntimeError("structural probation is already active")
+        if randomized_traffic and not exploratory_traffic:
+            raise ValueError(
+                "randomized structural traffic requires exploratory traffic"
+            )
         self.active = True
         self.virtual = virtual
         self.exploratory_traffic = exploratory_traffic
+        self.randomized_traffic = randomized_traffic
         self.target = target
         self.slot = slot
         self.old_source = int(model.sources[target, slot].item())
@@ -309,6 +408,33 @@ class StructuralProbation:
         self.incumbent_reward_sum = 0.0
         self.candidate_observations = 0
         self.incumbent_observations = 0
+        if randomized_traffic:
+            self.assignment_code = (
+                deterministic_crossover_assignment_code(
+                    topology_seed=model.cfg.topology_seed,
+                    identity=(
+                        self.total_started,
+                        target,
+                        slot,
+                        candidate,
+                        update,
+                    ),
+                    trial_updates=trial_updates,
+                )
+            )
+            self.candidate_schedule = list(
+                crossover_schedule(
+                    self.assignment_code,
+                    trial_updates,
+                )
+            )
+        else:
+            self.assignment_code = 0
+            self.candidate_schedule = []
+        self.reward_observations = []
+        self.randomization_p_value = 1.0
+        self.randomization_extreme_assignments = 0
+        self.randomization_total_assignments = 0
         self.candidate_edge_credit = float(candidate_edge_credit)
         self.candidate_vector_credit = float(candidate_vector_credit)
         self.last_mean_advantage = 0.0
@@ -368,12 +494,17 @@ class StructuralProbation:
         margin: float,
         growth_cost: float = 0.0,
         min_endpoint_energy: float = 0.0,
+        randomization_alpha: float = 0.10,
         resolved_update: int | None = None,
     ) -> bool:
         """Commit positive probation or restore the exact pre-graft slot."""
 
         if not self.active:
             raise RuntimeError("no structural probation is active")
+        if not 0 < randomization_alpha <= 1:
+            raise ValueError(
+                "structural probation randomization alpha must be in (0, 1]"
+            )
         body_energy_before = float(state.energy.mean().item())
         target_energy_before = float(
             state.energy[:, self.target].mean().item()
@@ -382,8 +513,35 @@ class StructuralProbation:
             state.energy[:, self.candidate_source].mean().item()
         )
         decision_advantage = self.mean_advantage
+        if self.randomized_traffic:
+            if len(self.reward_observations) != len(
+                self.candidate_schedule
+            ):
+                raise RuntimeError(
+                    "randomized structural trial requires every reward"
+                )
+            result = exact_one_sided_randomization_test(
+                self.reward_observations,
+                self.candidate_schedule,
+            )
+            randomization_p_value = result.p_value
+            randomization_extreme_assignments = (
+                result.extreme_assignments
+            )
+            randomization_total_assignments = (
+                result.total_assignments
+            )
+            clears_randomization = (
+                randomization_p_value <= randomization_alpha
+            )
+        else:
+            randomization_p_value = 1.0
+            randomization_extreme_assignments = 0
+            randomization_total_assignments = 0
+            clears_randomization = True
         committed = (
             decision_advantage > margin
+            and clears_randomization
             and (
                 not self.exploratory_traffic
                 or (
@@ -495,7 +653,11 @@ class StructuralProbation:
         self.trial_history.append(
             {
                 "mode": (
-                    "exploratory_traffic"
+                    (
+                        "exploratory_randomized_traffic"
+                        if self.randomized_traffic
+                        else "exploratory_traffic"
+                    )
                     if self.exploratory_traffic
                     else "post_graft"
                 ),
@@ -525,6 +687,32 @@ class StructuralProbation:
                 ),
                 "decision_advantage": decision_advantage,
                 "decision_margin": float(margin),
+                "randomized_traffic": self.randomized_traffic,
+                "assignment_code": self.assignment_code,
+                "candidate_schedule": list(self.candidate_schedule),
+                "reward_observations": list(
+                    self.reward_observations
+                ),
+                "randomization_p_value": (
+                    randomization_p_value
+                    if self.randomized_traffic
+                    else None
+                ),
+                "randomization_extreme_assignments": (
+                    randomization_extreme_assignments
+                    if self.randomized_traffic
+                    else None
+                ),
+                "randomization_total_assignments": (
+                    randomization_total_assignments
+                    if self.randomized_traffic
+                    else None
+                ),
+                "randomization_alpha": (
+                    float(randomization_alpha)
+                    if self.randomized_traffic
+                    else None
+                ),
                 "candidate_edge_credit": self.candidate_edge_credit,
                 "candidate_vector_credit": self.candidate_vector_credit,
                 "body_energy_before": body_energy_before,
@@ -540,6 +728,20 @@ class StructuralProbation:
             }
         )
         self.last_mean_advantage = decision_advantage
+        self.randomization_p_value = randomization_p_value
+        self.randomization_extreme_assignments = (
+            randomization_extreme_assignments
+        )
+        self.randomization_total_assignments = (
+            randomization_total_assignments
+        )
+        self.last_randomization_p_value = randomization_p_value
+        self.last_randomization_extreme_assignments = (
+            randomization_extreme_assignments
+        )
+        self.last_randomization_total_assignments = (
+            randomization_total_assignments
+        )
         self.active = False
         self.virtual = False
         self.edge_weight = None
@@ -1067,6 +1269,10 @@ def apply_structural_phase(
                 exploratory_traffic=(
                     config.probation_exploratory_traffic
                 ),
+                randomized_traffic=(
+                    config.probation_randomized_traffic
+                ),
+                trial_updates=config.probation_updates,
                 candidate_edge_credit=probe_credit,
                 candidate_vector_credit=probe_vector_credit,
             )
@@ -1202,11 +1408,19 @@ def structural_summary(
                 "active": probation.active,
                 "virtual": probation.virtual,
                 "exploratory_traffic": probation.exploratory_traffic,
+                "randomized_traffic": probation.randomized_traffic,
                 "target": probation.target,
                 "slot": probation.slot,
                 "candidate_source": probation.candidate_source,
                 "started_update": probation.started_update,
                 "observations": probation.observations,
+                "assignment_code": probation.assignment_code,
+                "candidate_schedule": list(
+                    probation.candidate_schedule
+                ),
+                "reward_observations": list(
+                    probation.reward_observations
+                ),
                 "candidate_observations": (
                     probation.candidate_observations
                 ),
@@ -1223,6 +1437,21 @@ def structural_summary(
                 ),
                 "baseline_advantage": probation.baseline_advantage,
                 "mean_advantage": probation.mean_advantage,
+                "randomization_p_value": (
+                    probation.randomization_p_value
+                    if probation.active
+                    else probation.last_randomization_p_value
+                ),
+                "randomization_extreme_assignments": (
+                    probation.randomization_extreme_assignments
+                    if probation.active
+                    else probation.last_randomization_extreme_assignments
+                ),
+                "randomization_total_assignments": (
+                    probation.randomization_total_assignments
+                    if probation.active
+                    else probation.last_randomization_total_assignments
+                ),
                 "total_started": probation.total_started,
                 "total_committed": probation.total_committed,
                 "total_rolled_back": probation.total_rolled_back,

@@ -41,6 +41,7 @@ from .routing import (
 from .routing_randomization import (
     crossover_schedule,
     deterministic_assignment_code,
+    deterministic_crossover_assignment_code,
     exact_one_sided_randomization_p_value,
     exact_one_sided_randomization_test,
     schedule_advantage,
@@ -1250,6 +1251,29 @@ def test_routing_assignments_are_balanced_trend_neutral_and_seeded() -> None:
             assert sum(index * sign for index, sign in enumerate(signs)) == 0
 
 
+def test_structural_assignments_include_candidate_identity_without_rng() -> None:
+    rng_before = torch.get_rng_state().clone()
+    codes = [
+        deterministic_crossover_assignment_code(
+            topology_seed=7,
+            identity=(2, 10, 1, candidate, 300),
+            trial_updates=20,
+        )
+        for candidate in (3, 4, 5)
+    ]
+    assert torch.equal(torch.get_rng_state(), rng_before)
+    assert len(set(codes)) == 3
+
+    for code in codes:
+        schedule = crossover_schedule(code, 20)
+        assert sum(schedule) == 10
+        for offset in range(0, 20, 4):
+            block = schedule[offset : offset + 4]
+            signs = [1 if exposed else -1 for exposed in block]
+            assert sum(signs) == 0
+            assert sum(index * sign for index, sign in enumerate(signs)) == 0
+
+
 def test_exact_routing_randomization_rejects_null_and_ranks_effect() -> None:
     schedule = crossover_schedule(13, 20)
     null_rewards = [0.25] * 20
@@ -2440,6 +2464,155 @@ def test_exploratory_probation_uses_abba_traffic_before_grafting() -> None:
     assert trial["body_energy_after"] < trial["body_energy_before"]
 
 
+def test_randomized_structural_probation_commits_exact_ranked_benefit() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    energy = trainer.state.energy.clone()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+
+    arms = []
+    for _ in range(config.probation_updates):
+        mask, exposed = (
+            trainer.structural_probation.exploratory_probe_mask(model)
+        )
+        assert mask is not None
+        assert mask[target].item() == float(exposed)
+        assert torch.equal(model.sources, sources)
+        assert torch.equal(trainer.state.energy, energy)
+        arms.append(exposed)
+        trainer.structural_probation.observe(
+            1.0 if exposed else 0.0,
+            exposed,
+        )
+
+    assert sum(arms) == config.probation_updates // 2
+    assert trainer.structural_probation.randomization_p_value == pytest.approx(
+        1 / 32
+    )
+    assert trainer.structural_probation.randomization_total_assignments == 32
+    assert trainer.structural_probation.resolve(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        randomization_alpha=config.probation_randomization_alpha,
+        resolved_update=22,
+    )
+    assert int(model.sources[target, slot]) == candidate
+    assert not torch.equal(model.sources, sources)
+    assert (
+        energy.sum().item() - trainer.state.energy.sum().item()
+        == pytest.approx(
+            trainer.stream.batch_size * config.growth_cost,
+            abs=2e-6,
+        )
+    )
+    trial = trainer.structural_probation.trial_history[-1]
+    assert trial["mode"] == "exploratory_randomized_traffic"
+    assert trial["candidate_schedule"] == arms
+    assert trial["reward_observations"] == [
+        1.0 if exposed else 0.0 for exposed in arms
+    ]
+    assert trial["randomization_p_value"] == pytest.approx(1 / 32)
+    assert trial["randomization_extreme_assignments"] == 1
+    assert trial["randomization_total_assignments"] == 32
+
+
+@pytest.mark.parametrize(
+    ("candidate_reward", "incumbent_reward"),
+    [(0.25, 0.25), (0.0, 1.0)],
+)
+def test_randomized_structural_probation_rejects_null_and_harm(
+    candidate_reward: float,
+    incumbent_reward: float,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    energy = trainer.state.energy.clone()
+    _start_forced_probation(trainer, config, update=1)
+
+    for _ in range(config.probation_updates):
+        exposed = trainer.structural_probation.candidate_exposed
+        reward = candidate_reward if exposed else incumbent_reward
+        trainer.structural_probation.observe(reward, exposed)
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        randomization_alpha=config.probation_randomization_alpha,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert torch.equal(trainer.state.energy, energy)
+    assert trainer.structural_probation.total_rejected == 1
+    assert trainer.structural_probation.trial_history[-1]["outcome"] == (
+        "rejected"
+    )
+
+
 def test_exploratory_rejection_preserves_live_anatomy_and_energy() -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -2894,6 +3067,166 @@ def test_checkpoint_resume_preserves_exploratory_traffic_arm(
     assert (
         resumed.structural_probation.trial_history
         == trainer.structural_probation.trial_history
+    )
+
+
+def test_checkpoint_resume_preserves_randomized_structural_trial(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(24)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    prefix = [trainer.step() for _ in range(5)]
+    assert sum(
+        row.probation_candidate_exposed for row in prefix
+    ) in (2, 3)
+    checkpoint = save_checkpoint(
+        tmp_path / "randomized-structural.pt",
+        trainer,
+        {"tag": "randomized-structural"},
+    )
+    checkpoint_schedule = list(
+        trainer.structural_probation.candidate_schedule
+    )
+    checkpoint_rewards = list(
+        trainer.structural_probation.reward_observations
+    )
+
+    expected = [trainer.step() for _ in range(15)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    assert resumed.structural_probation.candidate_schedule == (
+        checkpoint_schedule
+    )
+    assert resumed.structural_probation.reward_observations == (
+        checkpoint_rewards
+    )
+    actual = [resumed.step() for _ in range(15)]
+
+    assert metadata == {"tag": "randomized-structural"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.probation_candidate_exposed for row in actual] == [
+        row.probation_candidate_exposed for row in expected
+    ]
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.last_randomization_p_value
+        == trainer.structural_probation.last_randomization_p_value
+    )
+    assert (
+        resumed.structural_probation
+        .last_randomization_extreme_assignments
+        == trainer.structural_probation
+        .last_randomization_extreme_assignments
+    )
+    assert (
+        resumed.structural_probation.trial_history
+        == trainer.structural_probation.trial_history
+    )
+
+
+def test_old_active_fixed_structural_trial_keeps_abba_after_resume(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(25)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    first = trainer.step()
+    assert first.probation_candidate_exposed
+    checkpoint = save_checkpoint(
+        tmp_path / "old-fixed-structural.pt",
+        trainer,
+    )
+    payload = torch.load(checkpoint, weights_only=False)
+    for name in (
+        "probation_randomized_traffic",
+        "probation_randomization_alpha",
+    ):
+        del payload["trainer"]["structural_config"][name]
+    for name in (
+        "randomized_traffic",
+        "assignment_code",
+        "candidate_schedule",
+        "reward_observations",
+        "randomization_p_value",
+        "randomization_extreme_assignments",
+        "randomization_total_assignments",
+        "last_randomization_p_value",
+        "last_randomization_extreme_assignments",
+        "last_randomization_total_assignments",
+    ):
+        del payload["trainer"]["structural_probation"][name]
+    torch.save(payload, checkpoint)
+
+    resumed, _ = load_checkpoint(checkpoint, text)
+    remaining = [resumed.step() for _ in range(3)]
+    assert [
+        row.probation_candidate_exposed for row in remaining
+    ] == [False, False, True]
+    assert not resumed.structural_probation.active
+    assert (
+        resumed.structural_probation.trial_history[-1]["mode"]
+        == "exploratory_traffic"
     )
 
 

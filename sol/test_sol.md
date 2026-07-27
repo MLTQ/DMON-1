@@ -37,6 +37,9 @@ tensor shapes.
 - **Does**: Proves exploratory probation leaves incumbent anatomy and energy untouched
   during an ABBA candidate-on/incumbent-only traffic trial, balances observations, and
   grafts only after a positive within-organism reward difference.
+- **Does**: Proves randomized structural schedules include candidate identity without
+  consuming training RNG, remain balanced and blockwise trend-neutral, commit an
+  injected exact-ranked benefit, and reject null or harmful reward.
 - **Does**: Requires each resolved exploratory trial to preserve its identity, traffic
   evidence, decision update, outcome, and whole-body energy change in checkpoint state.
 - **Does**: Proves rejected exploratory candidates never mutate anatomy or spend growth
@@ -134,6 +137,8 @@ tensor shapes.
 - **Does**: Resumes midway through a randomized exploratory crossover trial with the
   same next traffic arm, losses, shared body state, topology decision, raw rewards, and
   exact verdict.
+- **Does**: Preserves an active historical fixed-ABBA structural trial when all newer
+  randomized-traffic checkpoint fields are absent.
 - **Does**: Proves checkpoints made before fast synaptic fields existed load with safe
   zero-valued additive fast/structural state, deterministic probes, and a chance-level
   surprise baseline.

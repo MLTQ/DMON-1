@@ -254,6 +254,12 @@ def _run_sol(
                 probation_exploratory_traffic=(
                     args.structural_probation_exploratory_traffic
                 ),
+                probation_randomized_traffic=(
+                    args.structural_probation_randomized_traffic
+                ),
+                probation_randomization_alpha=(
+                    args.structural_probation_randomization_alpha
+                ),
                 variable_fan_in=args.structural_variable_fan_in,
                 min_active_dendrites=(
                     args.structural_min_active_dendrites
@@ -845,6 +851,19 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--structural-probation-randomized-traffic",
+        action="store_true",
+        help=(
+            "randomize balanced structural candidate traffic and require "
+            "exact one-sided inference before grafting"
+        ),
+    )
+    parser.add_argument(
+        "--structural-probation-randomization-alpha",
+        type=float,
+        default=0.10,
+    )
+    parser.add_argument(
         "--structural-variable-fan-in",
         action="store_true",
         help=(
@@ -1117,6 +1136,29 @@ def parse_args() -> argparse.Namespace:
         parser.error(
             "--structural-probation-exploratory-traffic requires "
             "an even --structural-probation-updates >= 2"
+        )
+    if (
+        args.structural_probation_randomized_traffic
+        and not args.structural_probation_exploratory_traffic
+    ):
+        parser.error(
+            "--structural-probation-randomized-traffic requires "
+            "--structural-probation-exploratory-traffic"
+        )
+    if args.structural_probation_randomized_traffic and (
+        args.structural_probation_updates < 4
+        or args.structural_probation_updates % 4 != 0
+        or args.structural_probation_updates > 64
+    ):
+        parser.error(
+            "--structural-probation-randomized-traffic requires "
+            "4 to 64 updates divisible by four"
+        )
+    if not (
+        0 < args.structural_probation_randomization_alpha <= 1
+    ):
+        parser.error(
+            "--structural-probation-randomization-alpha must be in (0, 1]"
         )
     if not 0 <= args.structural_probation_baseline_decay < 1:
         parser.error(
