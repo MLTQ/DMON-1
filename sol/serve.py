@@ -106,6 +106,22 @@ class LiveOrganism:
                 "outputErrorCredit": float(
                     state.output_error_credit.abs().mean().item()
                 ),
+                "creditRoutingEligibility": float(
+                    state.credit_routing_eligibility.abs().mean().item()
+                ),
+                "creditRoutingPreference": float(
+                    state.credit_routing_preference.abs().mean().item()
+                ),
+                "creditRoutingSaturation": float(
+                    (
+                        state.credit_routing_preference.abs()
+                        >= 0.95
+                        * model.cfg.credit_routing_preference_limit
+                    )
+                    .to(state.credit_routing_preference.dtype)
+                    .mean()
+                    .item()
+                ),
                 "edgeEligibility": float(
                     state.edge_eligibility.abs().mean().item()
                 ),
@@ -148,6 +164,12 @@ class LiveOrganism:
                 .cpu()
                 .tolist(),
                 "fastWeights": state.fast_weight[0].cpu().tolist(),
+                "creditRoutingEligibility": (
+                    state.credit_routing_eligibility[0].cpu().tolist()
+                ),
+                "creditRoutingPreference": (
+                    state.credit_routing_preference[0].cpu().tolist()
+                ),
                 "edgeFlow": self.last_edge_flow.tolist(),
                 "probeFlow": self.last_probe_flow.tolist(),
                 "cellActivity": state.stimulation[0].cpu().tolist(),

@@ -151,6 +151,8 @@ class StructuralProbation:
     edge_age: torch.Tensor | None = None
     edge_eligibility: torch.Tensor | None = None
     fast_weight: torch.Tensor | None = None
+    credit_routing_eligibility: torch.Tensor | None = None
+    credit_routing_preference: torch.Tensor | None = None
     optimizer_slots: dict[str, dict[str, torch.Tensor]] = field(
         default_factory=dict
     )
@@ -224,6 +226,8 @@ class StructuralProbation:
             "edge_age",
             "edge_eligibility",
             "fast_weight",
+            "credit_routing_eligibility",
+            "credit_routing_preference",
         ):
             value = getattr(self, name)
             payload[name] = (
@@ -257,6 +261,8 @@ class StructuralProbation:
             "edge_age",
             "edge_eligibility",
             "fast_weight",
+            "credit_routing_eligibility",
+            "credit_routing_preference",
         ):
             value = restored.get(name)
             restored[name] = None if value is None else value.to(device)
@@ -331,6 +337,16 @@ class StructuralProbation:
         self.fast_weight = (
             state.fast_weight[:, target, slot].detach().clone()
         )
+        self.credit_routing_eligibility = (
+            state.credit_routing_eligibility[:, target, slot]
+            .detach()
+            .clone()
+        )
+        self.credit_routing_preference = (
+            state.credit_routing_preference[:, target, slot]
+            .detach()
+            .clone()
+        )
         parameters = {
             "edge_weight": model.edge_weight,
             "edge_bias": model.edge_bias,
@@ -402,6 +418,8 @@ class StructuralProbation:
             )
             state.edge_eligibility[:, target, slot] = 0
             state.fast_weight[:, target, slot] = 0
+            state.credit_routing_eligibility[:, target, slot] = 0
+            state.credit_routing_preference[:, target, slot] = 0
             model.structural_edge_credit[target, slot] = (
                 self.candidate_edge_credit
             )
@@ -434,6 +452,12 @@ class StructuralProbation:
                     self.edge_eligibility
                 )
                 state.fast_weight[:, target, slot] = self.fast_weight
+                state.credit_routing_eligibility[:, target, slot] = (
+                    self.credit_routing_eligibility
+                )
+                state.credit_routing_preference[:, target, slot] = (
+                    self.credit_routing_preference
+                )
                 parameters = {
                     "edge_weight": model.edge_weight,
                     "edge_bias": model.edge_bias,
@@ -526,6 +550,8 @@ class StructuralProbation:
         self.edge_age = None
         self.edge_eligibility = None
         self.fast_weight = None
+        self.credit_routing_eligibility = None
+        self.credit_routing_preference = None
         self.optimizer_slots = {}
         return committed
 
@@ -721,6 +747,8 @@ def _reset_edge_slot(
     _reset_optimizer_slot(optimizer, model.edge_bias, target, slot)
     state.edge_eligibility[:, target, slot] = 0
     state.fast_weight[:, target, slot] = 0
+    state.credit_routing_eligibility[:, target, slot] = 0
+    state.credit_routing_preference[:, target, slot] = 0
     model.structural_edge_credit[target, slot] = 0
     model.structural_edge_vector_credit[target, slot] = 0
     model.structural_edge_usage[target, slot] = 0

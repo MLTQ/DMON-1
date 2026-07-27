@@ -155,6 +155,18 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
             args.eligibility_routed_output_credit
         ),
         "eligibility_routing_gain": args.eligibility_routing_gain,
+        "reward_plastic_output_credit_routing": (
+            args.reward_plastic_output_credit_routing
+        ),
+        "credit_routing_preference_decay": (
+            args.credit_routing_preference_decay
+        ),
+        "credit_routing_plasticity_gain": (
+            args.credit_routing_plasticity_gain
+        ),
+        "credit_routing_preference_limit": (
+            args.credit_routing_preference_limit
+        ),
         "structural_probe_gain": (
             args.structural_probe_gain
             if args.structural_plasticity or args.structural_probes_only
@@ -719,6 +731,29 @@ def parse_args() -> argparse.Namespace:
             "routing; 1 reproduces the original routed mechanism"
         ),
     )
+    parser.add_argument(
+        "--reward-plastic-output-credit-routing",
+        action="store_true",
+        help=(
+            "let delayed reward reinforce remembered branch-specific "
+            "decoder-credit routing events"
+        ),
+    )
+    parser.add_argument(
+        "--credit-routing-preference-decay",
+        type=float,
+        default=0.995,
+    )
+    parser.add_argument(
+        "--credit-routing-plasticity-gain",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--credit-routing-preference-limit",
+        type=float,
+        default=0.25,
+    )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--energy-transport-rate", type=float, default=0.50)
@@ -884,6 +919,26 @@ def parse_args() -> argparse.Namespace:
         parser.error("--output-error-credit-decay must be in [0, 1)")
     if args.eligibility_routing_gain < 0:
         parser.error("--eligibility-routing-gain must be non-negative")
+    if not 0 <= args.credit_routing_preference_decay < 1:
+        parser.error(
+            "--credit-routing-preference-decay must be in [0, 1)"
+        )
+    if args.credit_routing_plasticity_gain < 0:
+        parser.error(
+            "--credit-routing-plasticity-gain must be non-negative"
+        )
+    if args.credit_routing_preference_limit <= 0:
+        parser.error(
+            "--credit-routing-preference-limit must be positive"
+        )
+    if (
+        args.eligibility_routed_output_credit
+        and args.reward_plastic_output_credit_routing
+    ):
+        parser.error(
+            "instantaneous and reward-plastic output-credit routing "
+            "are mutually exclusive"
+        )
     if args.structural_probe_gain <= 0 and (
         args.structural_plasticity or args.structural_probes_only
     ):

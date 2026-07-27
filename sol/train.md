@@ -11,7 +11,8 @@ one-character-at-a-time organism path used during training.
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
   bounded rewiring counts, including mean first-order probe fitness and persistent
-  scalar and channel-shaped backward-credit magnitudes.
+  scalar and channel-shaped backward-credit magnitudes plus reward-plastic routing
+  eligibility, preference, and saturation.
 - **Does**: Separately reports replacements, spawns, prunes, and their cumulative
   anatomical mutation counts.
 - **Does**: Reports mean viability, quiescent fraction, external energy input, actual
@@ -52,6 +53,9 @@ one-character-at-a-time organism path used during training.
   across optimizer windows, transports it sourceward through the actual message
   transform, and combines it channel-by-channel with event eligibility. It adds no
   parameters and is reported independently from scalar reverse reward.
+- **Reward-plastic routing**: Carries target-owned branch eligibility and preference
+  across optimizer windows so later prequential reward can assign fitness to an earlier
+  decoder-credit routing event without pausing ordinary BPTT.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,

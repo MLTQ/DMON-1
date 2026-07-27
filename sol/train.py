@@ -35,6 +35,9 @@ class TrainMetrics:
     energy_transport_drift: float
     mean_backward_credit: float
     mean_output_error_credit: float
+    mean_credit_routing_eligibility: float
+    mean_credit_routing_preference: float
+    credit_routing_preference_saturation: float
     mean_novelty: float
     cell_credit: float
     edge_credit: float
@@ -385,6 +388,15 @@ class ContinuousTrainer:
         mean_output_error_credit = torch.stack(
             trace.mean_output_error_credit
         ).mean().item()
+        mean_credit_routing_eligibility = torch.stack(
+            trace.mean_credit_routing_eligibility
+        ).mean().item()
+        mean_credit_routing_preference = torch.stack(
+            trace.mean_credit_routing_preference
+        ).mean().item()
+        credit_routing_preference_saturation = torch.stack(
+            trace.credit_routing_preference_saturation
+        ).mean().item()
         mean_novelty = torch.stack(trace.novelty).mean().item()
         mean_fast_weight = torch.stack(trace.mean_fast_weight).mean().item()
         mean_edge_eligibility = torch.stack(
@@ -409,6 +421,15 @@ class ContinuousTrainer:
             energy_transport_drift=energy_transport_drift,
             mean_backward_credit=mean_backward_credit,
             mean_output_error_credit=mean_output_error_credit,
+            mean_credit_routing_eligibility=(
+                mean_credit_routing_eligibility
+            ),
+            mean_credit_routing_preference=(
+                mean_credit_routing_preference
+            ),
+            credit_routing_preference_saturation=(
+                credit_routing_preference_saturation
+            ),
             mean_novelty=mean_novelty,
             cell_credit=cell_credit,
             edge_credit=edge_credit,
@@ -546,6 +567,25 @@ def main() -> None:
         type=float,
         default=0.80,
     )
+    parser.add_argument(
+        "--reward-plastic-output-credit-routing",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--credit-routing-preference-decay",
+        type=float,
+        default=0.995,
+    )
+    parser.add_argument(
+        "--credit-routing-plasticity-gain",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--credit-routing-preference-limit",
+        type=float,
+        default=0.25,
+    )
     parser.add_argument("--lr", type=float, default=3e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-every", type=int, default=25)
@@ -572,6 +612,18 @@ def main() -> None:
         backward_credit_decay=args.backward_credit_decay,
         output_error_credit_gain=args.output_error_credit_gain,
         output_error_credit_decay=args.output_error_credit_decay,
+        reward_plastic_output_credit_routing=(
+            args.reward_plastic_output_credit_routing
+        ),
+        credit_routing_preference_decay=(
+            args.credit_routing_preference_decay
+        ),
+        credit_routing_plasticity_gain=(
+            args.credit_routing_plasticity_gain
+        ),
+        credit_routing_preference_limit=(
+            args.credit_routing_preference_limit
+        ),
     )
     model = SparseAxonField(cfg)
     trainer = ContinuousTrainer(

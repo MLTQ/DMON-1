@@ -186,6 +186,8 @@ def test_inactive_dendrite_slots_carry_no_traffic_or_fast_state() -> None:
     state = model.initial_state(1)
     state.fast_weight[:, :, 2:] = 0.2
     state.edge_eligibility[:, :, 2:] = 1.0
+    state.credit_routing_eligibility[:, :, 2:] = 1.0
+    state.credit_routing_preference[:, :, 2:] = 0.2
     _, next_state, diagnostics = model.tick(
         state,
         torch.tensor([1]),
@@ -199,6 +201,18 @@ def test_inactive_dendrite_slots_carry_no_traffic_or_fast_state() -> None:
     assert torch.count_nonzero(next_state.fast_weight[:, :, 2:]).item() == 0
     assert (
         torch.count_nonzero(next_state.edge_eligibility[:, :, 2:]).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            next_state.credit_routing_eligibility[:, :, 2:]
+        ).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            next_state.credit_routing_preference[:, :, 2:]
+        ).item()
         == 0
     )
     topology = analyze_topology(
@@ -903,6 +917,148 @@ def test_eligibility_routing_gain_must_be_nonnegative() -> None:
         replace(_model().cfg, eligibility_routing_gain=-1.0)
 
 
+def test_reward_plastic_routing_requires_tagged_delayed_reward() -> None:
+    model = _model(
+        reward_plastic_output_credit_routing=True,
+        credit_routing_preference_decay=0.0,
+        credit_routing_plasticity_gain=0.1,
+        credit_routing_preference_limit=0.25,
+    )
+    preference = torch.zeros(
+        1, model.cfg.cells, model.cfg.dendrites
+    )
+    routing_eligibility = torch.zeros_like(preference)
+    target = 4
+    routing_eligibility[0, target, 0] = 1.0
+    routing_eligibility[0, target, 1] = -1.0
+
+    no_reward = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.zeros(1),
+    )
+    positive = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.ones(1),
+    )
+    negative = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        -torch.ones(1),
+    )
+
+    assert torch.count_nonzero(no_reward).item() == 0
+    assert positive[0, target, 0] > 0
+    assert positive[0, target, 1] < 0
+    assert torch.allclose(negative, -positive)
+    assert positive.abs().max() <= model.cfg.credit_routing_preference_limit
+
+    with torch.no_grad():
+        model.active_edges[target, 0] = False
+    dormant = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.ones(1),
+    )
+    assert dormant[0, target, 0] == 0
+
+
+def test_reward_plastic_preference_routes_future_decoder_credit() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    routed = _model(
+        output_error_credit_gain=1.0,
+        reward_plastic_output_credit_routing=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(
+            torch.eye(control.cfg.channels)
+        )
+        routed.message_value.weight.copy_(
+            torch.eye(routed.cfg.channels)
+        )
+    credit = torch.zeros(1, routed.cfg.cells, routed.cfg.channels)
+    coefficient = torch.zeros(
+        1, routed.cfg.cells, routed.cfg.dendrites
+    )
+    preference = torch.zeros_like(coefficient)
+    target = 4
+    sources = routed.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    preference[0, target, 0] = 0.25
+    preference[0, target, 1] = -0.25
+
+    baseline = control._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    equal = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=torch.zeros_like(preference),
+    )
+    transported = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference,
+    )
+
+    assert torch.allclose(equal, baseline)
+    assert transported[0, sources[0], 0] > baseline[0, sources[0], 0]
+    assert transported[0, sources[1], 0] < baseline[0, sources[1], 0]
+    assert sum(p.numel() for p in routed.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_reward_plastic_routing_closes_the_delayed_trace_loop() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        reward_plastic_output_credit_routing=True,
+        credit_routing_preference_decay=0.0,
+        credit_routing_plasticity_gain=0.1,
+        message_steps=1,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    source = int(model.sources[target, 0])
+    state.output_error_credit[:, target, 0] = 1.0
+    state.eligibility[:, source, 0] = 1.0
+
+    _, tagged, first = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, rewarded, second = model.tick(
+        tagged,
+        token=None,
+        reward=torch.ones(1),
+    )
+
+    assert torch.count_nonzero(
+        tagged.credit_routing_preference
+    ).item() == 0
+    assert tagged.credit_routing_eligibility.abs().sum().item() > 0
+    assert rewarded.credit_routing_preference.abs().sum().item() > 0
+    assert first["mean_credit_routing_eligibility"].item() > 0
+    assert second["mean_credit_routing_preference"].item() > 0
+
+
+def test_output_credit_routing_policies_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        replace(
+            _model().cfg,
+            eligibility_routed_output_credit=True,
+            reward_plastic_output_credit_routing=True,
+        )
+
+
 def test_eligibility_router_excludes_dormant_credit_paths() -> None:
     model = _model(
         output_error_credit_gain=1.0,
@@ -1530,6 +1686,10 @@ def test_negative_probation_restores_exact_graft_slot() -> None:
     biases = model.edge_bias.detach().clone()
     edge_eligibility = trainer.state.edge_eligibility.clone()
     fast_weight = trainer.state.fast_weight.clone()
+    routing_eligibility = (
+        trainer.state.credit_routing_eligibility.clone()
+    )
+    routing_preference = trainer.state.credit_routing_preference.clone()
     weight_moment = trainer.optimizer.state[model.edge_weight][
         "exp_avg"
     ].clone()
@@ -1557,6 +1717,8 @@ def test_negative_probation_restores_exact_graft_slot() -> None:
     ] = 8.0
     trainer.state.edge_eligibility[:, target, slot] = 7.0
     trainer.state.fast_weight[:, target, slot] = 6.0
+    trainer.state.credit_routing_eligibility[:, target, slot] = 5.0
+    trainer.state.credit_routing_preference[:, target, slot] = 4.0
     trainer.structural_probation.observe(-0.5)
     committed = trainer.structural_probation.resolve(
         model, trainer.state, trainer.optimizer, margin=0.0
@@ -1578,6 +1740,14 @@ def test_negative_probation_restores_exact_graft_slot() -> None:
     assert torch.equal(
         trainer.state.fast_weight[:, target, slot],
         fast_weight[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.credit_routing_eligibility[:, target, slot],
+        routing_eligibility[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.credit_routing_preference[:, target, slot],
+        routing_preference[:, target, slot],
     )
     assert (
         trainer.optimizer.state[model.edge_weight]["exp_avg"][
@@ -2043,7 +2213,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
             reward_gain=0.0,
             backward_credit_gain=0.25,
             output_error_credit_gain=0.25,
-            eligibility_routed_output_credit=True,
+            reward_plastic_output_credit_routing=True,
             eligibility_routing_gain=100.0,
         ),
         text,
@@ -2078,6 +2248,14 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert torch.equal(
         resumed.state.output_error_credit,
         trainer.state.output_error_credit,
+    )
+    assert torch.equal(
+        resumed.state.credit_routing_eligibility,
+        trainer.state.credit_routing_eligibility,
+    )
+    assert torch.equal(
+        resumed.state.credit_routing_preference,
+        trainer.state.credit_routing_preference,
     )
     assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
     assert torch.equal(resumed.state.probe_eligibility, trainer.state.probe_eligibility)
@@ -2118,7 +2296,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
         trainer.model.structural_edge_age,
     )
     assert resumed.structural_config == trainer.structural_config
-    assert resumed.model.cfg.eligibility_routed_output_credit
+    assert resumed.model.cfg.reward_plastic_output_credit_routing
     assert resumed.model.cfg.eligibility_routing_gain == 100.0
 
 
@@ -2281,8 +2459,22 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["reward_baseline"]
     del payload["trainer"]["field_state"]["backward_credit"]
     del payload["trainer"]["field_state"]["output_error_credit"]
+    del payload["trainer"]["field_state"]["credit_routing_eligibility"]
+    del payload["trainer"]["field_state"]["credit_routing_preference"]
     del payload["trainer"]["model_config"]["output_error_credit_gain"]
     del payload["trainer"]["model_config"]["output_error_credit_decay"]
+    del payload["trainer"]["model_config"][
+        "reward_plastic_output_credit_routing"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_preference_decay"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_plasticity_gain"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_preference_limit"
+    ]
     del payload["trainer"]["model_config"]["initial_active_dendrites"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
     del payload["trainer"]["model_config"]["energy_transport_rate"]
@@ -2316,6 +2508,18 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     assert torch.count_nonzero(resumed.state.backward_credit).item() == 0
     assert (
         torch.count_nonzero(resumed.state.output_error_credit).item() == 0
+    )
+    assert (
+        torch.count_nonzero(
+            resumed.state.credit_routing_eligibility
+        ).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            resumed.state.credit_routing_preference
+        ).item()
+        == 0
     )
     assert torch.count_nonzero(
         resumed.model.structural_edge_credit
@@ -2664,6 +2868,8 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     markers = torch.arange(model.cfg.cells, dtype=state.fast_weight.dtype)
     state.edge_eligibility[:, :, 0] = markers
     state.fast_weight[:, :, 0] = markers + 100
+    state.credit_routing_eligibility[:, :, 0] = markers + 200
+    state.credit_routing_preference[:, :, 0] = markers + 300
     state.probe_eligibility[:] = markers
     state.backward_credit[:] = markers
     state.output_error_credit[:, :, 0] = markers
@@ -2675,6 +2881,14 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     assert torch.equal(
         shuffled.fast_weight[:, :, 0],
         (markers[permutation] + 100).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.credit_routing_eligibility[:, :, 0],
+        (markers[permutation] + 200).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.credit_routing_preference[:, :, 0],
+        (markers[permutation] + 300).unsqueeze(0),
     )
     assert torch.equal(
         shuffled.probe_eligibility, markers[permutation].unsqueeze(0)

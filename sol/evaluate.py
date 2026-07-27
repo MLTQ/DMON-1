@@ -28,6 +28,9 @@ class EvaluationMetrics:
     energy_transport_drift: float
     mean_backward_credit: float
     mean_output_error_credit: float
+    mean_credit_routing_eligibility: float
+    mean_credit_routing_preference: float
+    credit_routing_preference_saturation: float
     mean_novelty: float
     mean_edge_flow: float
     mean_fast_weight: float
@@ -52,6 +55,12 @@ def _shuffle_cell_state(state: FieldState, permutation: torch.Tensor) -> FieldSt
         eligibility=state.eligibility[:, permutation],
         backward_credit=state.backward_credit[:, permutation],
         output_error_credit=state.output_error_credit[:, permutation],
+        credit_routing_eligibility=(
+            state.credit_routing_eligibility[:, permutation]
+        ),
+        credit_routing_preference=(
+            state.credit_routing_preference[:, permutation]
+        ),
         edge_eligibility=state.edge_eligibility[:, permutation],
         probe_eligibility=state.probe_eligibility[:, permutation],
         fast_weight=state.fast_weight[:, permutation],
@@ -115,6 +124,9 @@ def evaluate_sol(
     energy_drifts: list[float] = []
     backward_credits: list[float] = []
     output_error_credits: list[float] = []
+    credit_routing_eligibilities: list[float] = []
+    credit_routing_preferences: list[float] = []
+    credit_routing_saturations: list[float] = []
     novelties: list[float] = []
     edge_flows: list[float] = []
     fast_weights: list[float] = []
@@ -173,6 +185,33 @@ def evaluate_sol(
                     diagnostics["mean_output_error_credit"].mean().item()
                 )
             )
+            credit_routing_eligibilities.append(
+                float(
+                    diagnostics[
+                        "mean_credit_routing_eligibility"
+                    ]
+                    .mean()
+                    .item()
+                )
+            )
+            credit_routing_preferences.append(
+                float(
+                    diagnostics[
+                        "mean_credit_routing_preference"
+                    ]
+                    .mean()
+                    .item()
+                )
+            )
+            credit_routing_saturations.append(
+                float(
+                    diagnostics[
+                        "credit_routing_preference_saturation"
+                    ]
+                    .mean()
+                    .item()
+                )
+            )
             novelties.append(float(diagnostics["novelty"].mean().item()))
             edge_flows.append(float(diagnostics["edge_flow"].mean().item()))
             fast_weights.append(
@@ -216,6 +255,15 @@ def evaluate_sol(
         ),
         mean_output_error_credit=(
             sum(output_error_credits) / scored_tokens
+        ),
+        mean_credit_routing_eligibility=(
+            sum(credit_routing_eligibilities) / scored_tokens
+        ),
+        mean_credit_routing_preference=(
+            sum(credit_routing_preferences) / scored_tokens
+        ),
+        credit_routing_preference_saturation=(
+            sum(credit_routing_saturations) / scored_tokens
         ),
         mean_novelty=sum(novelties) / scored_tokens,
         mean_edge_flow=sum(edge_flows) / scored_tokens,

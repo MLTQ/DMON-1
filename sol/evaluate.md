@@ -12,7 +12,7 @@ including controls that test whether persistent cellular state is doing useful w
   measured edge flow plus edge eligibility, mean fast synaptic efficacy, and saturation
   together with causal-probe flow/eligibility, backward-credit magnitude, and total
   structural rewrites. Scalar reverse reward and channel-shaped output-error credit are
-  reported separately.
+  reported separately, as are backward-routing eligibility, preference, and saturation.
 - **Does**: Reports viability, quiescence, external energy input, spending, and
   transport drift on the same scored tokens.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
@@ -29,7 +29,7 @@ including controls that test whether persistent cellular state is doing useful w
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state
   shuffling, including target-owned edge/probe eligibility, scalar backward credit,
-  channel-shaped output-error credit, and fast efficacy.
+  channel-shaped output-error credit, fast efficacy, and branch-owned routing memory.
 - **Does**: Scores the trained organism while zeroing fast efficacy before every tick,
   isolating whether online synaptic memory contributes at inference.
 - **Does**: Replaces a grown source table with the deterministic birth topology while

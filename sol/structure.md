@@ -43,8 +43,8 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
   better across every required confirmation phase, both endpoints can pay, and complete
   sensory/output reachability survives.
 - **Does**: Initializes the reused slow weight to the probe's approximate message
-  coefficient, while resetting that slot's bias, optimizer moments, eligibility, and
-  fast efficacy before rotating probes.
+  coefficient, while resetting that slot's bias, optimizer moments, eligibility, fast
+  efficacy, and backward-routing memory before rotating probes.
 - **Rationale**: Fixed tensor shapes let morphology change without rebuilding the
   optimizer or discarding the organism's other memories.
 - **Rationale**: A successful candidate must not lose its causal traffic at the moment
@@ -59,8 +59,8 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
 
 ### `StructuralProbation`
 - **Does**: Backs up one incumbent source, edge parameters, optimizer moments,
-  structural credit/age, and stream-local edge eligibility/fast efficacy before a
-  provisional graft.
+  structural credit/age, stream-local edge eligibility/fast efficacy, and backward
+  routing eligibility/preference before a provisional graft.
 - **Does**: Accumulates signed prequential reward while the entire organism continues
   ordinary training, subtracts the pre-graft developmental reward baseline, then commits
   positive improvement or restores the backed-up slot.
@@ -108,8 +108,8 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
   before it can replace even the target's worst mature incumbent; one adverse phase
   resets the streak.
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.
-- Dormant slots carry no information, reverse credit, eligibility, fast efficacy, or
-  energy. Variable fan-in is disabled by default.
+- Dormant slots carry no information, reverse credit, eligibility, routing preference,
+  fast efficacy, or energy. Variable fan-in is disabled by default.
 - Rollback does not refund growth energy or revert unrelated model/state changes:
   probation is anatomical reversibility, not erasure of lived experience.
 - Exploratory-traffic rejection never mutates anatomy or spends growth energy. The

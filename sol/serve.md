@@ -16,7 +16,8 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
   next-character loss without updating weights, reports measured cell/edge credit and
   fast synaptic efficacy, causal-probe traffic, persistent backward credit, and
   structural rewrite count, then samples through the same output path. Scalar reverse
-  credit and channel-shaped output-error credit are exposed separately.
+  credit, channel-shaped output-error credit, and branch routing memory are exposed
+  separately.
 - **Does**: Adds viability, quiescence, external energy input, metabolic spending, and
   transport drift to local-only checkpoint telemetry.
 - **Rationale**: UI credit telemetry comes from a real reverse signal rather than a
@@ -33,8 +34,9 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
 ### `LiveOrganism.snapshot`
 - **Does**: Returns exact cell/dendrite counts, energy, stimulation, cell/edge
   eligibility, directed sources, slow signed weights, per-stream fast weights, latest
-  measured edge/probe flow, per-cell activity/energy/viability, role indices, clock
-  state, structural credit, backward-credit magnitude, and rewrite count.
+  measured edge/probe flow, per-branch routing eligibility/preference, per-cell
+  activity/energy/viability, role indices, clock state, structural credit,
+  backward-credit magnitude, and rewrite count.
 - **Does**: Exposes the actual mean magnitude of checkpointed output-error credit;
   unstimulated generation can only transport and decay existing credit because it has
   no observed target from which to create a new decoder correction.

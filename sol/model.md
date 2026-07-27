@@ -20,6 +20,9 @@ connectome.
 - **Does**: Optionally routes channel-shaped reverse credit toward installed sources
   whose remembered event eligibility aligns with the signed corrective contribution,
   with an explicit parameter-free alignment gain that defaults to the original scale.
+- **Does**: Alternatively enables a reward-plastic routing policy whose per-branch
+  eligibility and bounded preference are fast organism state rather than learned
+  parameters. The two experimental routing policies are mutually exclusive.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 - **Does**: Separates maximum dendrite-slot capacity from the number active at birth;
   the disabled default activates every slot for historical checkpoint equivalence.
@@ -27,8 +30,9 @@ connectome.
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
   delayed reward, persistent scalar output-originating backward credit, persistent
-  channel-shaped output-error credit, per-edge and candidate-probe eligibility, and
-  per-stream fast weights across every character and optimizer window.
+  channel-shaped output-error credit, branch-specific backward-routing eligibility and
+  preference, per-edge and candidate-probe eligibility, and per-stream fast weights
+  across every character and optimizer window.
 - **Rationale**: Detaching a graph must not reset the organism.
 - **Compatibility**: `state_from_snapshot` initializes additive plasticity fields to
   zero when loading checkpoints made before fast synaptic or structural memory existed.
@@ -95,11 +99,25 @@ connectome.
 - **Does**: Applies `eligibility_routing_gain` before the bounded alignment nonlinearity,
   making weak real-organism event traces experimentally calibratable without changing
   decoder-credit amplitude or adding learned parameters.
+- **Does**: Under the reward-plastic policy, normalizes checkpointed branch preferences
+  within each active target fan; equal preference exactly reproduces historical
+  transport and dormant capacity receives none.
 - **Rationale**: The reverse signal preserves which hidden-state directions would
   correct the decoder instead of collapsing error to one scalar.
 - **Rationale**: Persistent credit should preferentially reach cells tied to the event
   being corrected, without creating a second learned network or changing parameter
   count.
+
+### `_updated_credit_routing_preference`
+- **Does**: Changes a target-owned branch preference only when delayed signed reward
+  meets that branch's remembered decoder-credit/source-event alignment.
+- **Does**: Centers competition within the active dendrite fan, applies smooth bounded
+  homeostasis, and masks dormant slots.
+- **Does**: Reuses the observed alignment calibration as the routing-trace scale before
+  delayed reward acts; this changes the remembered event's numerical resolution, not
+  the reward or decoder-credit amplitude.
+- **Rationale**: A routing choice needs later fitness assignment, not merely a larger
+  instantaneous alignment score.
 
 ### `observe_prediction`
 - **Does**: Converts decoder error to both the existing scalar surprise-relative reward
@@ -147,6 +165,10 @@ connectome.
   memory to distribute reverse credit among installed dendrites. It is disabled by
   default for checkpoint and experiment compatibility; routing gain `1` exactly
   reproduces the original S19 mechanism.
+- **Reward-plastic output credit routing**: The alternative router records relative
+  reverse alignment as a branch eligibility trace, then lets a later prequential reward
+  reinforce or suppress that trace before routing future credit. It is default-disabled
+  and mutually exclusive with instantaneous routing.
 - **Energy provenance**: A character's novelty supplies one bounded external budget to
   sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
   no internal path may mint or discard energy.
@@ -198,5 +220,8 @@ connectome.
 - Both backward-credit paths are parameter-neutral and disabled by default for
   checkpoint compatibility. Separate gains permit direct reward, scalar reverse
   reward, and channel-shaped decoder credit to be tested as matched controls.
+- Reward-plastic routing adds two fixed-shape per-stream tensors, not model parameters.
+  Spawn, prune, graft, rollback, shuffle, and checkpoint operations treat them as
+  target-owned branch state.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

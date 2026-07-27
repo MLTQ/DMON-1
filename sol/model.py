@@ -42,6 +42,10 @@ class SolConfig:
     output_error_credit_decay: float = 0.80
     eligibility_routed_output_credit: bool = False
     eligibility_routing_gain: float = 1.0
+    reward_plastic_output_credit_routing: bool = False
+    credit_routing_preference_decay: float = 0.995
+    credit_routing_plasticity_gain: float = 1.0
+    credit_routing_preference_limit: float = 0.25
     fast_weight_decay: float = 0.995
     fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
@@ -88,6 +92,7 @@ class SolConfig:
             "reward_baseline_decay",
             "backward_credit_decay",
             "output_error_credit_decay",
+            "credit_routing_preference_decay",
             "fast_weight_decay",
         ):
             value = getattr(self, name)
@@ -98,6 +103,7 @@ class SolConfig:
             or self.backward_credit_gain < 0
             or self.output_error_credit_gain < 0
             or self.eligibility_routing_gain < 0
+            or self.credit_routing_plasticity_gain < 0
             or self.fast_plasticity_gain < 0
             or self.structural_probe_gain < 0
         ):
@@ -106,6 +112,18 @@ class SolConfig:
             )
         if self.fast_weight_limit <= 0:
             raise ValueError("fast_weight_limit must be positive")
+        if self.credit_routing_preference_limit <= 0:
+            raise ValueError(
+                "credit_routing_preference_limit must be positive"
+            )
+        if (
+            self.eligibility_routed_output_credit
+            and self.reward_plastic_output_credit_routing
+        ):
+            raise ValueError(
+                "instantaneous and reward-plastic output-credit routing "
+                "are mutually exclusive"
+            )
         if self.structural_probe_gain > 0 and self.dendrites >= self.cells:
             raise ValueError(
                 "structural probes require at least one non-edge source"
@@ -144,6 +162,8 @@ class FieldState:
     eligibility: torch.Tensor
     backward_credit: torch.Tensor
     output_error_credit: torch.Tensor
+    credit_routing_eligibility: torch.Tensor
+    credit_routing_preference: torch.Tensor
     edge_eligibility: torch.Tensor
     probe_eligibility: torch.Tensor
     fast_weight: torch.Tensor
@@ -161,6 +181,12 @@ class FieldState:
             eligibility=self.eligibility.detach(),
             backward_credit=self.backward_credit.detach(),
             output_error_credit=self.output_error_credit.detach(),
+            credit_routing_eligibility=(
+                self.credit_routing_eligibility.detach()
+            ),
+            credit_routing_preference=(
+                self.credit_routing_preference.detach()
+            ),
             edge_eligibility=self.edge_eligibility.detach(),
             probe_eligibility=self.probe_eligibility.detach(),
             fast_weight=self.fast_weight.detach(),
@@ -179,6 +205,12 @@ class FieldState:
             eligibility=self.eligibility.clone(),
             backward_credit=self.backward_credit.clone(),
             output_error_credit=self.output_error_credit.clone(),
+            credit_routing_eligibility=(
+                self.credit_routing_eligibility.clone()
+            ),
+            credit_routing_preference=(
+                self.credit_routing_preference.clone()
+            ),
             edge_eligibility=self.edge_eligibility.clone(),
             probe_eligibility=self.probe_eligibility.clone(),
             fast_weight=self.fast_weight.clone(),
@@ -203,6 +235,15 @@ class FieldTrace:
     energy_transport_drift: list[torch.Tensor] = field(default_factory=list)
     mean_backward_credit: list[torch.Tensor] = field(default_factory=list)
     mean_output_error_credit: list[torch.Tensor] = field(default_factory=list)
+    mean_credit_routing_eligibility: list[torch.Tensor] = field(
+        default_factory=list
+    )
+    mean_credit_routing_preference: list[torch.Tensor] = field(
+        default_factory=list
+    )
+    credit_routing_preference_saturation: list[torch.Tensor] = field(
+        default_factory=list
+    )
     mean_fast_weight: list[torch.Tensor] = field(default_factory=list)
     mean_edge_eligibility: list[torch.Tensor] = field(default_factory=list)
     fast_weight_saturation: list[torch.Tensor] = field(default_factory=list)
@@ -437,6 +478,12 @@ class SparseAxonField(nn.Module):
                 self.cfg.channels,
                 device=device,
             ),
+            credit_routing_eligibility=torch.zeros(
+                batch, self.cfg.cells, self.cfg.dendrites, device=device
+            ),
+            credit_routing_preference=torch.zeros(
+                batch, self.cfg.cells, self.cfg.dendrites, device=device
+            ),
             edge_eligibility=torch.zeros(
                 batch, self.cfg.cells, self.cfg.dendrites, device=device
             ),
@@ -618,6 +665,7 @@ class SparseAxonField(nn.Module):
         credit: torch.Tensor,
         coefficient: torch.Tensor,
         source_eligibility: torch.Tensor | None = None,
+        routing_preference: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Transpose messages and optionally route credit by source event memory."""
 
@@ -653,6 +701,21 @@ class SparseAxonField(nn.Module):
             raise ValueError(
                 "eligibility-routed output credit requires source eligibility"
             )
+        if (
+            routing_preference is not None
+            and routing_preference.shape != expected_coefficient
+        ):
+            raise ValueError(
+                "routing preference must have shape "
+                "(batch, cells, dendrites)"
+            )
+        if (
+            self.cfg.reward_plastic_output_credit_routing
+            and routing_preference is None
+        ):
+            raise ValueError(
+                "reward-plastic output credit requires routing preference"
+            )
 
         target_credit = credit.unsqueeze(2).expand(
             -1, -1, self.cfg.dendrites, -1
@@ -669,14 +732,11 @@ class SparseAxonField(nn.Module):
                 * math.sqrt(self.cfg.channels)
                 * self.cfg.eligibility_routing_gain
             )
-            active = self.active_edges.unsqueeze(0)
-            routing = torch.softmax(
-                alignment.masked_fill(~active, float("-inf")),
-                dim=2,
-            )
-            routing = (
-                routing
-                * active.sum(dim=2, keepdim=True).to(routing.dtype)
+            routing = self._normalized_credit_routing(alignment)
+            edge_sourceward = edge_sourceward * routing.unsqueeze(-1)
+        elif self.cfg.reward_plastic_output_credit_routing:
+            routing = self._normalized_credit_routing(
+                routing_preference
             )
             edge_sourceward = edge_sourceward * routing.unsqueeze(-1)
         contribution = edge_sourceward.flatten(1, 2)
@@ -688,6 +748,68 @@ class SparseAxonField(nn.Module):
         transported = torch.zeros_like(credit)
         transported.scatter_add_(1, source_index, contribution)
         return transported / math.sqrt(self.cfg.dendrites)
+
+    def _normalized_credit_routing(
+        self,
+        logits: torch.Tensor,
+    ) -> torch.Tensor:
+        """Normalize branch logits without changing equal-evidence scale."""
+
+        expected = (
+            logits.shape[0],
+            self.cfg.cells,
+            self.cfg.dendrites,
+        )
+        if logits.shape != expected:
+            raise ValueError(
+                "credit routing logits must have shape "
+                "(batch, cells, dendrites)"
+            )
+        active = self.active_edges.unsqueeze(0)
+        routing = torch.softmax(
+            logits.masked_fill(~active, float("-inf")),
+            dim=2,
+        )
+        return (
+            routing
+            * active.sum(dim=2, keepdim=True).to(routing.dtype)
+        )
+
+    def _updated_credit_routing_preference(
+        self,
+        preference: torch.Tensor,
+        routing_eligibility: torch.Tensor,
+        reward: torch.Tensor,
+    ) -> torch.Tensor:
+        """Let delayed reward meet a remembered branch-routing event."""
+
+        expected = (
+            reward.shape[0],
+            self.cfg.cells,
+            self.cfg.dendrites,
+        )
+        if preference.shape != expected:
+            raise ValueError(
+                "credit routing preference must have shape "
+                "(batch, cells, dendrites)"
+            )
+        if routing_eligibility.shape != expected:
+            raise ValueError(
+                "credit routing eligibility must have shape "
+                "(batch, cells, dendrites)"
+            )
+        active = self.active_edges.unsqueeze(0)
+        drive = (
+            self.cfg.credit_routing_preference_decay * preference
+            + self.cfg.credit_routing_plasticity_gain
+            * reward[:, None, None]
+            * routing_eligibility
+        )
+        count = active.sum(dim=2, keepdim=True).clamp_min(1)
+        mean = (drive * active).sum(dim=2, keepdim=True) / count
+        centered = (drive - mean) * active
+        limit = self.cfg.credit_routing_preference_limit
+        return limit * torch.tanh(centered / limit) * active
 
     def _transport_energy(
         self,
@@ -922,6 +1044,10 @@ class SparseAxonField(nn.Module):
         eligibility = state.eligibility
         backward_credit = state.backward_credit
         output_error_credit = state.output_error_credit
+        credit_routing_eligibility = (
+            state.credit_routing_eligibility
+        )
+        credit_routing_preference = state.credit_routing_preference
         edge_eligibility = state.edge_eligibility
         probe_eligibility = state.probe_eligibility
         structural_edge_evidence = (
@@ -945,6 +1071,21 @@ class SparseAxonField(nn.Module):
             if allow_fast_plasticity
             else torch.zeros_like(state.fast_weight)
         )
+        if cfg.reward_plastic_output_credit_routing:
+            credit_routing_preference = (
+                self._updated_credit_routing_preference(
+                    credit_routing_preference,
+                    credit_routing_eligibility,
+                    reward,
+                )
+            )
+        else:
+            credit_routing_eligibility = torch.zeros_like(
+                credit_routing_eligibility
+            )
+            credit_routing_preference = torch.zeros_like(
+                credit_routing_preference
+            )
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
         mean_probe_flow = state.energy.new_zeros(cfg.cells)
@@ -986,13 +1127,39 @@ class SparseAxonField(nn.Module):
                 * transposed_target_credit.unsqueeze(2)
             )
             edge_source_memory = eligibility[:, self.sources]
-            edge_vector_tag = torch.tanh(
-                (
-                    edge_sourceward_credit
-                    * edge_source_memory
-                ).mean(dim=3)
-                * math.sqrt(cfg.channels)
-            )
+            edge_vector_alignment = (
+                edge_sourceward_credit
+                * edge_source_memory
+            ).mean(dim=3) * math.sqrt(cfg.channels)
+            edge_vector_tag = torch.tanh(edge_vector_alignment)
+            if cfg.reward_plastic_output_credit_routing:
+                active = self.active_edges.unsqueeze(0)
+                routing = self._normalized_credit_routing(
+                    credit_routing_preference
+                )
+                routing_tag = (
+                    torch.tanh(
+                        edge_vector_alignment
+                        * cfg.eligibility_routing_gain
+                    )
+                    * routing
+                )
+                active_count = active.sum(
+                    dim=2, keepdim=True
+                ).clamp_min(1)
+                routing_tag = (
+                    routing_tag
+                    - (routing_tag * active).sum(
+                        dim=2, keepdim=True
+                    )
+                    / active_count
+                ) * active
+                credit_routing_eligibility = (
+                    cfg.edge_eligibility_decay
+                    * credit_routing_eligibility
+                    + (1 - cfg.edge_eligibility_decay)
+                    * routing_tag
+                ) * active
             structural_edge_vector_evidence = (
                 structural_edge_vector_evidence
                 + edge_vector_tag.mean(dim=0) / cfg.message_steps
@@ -1124,6 +1291,7 @@ class SparseAxonField(nn.Module):
                         output_error_credit,
                         coefficient,
                         eligibility,
+                        credit_routing_preference,
                     )
                 )
                 output_error_credit = torch.tanh(
@@ -1153,6 +1321,8 @@ class SparseAxonField(nn.Module):
             eligibility=eligibility,
             backward_credit=backward_credit,
             output_error_credit=output_error_credit,
+            credit_routing_eligibility=credit_routing_eligibility,
+            credit_routing_preference=credit_routing_preference,
             edge_eligibility=edge_eligibility,
             probe_eligibility=probe_eligibility,
             fast_weight=fast_weight,
@@ -1175,6 +1345,18 @@ class SparseAxonField(nn.Module):
             "mean_output_error_credit": output_error_credit.abs().mean(
                 dim=(1, 2)
             ),
+            "mean_credit_routing_eligibility": (
+                credit_routing_eligibility.abs().mean(dim=(1, 2))
+            ),
+            "mean_credit_routing_preference": (
+                credit_routing_preference.abs().mean(dim=(1, 2))
+            ),
+            "credit_routing_preference_saturation": (
+                credit_routing_preference.abs()
+                >= 0.95 * cfg.credit_routing_preference_limit
+            )
+            .to(credit_routing_preference.dtype)
+            .mean(dim=(1, 2)),
             "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
             "mean_edge_eligibility": edge_eligibility.abs().mean(
                 dim=(1, 2)
@@ -1255,6 +1437,15 @@ class SparseAxonField(nn.Module):
             )
             trace.mean_output_error_credit.append(
                 diag["mean_output_error_credit"]
+            )
+            trace.mean_credit_routing_eligibility.append(
+                diag["mean_credit_routing_eligibility"]
+            )
+            trace.mean_credit_routing_preference.append(
+                diag["mean_credit_routing_preference"]
+            )
+            trace.credit_routing_preference_saturation.append(
+                diag["credit_routing_preference_saturation"]
             )
             trace.mean_fast_weight.append(diag["mean_fast_weight"])
             trace.mean_edge_eligibility.append(

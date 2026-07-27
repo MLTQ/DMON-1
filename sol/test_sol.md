@@ -81,10 +81,15 @@ tensor shapes.
   misaligned branch, reproduces historical transport when evidence is equal, excludes
   dormant slots, and adds no parameters. A calibrated gain must amplify selectivity,
   reject negative values, and survive exact checkpoint resume.
+- **Does**: Proves reward-plastic routing is inert without a remembered tag and delayed
+  reward, responds oppositely to positive and negative reward, routes future correction
+  according to bounded preference, preserves equal-evidence transport and parameter
+  count, and cannot coexist with instantaneous routing.
 - **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
   topology metrics count only active anatomy, a qualified decoder-credit candidate can
   spawn into dormant capacity, and a redundant unused edge can be pruned without
-  violating reachability or changing parameter count.
+  violating reachability or changing parameter count. Repurposed and dormant slots also
+  carry no stale backward-routing trace or preference.
 - **Does**: Proves reverse decoder credit meeting source eligibility produces separate
   signed anatomical evidence for installed edges and exploratory candidates.
 - **Does**: Proves even a maximal locality prior cannot qualify a candidate with zero
@@ -112,6 +117,8 @@ tensor shapes.
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
   state including scalar and output-error backward credit, optimizer, vocabulary, structural
   policy/credit/global-fitness/confirmation buffers, and metadata.
+- **Does**: Includes branch routing eligibility/preference in exact resume, probation
+  rollback, old-checkpoint additive initialization, and target-owned cell shuffling.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
 - **Does**: Resumes midway through an exploratory ABBA trial with the same next traffic

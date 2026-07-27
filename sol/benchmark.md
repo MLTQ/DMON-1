@@ -47,6 +47,10 @@ with checkpointing and append-only metrics.
   eligibility. `--eligibility-routing-gain` scales that evidence before its bounded
   normalization; gain `1` preserves the original routed mechanism and equal evidence
   preserves historical transport scale at every gain.
+- **Does**: `--reward-plastic-output-credit-routing` instead lets later prequential
+  reward meet a remembered branch-specific routing event. Explicit decay, plasticity
+  gain, and preference limit govern this parameter-free fast state; it is mutually
+  exclusive with instantaneous eligibility routing.
 - **Rationale**: Direct reward, scalar reverse transport, decoder-shaped reverse
   transport, and their combinations must be compared explicitly rather than silently
   changing the organism's learning rule.

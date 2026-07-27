@@ -32,6 +32,10 @@ probabilities out. It is not a transformer imitation.
   an event aligned with that correction while equal evidence preserves the historical
   transport scale. Its explicit alignment gain changes routing selectivity without
   adding parameters or changing the decoder-error amplitude.
+- An alternative reward-plastic router remembers which branches carried aligned
+  correction, then lets later signed reward reinforce or suppress those branch choices.
+  This closes a local forward-event/backward-credit/future-fitness loop with persistent
+  state and no new model parameters.
 - One weak exploratory source per target is measured by running the shared cell rule
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is
@@ -65,6 +69,9 @@ python -m sol.benchmark --model sol --no-reward --out-dir sol/runs/reward-contro
 python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
   --eligibility-routed-output-credit --eligibility-routing-gain 100 \
   --out-dir sol/runs/routed-credit
+python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
+  --reward-plastic-output-credit-routing --eligibility-routing-gain 100 \
+  --out-dir sol/runs/reward-plastic-routing
 python -m sol.benchmark --model sol --no-fast-plasticity \
   --structural-plasticity --out-dir sol/runs/growing-connectome
 python -m sol.benchmark --model sol --no-fast-plasticity \
