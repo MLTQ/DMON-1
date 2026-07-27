@@ -27,6 +27,7 @@ class EvaluationMetrics:
     energy_spent: float
     energy_transport_drift: float
     mean_backward_credit: float
+    mean_output_error_credit: float
     mean_novelty: float
     mean_edge_flow: float
     mean_fast_weight: float
@@ -50,6 +51,7 @@ def _shuffle_cell_state(state: FieldState, permutation: torch.Tensor) -> FieldSt
         stimulation=state.stimulation[:, permutation],
         eligibility=state.eligibility[:, permutation],
         backward_credit=state.backward_credit[:, permutation],
+        output_error_credit=state.output_error_credit[:, permutation],
         edge_eligibility=state.edge_eligibility[:, permutation],
         probe_eligibility=state.probe_eligibility[:, permutation],
         fast_weight=state.fast_weight[:, permutation],
@@ -112,6 +114,7 @@ def evaluate_sol(
     energy_costs: list[float] = []
     energy_drifts: list[float] = []
     backward_credits: list[float] = []
+    output_error_credits: list[float] = []
     novelties: list[float] = []
     edge_flows: list[float] = []
     fast_weights: list[float] = []
@@ -135,7 +138,7 @@ def evaluate_sol(
             allow_fast_plasticity=not zero_fast_efficacy,
         )
         surprise = F.cross_entropy(logits, target, reduction="none")
-        state = model.observe_surprise(state, surprise)
+        state = model.observe_prediction(state, logits, target)
         if shuffle_cells:
             state = _shuffle_cell_state(state, permutation)
 
@@ -163,6 +166,11 @@ def evaluate_sol(
             backward_credits.append(
                 float(
                     diagnostics["mean_backward_credit"].mean().item()
+                )
+            )
+            output_error_credits.append(
+                float(
+                    diagnostics["mean_output_error_credit"].mean().item()
                 )
             )
             novelties.append(float(diagnostics["novelty"].mean().item()))
@@ -205,6 +213,9 @@ def evaluate_sol(
         energy_transport_drift=sum(energy_drifts) / scored_tokens,
         mean_backward_credit=(
             sum(backward_credits) / scored_tokens
+        ),
+        mean_output_error_credit=(
+            sum(output_error_credits) / scored_tokens
         ),
         mean_novelty=sum(novelties) / scored_tokens,
         mean_edge_flow=sum(edge_flows) / scored_tokens,

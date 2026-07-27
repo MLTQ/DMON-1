@@ -148,6 +148,8 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "reward_baseline_decay": args.reward_baseline_decay,
         "backward_credit_gain": args.backward_credit_gain,
         "backward_credit_decay": args.backward_credit_decay,
+        "output_error_credit_gain": args.output_error_credit_gain,
+        "output_error_credit_decay": args.output_error_credit_decay,
         "structural_probe_gain": (
             args.structural_probe_gain
             if args.structural_plasticity or args.structural_probes_only
@@ -159,6 +161,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
             {
                 "reward_gain": 0.0,
                 "backward_credit_gain": 0.0,
+                "output_error_credit_gain": 0.0,
                 "fast_plasticity_gain": 0.0,
             }
         )
@@ -663,6 +666,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.80,
     )
+    parser.add_argument("--output-error-credit-gain", type=float, default=0.0)
+    parser.add_argument(
+        "--output-error-credit-decay",
+        type=float,
+        default=0.80,
+    )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--energy-transport-rate", type=float, default=0.50)
@@ -780,6 +789,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--backward-credit-gain must be non-negative")
     if not 0 <= args.backward_credit_decay < 1:
         parser.error("--backward-credit-decay must be in [0, 1)")
+    if args.output_error_credit_gain < 0:
+        parser.error("--output-error-credit-gain must be non-negative")
+    if not 0 <= args.output_error_credit_decay < 1:
+        parser.error("--output-error-credit-decay must be in [0, 1)")
     if args.structural_probe_gain <= 0 and (
         args.structural_plasticity or args.structural_probes_only
     ):

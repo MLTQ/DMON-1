@@ -103,6 +103,9 @@ class LiveOrganism:
                 "backwardCredit": float(
                     state.backward_credit.abs().mean().item()
                 ),
+                "outputErrorCredit": float(
+                    state.output_error_credit.abs().mean().item()
+                ),
                 "edgeEligibility": float(
                     state.edge_eligibility.abs().mean().item()
                 ),
@@ -356,6 +359,9 @@ class LiveOrganism:
                     ),
                     "backwardCredit": float(
                         state.backward_credit.abs().mean().item()
+                    ),
+                    "outputErrorCredit": float(
+                        state.output_error_credit.abs().mean().item()
                     ),
                     "structuralRewires": int(
                         model.total_rewires.item()

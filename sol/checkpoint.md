@@ -19,6 +19,8 @@ optimizer, corpus position, or random stream.
 - **Compatibility**: Additive fast-plasticity state is zero-initialized for older
   schema-1 checkpoints; additive structural buffers and probe eligibility are likewise
   initialized deterministically rather than invalidating trained organisms.
+  Channel-shaped output-error credit and its configuration use disabled/zero defaults
+  when absent.
 
 ### `load_organism`
 - **Does**: Loads one persistent batch lane, its model, vocabulary, update count, and

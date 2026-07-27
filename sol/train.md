@@ -11,7 +11,7 @@ one-character-at-a-time organism path used during training.
 - **Does**: Reports language loss alongside measured energy, novelty, cell credit, and
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
   bounded rewiring counts, including mean first-order probe fitness and persistent
-  backward-credit magnitude.
+  scalar and channel-shaped backward-credit magnitudes.
 - **Does**: Reports mean viability, quiescent fraction, external energy input, actual
   metabolic spending, and transport drift for every continuous training window.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
@@ -43,6 +43,10 @@ one-character-at-a-time organism path used during training.
 - **Backward credit**: Optionally replaces or supplements direct scalar cell reward with
   an output-originating wave transported against signed axons. The wave remains in
   `FieldState`; exact BPTT and one-shot scalar fast-synapse reward continue unchanged.
+- **Output-error credit**: Optionally persists a detached decoder-correction vector
+  across optimizer windows, transports it sourceward through the actual message
+  transform, and combines it channel-by-channel with event eligibility. It adds no
+  parameters and is reported independently from scalar reverse reward.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,

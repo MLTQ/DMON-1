@@ -37,6 +37,8 @@ class SolConfig:
     reward_baseline_decay: float = 0.99
     backward_credit_gain: float = 0.0
     backward_credit_decay: float = 0.80
+    output_error_credit_gain: float = 0.0
+    output_error_credit_decay: float = 0.80
     fast_weight_decay: float = 0.995
     fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
@@ -73,6 +75,7 @@ class SolConfig:
             "stimulation_decay",
             "reward_baseline_decay",
             "backward_credit_decay",
+            "output_error_credit_decay",
             "fast_weight_decay",
         ):
             value = getattr(self, name)
@@ -81,6 +84,7 @@ class SolConfig:
         if (
             self.reward_gain < 0
             or self.backward_credit_gain < 0
+            or self.output_error_credit_gain < 0
             or self.fast_plasticity_gain < 0
             or self.structural_probe_gain < 0
         ):
@@ -126,6 +130,7 @@ class FieldState:
     stimulation: torch.Tensor
     eligibility: torch.Tensor
     backward_credit: torch.Tensor
+    output_error_credit: torch.Tensor
     edge_eligibility: torch.Tensor
     probe_eligibility: torch.Tensor
     fast_weight: torch.Tensor
@@ -142,6 +147,7 @@ class FieldState:
             stimulation=self.stimulation.detach(),
             eligibility=self.eligibility.detach(),
             backward_credit=self.backward_credit.detach(),
+            output_error_credit=self.output_error_credit.detach(),
             edge_eligibility=self.edge_eligibility.detach(),
             probe_eligibility=self.probe_eligibility.detach(),
             fast_weight=self.fast_weight.detach(),
@@ -159,6 +165,7 @@ class FieldState:
             stimulation=self.stimulation.clone(),
             eligibility=self.eligibility.clone(),
             backward_credit=self.backward_credit.clone(),
+            output_error_credit=self.output_error_credit.clone(),
             edge_eligibility=self.edge_eligibility.clone(),
             probe_eligibility=self.probe_eligibility.clone(),
             fast_weight=self.fast_weight.clone(),
@@ -182,6 +189,7 @@ class FieldTrace:
     energy_spent: list[torch.Tensor] = field(default_factory=list)
     energy_transport_drift: list[torch.Tensor] = field(default_factory=list)
     mean_backward_credit: list[torch.Tensor] = field(default_factory=list)
+    mean_output_error_credit: list[torch.Tensor] = field(default_factory=list)
     mean_fast_weight: list[torch.Tensor] = field(default_factory=list)
     mean_edge_eligibility: list[torch.Tensor] = field(default_factory=list)
     fast_weight_saturation: list[torch.Tensor] = field(default_factory=list)
@@ -363,6 +371,12 @@ class SparseAxonField(nn.Module):
             backward_credit=torch.zeros(
                 batch, self.cfg.cells, device=device
             ),
+            output_error_credit=torch.zeros(
+                batch,
+                self.cfg.cells,
+                self.cfg.channels,
+                device=device,
+            ),
             edge_eligibility=torch.zeros(
                 batch, self.cfg.cells, self.cfg.dendrites, device=device
             ),
@@ -514,6 +528,50 @@ class SparseAxonField(nn.Module):
         )
         return transported / math.sqrt(self.cfg.dendrites)
 
+    def _transport_output_error_credit(
+        self,
+        credit: torch.Tensor,
+        coefficient: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transpose forward message transport for channel-shaped target credit."""
+
+        batch = credit.shape[0]
+        expected_credit = (batch, self.cfg.cells, self.cfg.channels)
+        if credit.shape != expected_credit:
+            raise ValueError(
+                "output error credit must have shape "
+                "(batch, cells, channels)"
+            )
+        expected_coefficient = (
+            batch,
+            self.cfg.cells,
+            self.cfg.dendrites,
+        )
+        if coefficient.shape != expected_coefficient:
+            raise ValueError(
+                "message coefficient must have shape "
+                "(batch, cells, dendrites)"
+            )
+
+        target_credit = credit.unsqueeze(2).expand(
+            -1, -1, self.cfg.dendrites, -1
+        )
+        sourceward = F.linear(
+            target_credit,
+            self.message_value.weight.transpose(0, 1),
+        )
+        contribution = (
+            coefficient.unsqueeze(-1) * sourceward
+        ).flatten(1, 2)
+        source_index = (
+            self.sources.flatten()
+            .view(1, -1, 1)
+            .expand(batch, -1, self.cfg.channels)
+        )
+        transported = torch.zeros_like(credit)
+        transported.scatter_add_(1, source_index, contribution)
+        return transported / math.sqrt(self.cfg.dendrites)
+
     def _transport_energy(
         self,
         energy: torch.Tensor,
@@ -638,6 +696,52 @@ class SparseAxonField(nn.Module):
             reward_baseline=baseline,
         )
 
+    def observe_prediction(
+        self,
+        state: FieldState,
+        logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> FieldState:
+        """Remember scalar surprise and a bounded decoder-shaped correction."""
+
+        batch = state.hidden.shape[0]
+        if logits.shape != (batch, self.cfg.vocab_size):
+            raise ValueError(
+                "logits must have shape (batch, vocab_size)"
+            )
+        if target.shape != (batch,):
+            raise ValueError("target must have shape (batch,)")
+
+        surprise = F.cross_entropy(logits, target, reduction="none")
+        observed = self.observe_surprise(state, surprise)
+        if self.cfg.output_error_credit_gain == 0:
+            return replace(
+                observed,
+                output_error_credit=torch.zeros_like(
+                    observed.output_error_credit
+                ),
+            )
+
+        with torch.no_grad():
+            correction = (
+                F.one_hot(target, self.cfg.vocab_size).to(logits.dtype)
+                - torch.softmax(logits, dim=-1)
+            )
+            output_correction = F.linear(
+                correction,
+                self.output_readout.weight.transpose(0, 1),
+            )
+            output_correction = output_correction.reshape(
+                batch,
+                self.cfg.output_cells,
+                self.cfg.channels,
+            ) / math.sqrt(self.cfg.output_cells)
+            credit = observed.output_error_credit.clone()
+            credit[:, self.output_indices] = torch.tanh(
+                credit[:, self.output_indices] + output_correction
+            )
+        return replace(observed, output_error_credit=credit)
+
     def tick(
         self,
         state: FieldState,
@@ -697,6 +801,7 @@ class SparseAxonField(nn.Module):
         stimulation = state.stimulation
         eligibility = state.eligibility
         backward_credit = state.backward_credit
+        output_error_credit = state.output_error_credit
         edge_eligibility = state.edge_eligibility
         probe_eligibility = state.probe_eligibility
         structural_edge_evidence = (
@@ -729,6 +834,8 @@ class SparseAxonField(nn.Module):
             )
         else:
             backward_credit = torch.zeros_like(backward_credit)
+        if cfg.output_error_credit_gain == 0:
+            output_error_credit = torch.zeros_like(output_error_credit)
 
         for _ in range(cfg.message_steps):
             viability = self._viability(energy)
@@ -751,6 +858,9 @@ class SparseAxonField(nn.Module):
                 cfg.reward_gain * reward[:, None, None] * eligibility
                 + cfg.backward_credit_gain
                 * backward_credit[:, :, None]
+                * eligibility
+                + cfg.output_error_credit_gain
+                * output_error_credit
                 * eligibility
             )
             rule_input = torch.cat(
@@ -846,6 +956,17 @@ class SparseAxonField(nn.Module):
                     cfg.backward_credit_decay * backward_credit
                     + transported_credit
                 )
+            if cfg.output_error_credit_gain > 0:
+                transported_output_credit = (
+                    self._transport_output_error_credit(
+                        output_error_credit,
+                        coefficient,
+                    )
+                )
+                output_error_credit = torch.tanh(
+                    cfg.output_error_credit_decay * output_error_credit
+                    + transported_output_credit
+                )
             hidden = updated
             mean_flow = mean_flow + flow.mean(dim=0) / cfg.message_steps
             mean_probe_flow = (
@@ -868,6 +989,7 @@ class SparseAxonField(nn.Module):
             stimulation=stimulation,
             eligibility=eligibility,
             backward_credit=backward_credit,
+            output_error_credit=output_error_credit,
             edge_eligibility=edge_eligibility,
             probe_eligibility=probe_eligibility,
             fast_weight=fast_weight,
@@ -887,6 +1009,9 @@ class SparseAxonField(nn.Module):
             "energy_spent": energy_spent,
             "energy_transport_drift": energy_transport_drift,
             "mean_backward_credit": backward_credit.abs().mean(dim=1),
+            "mean_output_error_credit": output_error_credit.abs().mean(
+                dim=(1, 2)
+            ),
             "mean_fast_weight": fast_weight.abs().mean(dim=(1, 2)),
             "mean_edge_eligibility": edge_eligibility.abs().mean(
                 dim=(1, 2)
@@ -916,9 +1041,10 @@ class SparseAxonField(nn.Module):
         """Stream `(batch, time)` tokens through one uninterrupted organism state.
 
         When targets are supplied, each next-character score becomes a bounded scalar
-        reward for the following tick. This is separate from gradient learning: exact
-        BPTT supplies parameter credit inside the window, while reward-gated persistent
-        eligibility carries event-specific influence across truncation boundaries.
+        reward and, when enabled, a decoder-shaped correction for the following tick.
+        This is separate from gradient learning: exact BPTT supplies parameter credit
+        inside the window, while persistent credit meets event eligibility across
+        truncation boundaries.
         """
 
         if tokens.ndim != 2:
@@ -958,6 +1084,9 @@ class SparseAxonField(nn.Module):
             trace.mean_backward_credit.append(
                 diag["mean_backward_credit"]
             )
+            trace.mean_output_error_credit.append(
+                diag["mean_output_error_credit"]
+            )
             trace.mean_fast_weight.append(diag["mean_fast_weight"])
             trace.mean_edge_eligibility.append(
                 diag["mean_edge_eligibility"]
@@ -978,10 +1107,11 @@ class SparseAxonField(nn.Module):
             trace.probe_effect.append(diag["probe_effect"])
 
             if targets is not None:
-                surprise = F.cross_entropy(
-                    current_logits, targets[:, index], reduction="none"
+                state = self.observe_prediction(
+                    state,
+                    current_logits,
+                    targets[:, index],
                 )
-                state = self.observe_surprise(state, surprise)
                 reward = state.reward
             trace.prequential_reward.append(reward.detach())
 

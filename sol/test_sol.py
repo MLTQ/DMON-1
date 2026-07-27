@@ -446,6 +446,116 @@ def test_zero_reward_cannot_create_backward_credit() -> None:
     assert torch.count_nonzero(next_state.backward_credit).item() == 0
 
 
+def test_output_error_credit_is_decoder_shaped_without_new_parameters() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    control = _model(output_error_credit_gain=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    state = model.initial_state(1)
+    logits = torch.tensor([[1.5, -0.5, 0.25]])
+    target = torch.tensor([2])
+
+    observed = model.observe_prediction(state, logits, target)
+    correction = (
+        F.one_hot(target, model.cfg.vocab_size).to(logits.dtype)
+        - torch.softmax(logits, dim=-1)
+    )
+    expected = F.linear(
+        correction,
+        model.output_readout.weight.transpose(0, 1),
+    )
+    expected = torch.tanh(
+        expected.reshape(
+            1,
+            model.cfg.output_cells,
+            model.cfg.channels,
+        )
+        / math.sqrt(model.cfg.output_cells)
+    )
+    assert torch.allclose(
+        observed.output_error_credit[:, model.output_indices],
+        expected,
+    )
+    non_output = observed.output_error_credit.clone()
+    non_output[:, model.output_indices] = 0
+    assert torch.count_nonzero(non_output).item() == 0
+
+
+def test_output_error_credit_transposes_signed_message_transport() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    with torch.no_grad():
+        model.message_value.weight.copy_(
+            torch.eye(model.cfg.channels)
+        )
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    credit[0, target, 3] = 1.0
+    coefficient[0, target, slot] = -0.5
+
+    transported = model._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    expected = -0.5 / math.sqrt(model.cfg.dendrites)
+    assert transported[0, source, 3].item() == pytest.approx(expected)
+    transported[0, source, 3] = 0
+    assert torch.count_nonzero(transported).item() == 0
+
+
+def test_output_error_credit_meets_channel_specific_event_memory() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        message_steps=1,
+    )
+    base = model.initial_state(1)
+    base.output_error_credit[:, 3, 2] = 1.0
+    orthogonal = base.clone()
+    orthogonal.eligibility[:, 3, 4] = 1.0
+    matching = base.clone()
+    matching.eligibility[:, 3, 2] = 1.0
+
+    _, orthogonal_next, _ = model.tick(
+        orthogonal,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, matching_next, diagnostics = model.tick(
+        matching,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert not torch.allclose(
+        orthogonal_next.hidden[:, 3],
+        matching_next.hidden[:, 3],
+    )
+    assert diagnostics["mean_output_error_credit"].item() > 0
+
+
+def test_free_tick_cannot_create_output_error_credit() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    state = model.initial_state(1)
+    _, next_state, _ = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert torch.count_nonzero(next_state.output_error_credit).item() == 0
+
+
 def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
     model = _model(reward_gain=0.0, fast_weight_decay=0.0)
     state = model.initial_state(1)
@@ -1476,6 +1586,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
             structural_probe_gain=0.03,
             reward_gain=0.0,
             backward_credit_gain=0.25,
+            output_error_credit_gain=0.25,
         ),
         text,
         vocabulary,
@@ -1505,6 +1616,10 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     assert torch.equal(
         resumed.state.backward_credit,
         trainer.state.backward_credit,
+    )
+    assert torch.equal(
+        resumed.state.output_error_credit,
+        trainer.state.output_error_credit,
     )
     assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
     assert torch.equal(resumed.state.probe_eligibility, trainer.state.probe_eligibility)
@@ -1692,6 +1807,9 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["field_state"]["fast_weight"]
     del payload["trainer"]["field_state"]["reward_baseline"]
     del payload["trainer"]["field_state"]["backward_credit"]
+    del payload["trainer"]["field_state"]["output_error_credit"]
+    del payload["trainer"]["model_config"]["output_error_credit_gain"]
+    del payload["trainer"]["model_config"]["output_error_credit_decay"]
     del payload["trainer"]["model_config"]["structural_probe_gain"]
     del payload["trainer"]["model_config"]["energy_transport_rate"]
     del payload["trainer"]["model_config"]["energy_maintenance_flow"]
@@ -1716,6 +1834,9 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     assert torch.count_nonzero(resumed.state.probe_eligibility).item() == 0
     assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
     assert torch.count_nonzero(resumed.state.backward_credit).item() == 0
+    assert (
+        torch.count_nonzero(resumed.state.output_error_credit).item() == 0
+    )
     assert torch.count_nonzero(
         resumed.model.structural_edge_credit
     ).item() == 0
@@ -1790,6 +1911,7 @@ def test_live_checkpoint_bridge_generates_with_real_credit(
     assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
     assert snapshot["metrics"]["rewardBaseline"] > 0
     assert "backwardCredit" in snapshot["metrics"]
+    assert "outputErrorCredit" in snapshot["metrics"]
     assert 0 <= snapshot["metrics"]["viability"] <= 1
     assert 0 <= snapshot["metrics"]["quiescentFraction"] <= 1
     assert snapshot["metrics"]["structuralRewires"] == 0
@@ -1956,6 +2078,10 @@ def test_heldout_evaluation_reports_state_ablations() -> None:
         "mean_backward_credit" in value
         for value in metrics.values()
     )
+    assert all(
+        "mean_output_error_credit" in value
+        for value in metrics.values()
+    )
     assert all("mean_viability" in value for value in metrics.values())
     assert all("quiescent_fraction" in value for value in metrics.values())
     assert all("energy_input" in value for value in metrics.values())
@@ -2058,6 +2184,7 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     state.fast_weight[:, :, 0] = markers + 100
     state.probe_eligibility[:] = markers
     state.backward_credit[:] = markers
+    state.output_error_credit[:, :, 0] = markers
     permutation = torch.arange(model.cfg.cells - 1, -1, -1)
     shuffled = _shuffle_cell_state(state, permutation)
     assert torch.equal(
@@ -2072,6 +2199,10 @@ def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
     )
     assert torch.equal(
         shuffled.backward_credit, markers[permutation].unsqueeze(0)
+    )
+    assert torch.equal(
+        shuffled.output_error_credit[:, :, 0],
+        markers[permutation].unsqueeze(0),
     )
 
 

@@ -90,10 +90,39 @@ projects roughly `21.3 GiB` reserved before process/driver overhead, violating t
 planned 3 GiB safety reserve. Scaling from 128 to 896 cells reduced measured throughput
 by only about 4%, showing that the 4090 was underutilized by the smaller fields.
 
-## Full-run status
+## Full-run result
 
-The selected 896-cell organism is training for 5,000 updates on the RTX 4090 with fixed
+The selected 896-cell organism completed 5,000 updates on the RTX 4090 with fixed
 anatomy, energy held at one, no fast efficacy, and the S12 decay from updates 2,500 to
 5,000. It is a 14-fold increase in persistent cells over the local-live checkpoint but
 only a 1.54-fold increase in learned parameters because the cell transition rule is
 shared.
+
+| Measure | 64 cells (S12) | 896 cells (S14) | Larger minus smaller |
+|---|---:|---:|---:|
+| Parameters | 122,306 | 188,866 | +66,560 |
+| Best BPC | 2.33179 | 2.32157 | −0.01022 |
+| Final BPC | 2.33179 | 2.32157 | −0.01022 |
+| Final accuracy | — | 0.51172 | — |
+
+Across all 20 aligned validations, the larger field improved mean BPC by `0.00482` and
+won 13 comparisons. After learning-rate decay began, it improved mean BPC by `0.00653`
+and won seven of ten comparisons. Best and final checkpoints were identical, so the
+strict `0.1` BPC stability gate recorded no final or worst regression.
+
+The trained larger field retained strong causal state dependence: resetting persistent
+state produced `7.656` BPC and shuffling differentiated cell state produced `10.186`
+BPC. All 896 cells remained reachable through 7,168 directed dendrites. The full run
+peaked at `19,504,282,112` allocated bytes and `20,388,511,744` reserved bytes, retaining
+the planned `4.53 GiB` margin and approximately 1,607 training tokens/s.
+
+## Decision
+
+Cell count affects capability, but this isolated 14-fold increase in tissue produced a
+small stable improvement rather than a qualitative change. The result is useful
+evidence that additional cells can train and differentiate efficiently; it does not
+justify treating raw scale as the next bottleneck.
+
+Do not promote the 896-cell checkpoint to the local UI yet. Prioritize richer backward
+credit and credit-guided communication growth, then revisit scale after the organism has
+a mechanism capable of assigning different functions to the additional tissue.

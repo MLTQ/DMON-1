@@ -5,22 +5,25 @@
 Implements the first SOL organism: homogeneous recurrent cells with private persistent
 state, explicit directed dendrites, streamed character input, character output, metabolic
 state, reward-addressable eligibility memory, bounded fast synaptic efficacy, and
-causally measured exploratory axon probes.
+causally measured exploratory axon probes. It also supports a parameter-neutral,
+channel-shaped prediction-error signal that moves backward through the installed
+connectome.
 
 ## Components
 
 ### `SolConfig`
 - **Does**: Holds field size, directed topology, recurrence, eligibility, energy, and
-  optional backward-credit transport constants, including energy transport and
-  reversible quiescence thresholds. An optional maintenance-flow floor moves only
-  existing energy along installed non-self axons when information traffic is silent.
+  optional scalar and output-error backward-credit transport constants, including
+  energy transport and reversible quiescence thresholds. An optional maintenance-flow
+  floor moves only existing energy along installed non-self axons when information
+  traffic is silent.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
-  delayed reward, persistent output-originating backward credit, per-edge and
-  candidate-probe eligibility, and per-stream fast weights across every character and
-  optimizer window.
+  delayed reward, persistent scalar output-originating backward credit, persistent
+  channel-shaped output-error credit, per-edge and candidate-probe eligibility, and
+  per-stream fast weights across every character and optimizer window.
 - **Rationale**: Detaching a graph must not reset the organism.
 - **Compatibility**: `state_from_snapshot` initializes additive plasticity fields to
   zero when loading checkpoints made before fast synaptic or structural memory existed.
@@ -67,6 +70,21 @@ causally measured exploratory axon probes.
 - **Rationale**: Reward can travel against the directed causal path without inventing a
   second all-to-all teaching network.
 
+### `_transport_output_error_credit`
+- **Does**: Applies the transpose of the learned forward `message_value` transform,
+  multiplies by each target-owned signed message coefficient, and scatter-adds the
+  resulting channel vector into the named source cell.
+- **Rationale**: The reverse signal preserves which hidden-state directions would
+  correct the decoder instead of collapsing error to one scalar.
+
+### `observe_prediction`
+- **Does**: Converts decoder error to both the existing scalar surprise-relative reward
+  and a detached corrective vector
+  `W_readout^T(one_hot(target) - softmax(logits))`, split across output cells and
+  smoothly bounded before persistence.
+- **Rationale**: Future reward can meet a cell memory of an event in the relevant hidden
+  channels, without retaining an unbounded autograd graph across stream windows.
+
 ### `_transport_energy`
 - **Does**: Redistributes source-owned energy through named dendrites and active
   candidate probes, normalizing total outbound demand so a source cannot spend more
@@ -94,6 +112,10 @@ causally measured exploratory axon probes.
 - **Backward credit**: When enabled, pending scalar reward enters output cells once,
   propagates toward source cells against signed axons, persists across stream windows,
   and affects a cell only where it meets that cell's remembered eligibility.
+- **Output-error credit**: When enabled, the latest corrective decoder vector is
+  launched from output cells, moves sourceward through the transpose of the actual
+  forward message transform, and contributes only where its channels align with a
+  cell's eligibility trace.
 - **Energy provenance**: A character's novelty supplies one bounded external budget to
   sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
   no internal path may mint or discard energy.
@@ -113,8 +135,9 @@ causally measured exploratory axon probes.
 - **Does**: Runs truncated differentiable windows without resetting field state.
 - **Does**: Can gate selected structural probes for an entire streamed window while
   preserving the same hidden, metabolic, reward, and gradient path.
-- **Rationale**: Exact BPTT handles within-window credit; scalar reward gates persistent
-  eligibility on the following tick, including across truncation boundaries.
+- **Rationale**: Exact BPTT handles within-window credit; scalar reward and optional
+  channel-shaped decoder correction gate persistent eligibility on the following tick,
+  including across truncation boundaries.
 
 ## Contracts
 
@@ -141,8 +164,8 @@ causally measured exploratory axon probes.
   contraction instead of accumulating as clipped, effectively frozen synapses.
 - Energy now governs reversible quiescence but does not yet cause irreversible death,
   cell birth, or reproduction.
-- Backward credit is parameter-neutral and disabled by default for checkpoint
-  compatibility. It supplements or replaces the direct broadcast reward according to
-  explicit gains.
+- Both backward-credit paths are parameter-neutral and disabled by default for
+  checkpoint compatibility. Separate gains permit direct reward, scalar reverse
+  reward, and channel-shaped decoder credit to be tested as matched controls.
 - The forced sensory-to-output axons are organ plumbing, not a learned language-specific
   connectome; all synaptic signs and strengths remain trainable.

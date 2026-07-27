@@ -68,6 +68,10 @@ tensor shapes.
 - **Does**: Proves output reward launches a persistent credit wave that moves against
   signed target-owned axons to their named sources, affects only cells with remembered
   eligibility, cannot appear from zero reward, and adds no parameters.
+- **Does**: Proves decoder error launches a bounded channel-shaped correction from only
+  output cells, moves through the signed transpose of the actual message transform,
+  acts only where its channels meet event eligibility, cannot appear without an
+  observed target, and adds no parameters.
 - **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
   create fast efficacy, fast weights remain bounded and differentiable, and plasticity
   cannot mint metabolic energy.
@@ -89,7 +93,7 @@ tensor shapes.
 
 ### Checkpoint test
 - **Does**: Proves save/load preserves the exact next update, stream cursor, live field
-  state including backward credit, optimizer, vocabulary, structural
+  state including scalar and output-error backward credit, optimizer, vocabulary, structural
   policy/credit/global-fitness/confirmation buffers, and metadata.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
@@ -122,7 +126,7 @@ tensor shapes.
   source/probe tables return bitwise to their live values afterward.
 - **Does**: Requires edge eligibility and fast-weight saturation telemetry in training,
   held-out evaluation, and the local live bridge together with probe, backward-credit,
-  and rewrite telemetry.
+  output-error-credit, and rewrite telemetry.
 - **Does**: Requires a multi-length warmup sweep to score one fixed token window.
 
 ### Report guard test

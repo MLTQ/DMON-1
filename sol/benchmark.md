@@ -39,8 +39,12 @@ with checkpointing and append-only metrics.
 - **Does**: `--cell-reward-gain` and `--backward-credit-gain` separate the existing
   global cell reward from an output-originating credit wave that travels against signed
   axons. `--backward-credit-decay` controls its cross-token memory.
-- **Rationale**: Direct reward, reverse transport, and their combination must be compared
-  explicitly rather than silently changing the organism's learning rule.
+- **Does**: `--output-error-credit-gain` enables a parameter-neutral decoder-shaped
+  reverse vector and `--output-error-credit-decay` controls its cross-token memory.
+  `--no-reward` disables all three reward paths for a complete matched ablation.
+- **Rationale**: Direct reward, scalar reverse transport, decoder-shaped reverse
+  transport, and their combinations must be compared explicitly rather than silently
+  changing the organism's learning rule.
 - **Does**: `--structural-plasticity` runs bounded between-window grow/prune phases;
   `--structural-probes-only` supplies the parameter- and intervention-matched
   fixed-topology control with identical probe accumulation and rotation.

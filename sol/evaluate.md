@@ -11,7 +11,8 @@ including controls that test whether persistent cellular state is doing useful w
 - **Does**: Reports NLL, bits per character, perplexity, accuracy, energy, novelty, and
   measured edge flow plus edge eligibility, mean fast synaptic efficacy, and saturation
   together with causal-probe flow/eligibility, backward-credit magnitude, and total
-  structural rewrites.
+  structural rewrites. Scalar reverse reward and channel-shaped output-error credit are
+  reported separately.
 - **Does**: Reports viability, quiescence, external energy input, spending, and
   transport drift on the same scored tokens.
 - **Rationale**: Behavioral and organism claims must come from the same evaluated tokens.
@@ -27,8 +28,8 @@ including controls that test whether persistent cellular state is doing useful w
 
 ### `evaluate_state_ablations`
 - **Does**: Compares intact persistence with per-token reset and deterministic cell-state
-  shuffling, including target-owned edge/probe eligibility, backward credit, and fast
-  efficacy.
+  shuffling, including target-owned edge/probe eligibility, scalar backward credit,
+  channel-shaped output-error credit, and fast efficacy.
 - **Does**: Scores the trained organism while zeroing fast efficacy before every tick,
   isolating whether online synaptic memory contributes at inference.
 - **Does**: Replaces a grown source table with the deterministic birth topology while
