@@ -33,7 +33,8 @@ Installed edges retain three distinct signals:
 
 Exploratory candidates retain the corresponding scalar and decoder-credit evidence plus
 their exact first-order global loss effect. Optional circular locality is a weak prior,
-not a substitute for causal traffic. Edge age, endpoint energy, repeated confirmation,
+used only to rank candidates that already clear causal qualification; it can never
+create eligibility. Edge age, endpoint energy, repeated confirmation,
 and live ABBA candidate-on/candidate-off probation remain independent gates.
 
 Retention score combines scalar credit, traffic, and decoder-credit alignment. A mature
@@ -67,6 +68,11 @@ four-window exploratory probation.
 - all 12 cells and both output cells remained sensory-reachable;
 - no pruning was enabled in this growth smoke;
 - held-out BPC at update 20 was `5.499`, with reset `5.704` and shuffled `5.521`.
+
+This representation smoke preceded the stricter locality qualification guard; its
+three trials establish live spawn mechanics and bookkeeping, not credit causality. The
+GPU preflight below requires positive scalar/vector causal evidence independently of
+locality before beginning probation.
 
 Each committed spawn records old dormant state, candidate identity, scalar/vector
 evidence, arm rewards, exact decision updates, and endpoint/body energy before and after

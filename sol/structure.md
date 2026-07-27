@@ -54,6 +54,8 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
   sensory/output reachability survive.
 - **Does**: Scores retention and growth from separate scalar reward, traffic,
   decoder-credit alignment, global fitness, locality, age, and endpoint-energy terms.
+- **Constraint**: Locality can rank candidates that already clear causal evidence and
+  advantage gates; locality alone can never qualify growth.
 
 ### `StructuralProbation`
 - **Does**: Backs up one incumbent source, edge parameters, optimizer moments,

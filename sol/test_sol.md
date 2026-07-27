@@ -78,6 +78,8 @@ tensor shapes.
   violating reachability or changing parameter count.
 - **Does**: Proves reverse decoder credit meeting source eligibility produces separate
   signed anatomical evidence for installed edges and exploratory candidates.
+- **Does**: Proves even a maximal locality prior cannot qualify a candidate with zero
+  causal evidence.
 - **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
   create fast efficacy, fast weights remain bounded and differentiable, and plasticity
   cannot mint metabolic energy.

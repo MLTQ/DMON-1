@@ -806,7 +806,7 @@ def apply_structural_phase(
         return StructuralUpdate(0, total, 0.0, 0)
 
     proposals: list[
-        tuple[float, int, int, int, float, float]
+        tuple[float, float, int, int, int, float, float]
     ] = []
     observed_advantages: list[float] = []
     for target in range(model.cfg.cells):
@@ -851,20 +851,23 @@ def apply_structural_phase(
             model.structural_probe_fitness[target].item()
         )
         candidate = int(model.probe_sources[target].item())
-        probe_score = (
+        causal_probe_score = (
             probe_credit
             + config.vector_credit_gain * probe_vector_credit
+        )
+        advantage = causal_probe_score - edge_score
+        priority = (
+            advantage
             + config.locality_gain
             * _locality_score(target, candidate, model.cfg.cells)
         )
-        advantage = probe_score - edge_score
         observed_advantages.append(advantage)
         globally_fit = (
             not config.require_global_fitness
             or probe_fitness > config.global_fitness_margin
         )
         if (
-            probe_score > 0
+            causal_probe_score > 0
             and advantage > config.credit_margin
             and globally_fit
         ):
@@ -879,6 +882,7 @@ def apply_structural_phase(
         ):
             proposals.append(
                 (
+                    priority,
                     advantage,
                     target,
                     slot,
@@ -888,7 +892,7 @@ def apply_structural_phase(
                 )
             )
 
-    proposals.sort(key=lambda value: (-value[0], value[1], value[2]))
+    proposals.sort(key=lambda value: (-value[0], -value[1], value[2]))
     best_advantage = (
         max(observed_advantages) if observed_advantages else 0.0
     )
@@ -979,6 +983,7 @@ def apply_structural_phase(
             pruned += 1
 
     for (
+        _,
         advantage,
         target,
         slot,

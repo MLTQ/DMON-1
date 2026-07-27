@@ -224,6 +224,44 @@ def test_variable_fan_in_prunes_unused_redundant_edge() -> None:
     assert topology.output_reachable_fraction == 1.0
 
 
+def test_locality_cannot_qualify_growth_without_causal_evidence() -> None:
+    model = _model(
+        structural_probe_gain=0.03,
+        initial_active_dendrites=2,
+    )
+    text = "abcabcabcabc"
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        model,
+        text,
+        vocabulary,
+        batch_size=1,
+        chunk_length=2,
+    )
+    model.structural_edge_usage.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    before = model.active_edges.clone()
+    update = apply_structural_phase(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        StructuralConfig(
+            enabled=True,
+            variable_fan_in=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+            locality_gain=1.0,
+            prune_credit_threshold=-1.0,
+            growth_cost=0.0,
+            min_endpoint_energy=0.0,
+        ),
+        update=1,
+    )
+    assert update.spawned_edges == 0
+    assert torch.equal(model.active_edges, before)
+
+
 def test_stream_windows_are_adjacent_not_reset() -> None:
     vocabulary = CharacterVocabulary.from_text("abc")
     stream = ContinuousCharStream("abcabcabcabc", vocabulary, batch_size=2)
