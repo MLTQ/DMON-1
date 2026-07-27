@@ -1,0 +1,3875 @@
+"""Behavioral and credit-path tests for the first SOL character organism."""
+
+from __future__ import annotations
+
+import json
+import math
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+import torch
+from torch.nn import functional as F
+
+from .baselines import (
+    CausalCharacterTransformer,
+    CharacterGRU,
+    evaluate_gru,
+    evaluate_transformer,
+    match_gru_hidden_size,
+    match_transformer_hidden_size,
+)
+from .benchmark import _device_memory
+from .checkpoint import load_checkpoint, save_checkpoint
+from .convergence import (
+    summarize_comparison_horizon,
+    summarize_convergence,
+)
+from .evaluate import (
+    _shuffle_cell_state,
+    evaluate_state_ablations,
+    evaluate_warmup_sweep,
+)
+from .model import SolConfig, SparseAxonField
+from .promote import promote_best_checkpoint
+from .report import compare_runs, load_run, markdown_report
+from .routing import (
+    RoutingTrafficConfig,
+    RoutingTrafficTrial,
+    routing_traffic_due,
+)
+from .routing_randomization import (
+    crossover_schedule,
+    deterministic_assignment_code,
+    deterministic_crossover_assignment_code,
+    exact_one_sided_randomization_p_value,
+    exact_one_sided_randomization_test,
+    schedule_advantage,
+)
+from .schedule import (
+    cosine_decay_learning_rate,
+    set_optimizer_learning_rate,
+)
+from .serve import LiveOrganism
+from .stability import (
+    summarize_exploratory_survival,
+    summarize_stability,
+)
+from .stream import CharacterVocabulary, ContinuousCharStream
+from .structure import (
+    StructuralConfig,
+    apply_structural_phase,
+    structural_decision_due,
+)
+from .topology import analyze_topology
+from .train import ContinuousTrainer
+
+
+def _model(**overrides) -> SparseAxonField:
+    torch.manual_seed(4)
+    cfg = SolConfig(
+        vocab_size=3,
+        cells=12,
+        channels=12,
+        dendrites=4,
+        sensory_cells=2,
+        output_cells=2,
+        message_steps=2,
+        topology_seed=7,
+    )
+    return SparseAxonField(replace(cfg, **overrides))
+
+
+def test_device_memory_is_explicit_for_cpu() -> None:
+    assert _device_memory(torch.device("cpu")) == {"device_type": "cpu"}
+
+
+def test_convergence_rejects_a_still_improving_horizon() -> None:
+    summary = summarize_convergence(
+        [
+            (100, 5.0),
+            (200, 4.8),
+            (300, 4.6),
+            (400, 4.4),
+            (500, 4.2),
+        ],
+        window=5,
+        max_terminal_slope_bpc_per_100_updates=0.01,
+    )
+    assert summary["status"] == "still_improving"
+    assert not summary["horizon_informative"]
+    assert summary["terminal_slope_bpc_per_100_updates"] == pytest.approx(
+        -0.2
+    )
+    assert summary["terminal_rmse_bpc"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_convergence_requires_a_supported_practical_plateau() -> None:
+    summary = summarize_convergence(
+        [
+            (100, 4.0),
+            (200, 4.0),
+            (300, 4.0),
+            (400, 4.0),
+            (500, 4.0),
+        ],
+        window=5,
+        max_terminal_slope_bpc_per_100_updates=0.01,
+    )
+    assert summary["status"] == "plateau_supported"
+    assert summary["horizon_informative"]
+    assert summary["terminal_slope_ci95_low"] == pytest.approx(0.0)
+    assert summary["terminal_slope_ci95_high"] == pytest.approx(0.0)
+
+
+def test_comparison_can_be_informative_before_curves_are_flat() -> None:
+    candidate = [
+        (100, 4.80),
+        (200, 4.60),
+        (300, 4.40),
+        (400, 4.20),
+        (500, 4.00),
+    ]
+    control = [
+        (100, 4.98),
+        (200, 4.77),
+        (300, 4.56),
+        (400, 4.35),
+        (500, 4.14),
+    ]
+    summary = summarize_comparison_horizon(
+        candidate,
+        control,
+        window=5,
+    )
+    assert summary["status"] == "candidate_advantage_supported"
+    assert summary["horizon_informative"]
+    assert summary["winner"] == "candidate"
+    assert summary["candidate_win_fraction"] == 1.0
+    assert summary["candidate_terminal"]["status"] == "still_improving"
+    assert summary["control_terminal"]["status"] == "still_improving"
+    assert summary["linear_updates_to_crossing"] is not None
+
+
+def test_comparison_rejects_an_inconsistent_noisy_ordering() -> None:
+    candidate = [
+        (100, 4.00),
+        (200, 4.05),
+        (300, 3.98),
+        (400, 4.04),
+        (500, 3.99),
+    ]
+    control = [
+        (100, 4.02),
+        (200, 4.00),
+        (300, 4.01),
+        (400, 4.00),
+        (500, 4.01),
+    ]
+    summary = summarize_comparison_horizon(
+        candidate,
+        control,
+        window=5,
+    )
+    assert summary["status"] == "inconclusive"
+    assert not summary["horizon_informative"]
+    assert summary["winner"] is None
+
+
+def test_topology_is_sparse_directed_and_output_reachable() -> None:
+    model = _model()
+    assert model.sources.shape == (12, 4)
+    assert all(
+        int(source) in model.sources[int(target)].tolist()
+        for target, source in zip(model.output_indices, model.sensory_indices)
+    )
+    edges = {
+        (int(source), target)
+        for target, row in enumerate(model.sources)
+        for source in row
+    }
+    assert any((target, source) not in edges for source, target in edges)
+    metrics = analyze_topology(
+        model.sources, model.sensory_indices, model.output_indices
+    )
+    assert metrics.directed_edges == model.cfg.cells * model.cfg.dendrites
+    assert metrics.output_reachable_fraction == 1.0
+    assert metrics.reachable_fraction == 1.0
+    assert metrics.mean_output_distance is not None
+
+
+def test_inactive_dendrite_slots_carry_no_traffic_or_fast_state() -> None:
+    model = _model(initial_active_dendrites=2)
+    state = model.initial_state(1)
+    state.fast_weight[:, :, 2:] = 0.2
+    state.edge_eligibility[:, :, 2:] = 1.0
+    state.credit_routing_eligibility[:, :, 2:] = 1.0
+    state.credit_routing_preference[:, :, 2:] = 0.2
+    _, next_state, diagnostics = model.tick(
+        state,
+        torch.tensor([1]),
+        reward=torch.ones(1),
+    )
+    assert model.active_edges[:, :2].all()
+    assert not model.active_edges[:, 2:].any()
+    assert torch.count_nonzero(
+        diagnostics["edge_flow"][:, 2:]
+    ).item() == 0
+    assert torch.count_nonzero(next_state.fast_weight[:, :, 2:]).item() == 0
+    assert (
+        torch.count_nonzero(next_state.edge_eligibility[:, :, 2:]).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            next_state.credit_routing_eligibility[:, :, 2:]
+        ).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            next_state.credit_routing_preference[:, :, 2:]
+        ).item()
+        == 0
+    )
+    topology = analyze_topology(
+        model.sources,
+        model.sensory_indices,
+        model.output_indices,
+        model.active_edges,
+    )
+    assert topology.directed_edges == model.cfg.cells * 2
+    assert topology.reachable_fraction == 1.0
+
+
+def test_variable_fan_in_spawns_into_an_inactive_slot() -> None:
+    model = _model(
+        structural_probe_gain=0.03,
+        initial_active_dendrites=2,
+    )
+    text = "abcabcabcabc"
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        model,
+        text,
+        vocabulary,
+        batch_size=1,
+        chunk_length=2,
+    )
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_edge_usage.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    model.structural_probe_credit.fill_(-1.0)
+    target = 3
+    candidate = int(model.probe_sources[target].item())
+    model.structural_probe_credit[target] = 0.0
+    model.structural_probe_vector_credit[target] = 1.0
+    before_parameters = sum(p.numel() for p in model.parameters())
+    before_active = int(model.active_edges.sum().item())
+    update = apply_structural_phase(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        StructuralConfig(
+            enabled=True,
+            variable_fan_in=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+            growth_cost=0.0,
+            min_endpoint_energy=0.0,
+        ),
+        update=1,
+    )
+    assert update.spawned_edges == 1
+    assert update.pruned_edges == 0
+    assert int(model.active_edges.sum().item()) == before_active + 1
+    assert candidate in model.sources[target][
+        model.active_edges[target]
+    ].tolist()
+    assert model.total_spawns.item() == 1
+    spawned_slot = int(
+        torch.nonzero(
+            model.active_edges[target],
+            as_tuple=False,
+        )[-1].item()
+    )
+    assert (
+        model.structural_edge_vector_credit[target, spawned_slot].item()
+        == pytest.approx(1.0)
+    )
+    assert sum(p.numel() for p in model.parameters()) == before_parameters
+
+
+def test_variable_fan_in_prunes_unused_redundant_edge() -> None:
+    model = _model(structural_probe_gain=0.03)
+    text = "abcabcabcabc"
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        model,
+        text,
+        vocabulary,
+        batch_size=1,
+        chunk_length=2,
+    )
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_edge_usage.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    model.structural_probe_credit.fill_(-1.0)
+    model.structural_edge_credit[0, 0] = -1.0
+    model.structural_edge_usage[0, 0] = 0.0
+    assert int(model.sources[0, 0].item()) == 0
+    update = apply_structural_phase(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        StructuralConfig(
+            enabled=True,
+            variable_fan_in=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+            min_active_dendrites=3,
+            prune_usage_threshold=0.0,
+            prune_credit_threshold=0.0,
+            growth_cost=0.0,
+            min_endpoint_energy=0.0,
+        ),
+        update=1,
+    )
+    assert update.pruned_edges == 1
+    assert update.spawned_edges == 0
+    assert not model.active_edges[0, 0]
+    assert model.total_prunes.item() == 1
+    topology = analyze_topology(
+        model.sources,
+        model.sensory_indices,
+        model.output_indices,
+        model.active_edges,
+    )
+    assert topology.reachable_fraction == 1.0
+    assert topology.output_reachable_fraction == 1.0
+
+
+def test_locality_cannot_qualify_growth_without_causal_evidence() -> None:
+    model = _model(
+        structural_probe_gain=0.03,
+        initial_active_dendrites=2,
+    )
+    text = "abcabcabcabc"
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        model,
+        text,
+        vocabulary,
+        batch_size=1,
+        chunk_length=2,
+    )
+    model.structural_edge_usage.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    before = model.active_edges.clone()
+    update = apply_structural_phase(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        StructuralConfig(
+            enabled=True,
+            variable_fan_in=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+            locality_gain=1.0,
+            prune_credit_threshold=-1.0,
+            growth_cost=0.0,
+            min_endpoint_energy=0.0,
+        ),
+        update=1,
+    )
+    assert update.spawned_edges == 0
+    assert torch.equal(model.active_edges, before)
+
+
+def test_stream_windows_are_adjacent_not_reset() -> None:
+    vocabulary = CharacterVocabulary.from_text("abc")
+    stream = ContinuousCharStream("abcabcabcabc", vocabulary, batch_size=2)
+    first_x, first_y = stream.next(2)
+    second_x, _ = stream.next(2)
+    assert torch.equal(first_y[:, -1], second_x[:, 0])
+
+
+def test_learning_rate_decay_is_absolute_bounded_and_optional() -> None:
+    base = 3e-3
+    assert cosine_decay_learning_rate(base, 1) == base
+    assert cosine_decay_learning_rate(base, 400, 400, 800, 0.1) == base
+    midpoint = cosine_decay_learning_rate(base, 600, 400, 800, 0.1)
+    assert midpoint == pytest.approx(base * 0.55)
+    assert cosine_decay_learning_rate(
+        base, 800, 400, 800, 0.1
+    ) == pytest.approx(base * 0.1)
+    assert cosine_decay_learning_rate(
+        base, 1200, 400, 800, 0.1
+    ) == pytest.approx(base * 0.1)
+
+    parameter = torch.nn.Parameter(torch.ones(()))
+    optimizer = torch.optim.AdamW([parameter], lr=base)
+    set_optimizer_learning_rate(optimizer, midpoint)
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(midpoint)
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "ratio"),
+    [(-1, 0, 0.1), (4, 3, 0.1), (0, 4, -0.1), (0, 4, 1.1)],
+)
+def test_learning_rate_decay_rejects_invalid_policy(
+    start: int,
+    end: int,
+    ratio: float,
+) -> None:
+    with pytest.raises(ValueError):
+        cosine_decay_learning_rate(3e-3, 1, start, end, ratio)
+
+
+def test_history_changes_prediction_for_the_same_character() -> None:
+    model = _model()
+    fresh = model.initial_state(1)
+    _, remembered, _ = model.forward_sequence(torch.tensor([[0, 1]]), fresh)
+    same = torch.tensor([2])
+    logits_fresh, _, _ = model.tick(model.initial_state(1), same)
+    logits_remembered, _, _ = model.tick(remembered, same)
+    assert not torch.allclose(logits_fresh, logits_remembered)
+
+
+def test_energy_depletes_without_external_input() -> None:
+    model = _model()
+    state = model.initial_state(2)
+    before = state.energy.mean().item()
+    for _ in range(8):
+        _, state, _ = model.tick(state, token=None)
+    assert state.energy.mean().item() < before
+    assert state.stimulation.max().item() == 0.0
+
+
+def test_unfed_cells_reach_quiescence_in_finite_time() -> None:
+    model = _model(
+        message_steps=1,
+        energy_start=0.2,
+        basal_cost=0.01,
+        activity_cost=0.0,
+        energy_transport_rate=0.0,
+        quiescence_energy=0.01,
+        full_activity_energy=0.05,
+    )
+    state = model.initial_state(1)
+    for _ in range(24):
+        _, state, diagnostics = model.tick(state, token=None)
+    assert diagnostics["quiescent_fraction"].item() == 1
+    assert diagnostics["mean_viability"].item() == 0
+    frozen = state.hidden.clone()
+    _, state, _ = model.tick(state, token=None)
+    assert torch.equal(state.hidden, frozen)
+
+
+def test_directed_energy_transport_never_mints_and_follows_named_axons() -> None:
+    model = _model(energy_transport_rate=0.5)
+    control = _model(energy_transport_rate=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    torch.manual_seed(9)
+    energy = 0.2 + 0.6 * torch.rand(3, model.cfg.cells)
+    flow = torch.rand(
+        3,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    probe_flow = torch.rand(3, model.cfg.cells)
+    transported, drift = model._transport_energy(
+        energy,
+        flow,
+        probe_flow,
+    )
+    assert torch.all(transported >= 0)
+    assert torch.all(transported <= 1)
+    assert torch.allclose(
+        transported.sum(dim=1),
+        energy.sum(dim=1),
+        atol=2e-6,
+    )
+    assert torch.allclose(drift, torch.zeros_like(drift), atol=2e-6)
+
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    isolated_energy = torch.zeros(1, model.cfg.cells)
+    isolated_energy[0, source] = 0.8
+    isolated_flow = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    isolated_flow[0, target, slot] = 1.0
+    moved, isolated_drift = model._transport_energy(
+        isolated_energy,
+        isolated_flow,
+        torch.zeros(1, model.cfg.cells),
+    )
+    assert moved[0, target] > 0
+    assert moved[0, source] < isolated_energy[0, source]
+    assert moved.sum().item() == pytest.approx(
+        isolated_energy.sum().item(),
+        abs=1e-6,
+    )
+    assert isolated_drift.item() == pytest.approx(0.0, abs=1e-6)
+
+
+def test_directed_maintenance_flow_funds_silent_named_targets() -> None:
+    model = _model(
+        energy_transport_rate=0.5,
+        energy_maintenance_flow=0.1,
+    )
+    control = _model(
+        energy_transport_rate=0.5,
+        energy_maintenance_flow=0.0,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    energy = torch.zeros(1, model.cfg.cells)
+    energy[0, source] = 0.8
+    silent_edges = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    silent_probes = torch.zeros(1, model.cfg.cells)
+
+    maintained, drift = model._transport_energy(
+        energy,
+        silent_edges,
+        silent_probes,
+    )
+    unmaintained, control_drift = control._transport_energy(
+        energy,
+        silent_edges,
+        silent_probes,
+    )
+
+    assert maintained[0, target] > 0
+    assert maintained[0, source] < energy[0, source]
+    assert torch.equal(unmaintained, energy)
+    assert maintained.sum().item() == pytest.approx(
+        energy.sum().item(),
+        abs=1e-6,
+    )
+    assert drift.item() == pytest.approx(0.0, abs=1e-6)
+    assert control_drift.item() == pytest.approx(0.0, abs=1e-6)
+
+
+def test_recurrent_stimulation_cannot_mint_metabolic_energy() -> None:
+    model = _model(
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=1.0,
+        energy_transport_rate=0.5,
+    )
+    state = model.initial_state(2)
+    state.energy.fill_(0.4)
+    state.stimulation.fill_(1.0)
+    before = state.energy.sum(dim=1)
+    _, after, diagnostics = model.tick(state, token=None)
+    assert torch.all(after.energy.sum(dim=1) <= before + 1e-6)
+    assert torch.count_nonzero(diagnostics["energy_input"]).item() == 0
+    assert torch.all(diagnostics["energy_transport_drift"] <= 1e-6)
+
+
+def test_external_input_is_the_only_energy_source() -> None:
+    model = _model(
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=0.5,
+        energy_transport_rate=0.25,
+    )
+    state = model.initial_state(2)
+    state.energy.fill_(0.2)
+    before = state.energy.sum(dim=1)
+    _, after, diagnostics = model.tick(state, torch.tensor([0, 1]))
+    expected = (
+        before
+        + diagnostics["energy_input"]
+        + diagnostics["energy_transport_drift"]
+    )
+    assert torch.all(diagnostics["energy_input"] > 0)
+    assert torch.allclose(after.energy.sum(dim=1), expected, atol=2e-6)
+
+
+def test_energy_quiescence_is_reversible_from_new_input() -> None:
+    model = _model(
+        message_steps=1,
+        basal_cost=0.0,
+        activity_cost=0.0,
+        stimulation_gain=1.0,
+        energy_transport_rate=0.0,
+        quiescence_energy=0.1,
+        full_activity_energy=0.2,
+    )
+    state = model.initial_state(1)
+    state.energy.zero_()
+    hidden = state.hidden.clone()
+    _, quiet, quiet_diagnostics = model.tick(state, token=None)
+    assert torch.equal(quiet.hidden, hidden)
+    assert quiet_diagnostics["mean_viability"].item() == 0
+    assert quiet_diagnostics["quiescent_fraction"].item() == 1
+
+    _, recovered, recovered_diagnostics = model.tick(
+        quiet,
+        torch.tensor([0]),
+    )
+    sensory = model.sensory_indices
+    assert torch.all(recovered.energy[:, sensory] > 0.2)
+    assert not torch.equal(recovered.hidden[:, sensory], hidden[:, sensory])
+    assert recovered_diagnostics["mean_viability"].item() > 0
+    assert recovered_diagnostics["quiescent_fraction"].item() < 1
+
+
+def test_delayed_reward_acts_through_event_eligibility() -> None:
+    model = _model()
+    base = model.initial_state(1)
+    tagged = base.clone()
+    tagged.eligibility[:, 3] = 1.0
+    reward = torch.ones(1)
+    _, untagged_next, _ = model.tick(base, token=None, reward=reward)
+    _, tagged_next, _ = model.tick(tagged, token=None, reward=reward)
+    assert not torch.allclose(
+        untagged_next.hidden[:, 3], tagged_next.hidden[:, 3]
+    )
+
+
+def test_backward_credit_moves_from_targets_to_named_sources() -> None:
+    model = _model(backward_credit_gain=1.0)
+    control = _model(backward_credit_gain=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    credit = torch.zeros(1, model.cfg.cells)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    credit[0, target] = 1.0
+    coefficient[0, target, slot] = 0.5
+
+    transported = model._transport_backward_credit(
+        credit,
+        coefficient,
+    )
+    expected = 0.5 / math.sqrt(model.cfg.dendrites)
+    assert transported[0, source].item() == pytest.approx(expected)
+    transported[0, source] = 0
+    assert torch.count_nonzero(transported).item() == 0
+
+
+def test_output_reward_launches_persistent_backward_credit() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+        backward_credit_decay=0.5,
+        message_steps=1,
+    )
+    state = model.initial_state(1)
+    _, after_reward, diagnostics = model.tick(
+        state,
+        token=None,
+        reward=torch.ones(1),
+    )
+    assert after_reward.backward_credit.abs().sum().item() > 0
+    assert diagnostics["mean_backward_credit"].item() > 0
+
+    _, after_quiet, _ = model.tick(
+        after_reward,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert after_quiet.backward_credit.abs().sum().item() > 0
+
+
+def test_backward_credit_meets_event_specific_cell_memory() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+        backward_credit_decay=0.0,
+        message_steps=1,
+    )
+    base = model.initial_state(1)
+    base.backward_credit[:, 3] = 1.0
+    tagged = base.clone()
+    tagged.eligibility[:, 3] = 1.0
+
+    _, untagged_next, _ = model.tick(
+        base,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, tagged_next, _ = model.tick(
+        tagged,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert not torch.allclose(
+        untagged_next.hidden[:, 3],
+        tagged_next.hidden[:, 3],
+    )
+
+
+def test_zero_reward_cannot_create_backward_credit() -> None:
+    model = _model(
+        reward_gain=0.0,
+        backward_credit_gain=1.0,
+    )
+    state = model.initial_state(1)
+    _, next_state, _ = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert torch.count_nonzero(next_state.backward_credit).item() == 0
+
+
+def test_output_error_credit_is_decoder_shaped_without_new_parameters() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    control = _model(output_error_credit_gain=0.0)
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+    state = model.initial_state(1)
+    logits = torch.tensor([[1.5, -0.5, 0.25]])
+    target = torch.tensor([2])
+
+    observed = model.observe_prediction(state, logits, target)
+    correction = (
+        F.one_hot(target, model.cfg.vocab_size).to(logits.dtype)
+        - torch.softmax(logits, dim=-1)
+    )
+    expected = F.linear(
+        correction,
+        model.output_readout.weight.transpose(0, 1),
+    )
+    expected = torch.tanh(
+        expected.reshape(
+            1,
+            model.cfg.output_cells,
+            model.cfg.channels,
+        )
+        / math.sqrt(model.cfg.output_cells)
+    )
+    assert torch.allclose(
+        observed.output_error_credit[:, model.output_indices],
+        expected,
+    )
+    non_output = observed.output_error_credit.clone()
+    non_output[:, model.output_indices] = 0
+    assert torch.count_nonzero(non_output).item() == 0
+
+
+def test_output_error_credit_transposes_signed_message_transport() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    with torch.no_grad():
+        model.message_value.weight.copy_(
+            torch.eye(model.cfg.channels)
+        )
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    target, slot = next(
+        (target, slot)
+        for target in range(model.cfg.cells)
+        for slot in range(model.cfg.dendrites)
+        if int(model.sources[target, slot]) != target
+    )
+    source = int(model.sources[target, slot])
+    credit[0, target, 3] = 1.0
+    coefficient[0, target, slot] = -0.5
+
+    transported = model._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    expected = -0.5 / math.sqrt(model.cfg.dendrites)
+    assert transported[0, source, 3].item() == pytest.approx(expected)
+    transported[0, source, 3] = 0
+    assert torch.count_nonzero(transported).item() == 0
+
+
+def test_output_error_credit_routes_toward_matching_source_memory() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    routed = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(
+            torch.eye(control.cfg.channels)
+        )
+        routed.message_value.weight.copy_(
+            torch.eye(routed.cfg.channels)
+        )
+    credit = torch.zeros(1, routed.cfg.cells, routed.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        routed.cfg.cells,
+        routed.cfg.dendrites,
+    )
+    source_memory = torch.zeros_like(credit)
+    target = 4
+    sources = routed.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    source_memory[0, sources[0]] = 1.0
+    source_memory[0, sources[1]] = -1.0
+
+    baseline = control._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    equal_evidence = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        torch.zeros_like(source_memory),
+    )
+    transported = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+
+    assert torch.allclose(equal_evidence, baseline)
+    assert transported[0, sources[0], 0] > baseline[0, sources[0], 0]
+    assert transported[0, sources[1], 0] < baseline[0, sources[1], 0]
+    assert sum(p.numel() for p in routed.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_eligibility_routing_gain_scales_branch_selectivity() -> None:
+    low_gain = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+        eligibility_routing_gain=1.0,
+    )
+    calibrated = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+        eligibility_routing_gain=100.0,
+    )
+    with torch.no_grad():
+        low_gain.message_value.weight.copy_(
+            torch.eye(low_gain.cfg.channels)
+        )
+        calibrated.message_value.weight.copy_(
+            torch.eye(calibrated.cfg.channels)
+        )
+    credit = torch.zeros(
+        1, low_gain.cfg.cells, low_gain.cfg.channels
+    )
+    coefficient = torch.zeros(
+        1,
+        low_gain.cfg.cells,
+        low_gain.cfg.dendrites,
+    )
+    source_memory = torch.zeros_like(credit)
+    target = 4
+    sources = low_gain.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    source_memory[0, sources[0]] = 0.02
+    source_memory[0, sources[1]] = -0.02
+
+    baseline = low_gain._transport_output_error_credit(
+        credit,
+        coefficient,
+        torch.zeros_like(source_memory),
+    )
+    low = low_gain._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+    high = calibrated._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+    low_deviation = (
+        low[0, sources[0]] - baseline[0, sources[0]]
+    ).abs().sum()
+    high_deviation = (
+        high[0, sources[0]] - baseline[0, sources[0]]
+    ).abs().sum()
+
+    assert high_deviation > 10 * low_deviation
+    assert high[0, sources[0], 0] > low[0, sources[0], 0]
+    assert high[0, sources[1], 0] < low[0, sources[1], 0]
+
+
+def test_eligibility_routing_gain_must_be_nonnegative() -> None:
+    with pytest.raises(ValueError, match="gains must be nonnegative"):
+        replace(_model().cfg, eligibility_routing_gain=-1.0)
+
+
+def test_reward_plastic_routing_requires_tagged_delayed_reward() -> None:
+    model = _model(
+        reward_plastic_output_credit_routing=True,
+        credit_routing_preference_decay=0.0,
+        credit_routing_plasticity_gain=0.1,
+        credit_routing_preference_limit=0.25,
+    )
+    preference = torch.zeros(
+        1, model.cfg.cells, model.cfg.dendrites
+    )
+    routing_eligibility = torch.zeros_like(preference)
+    target = 4
+    routing_eligibility[0, target, 0] = 1.0
+    routing_eligibility[0, target, 1] = -1.0
+
+    no_reward = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.zeros(1),
+    )
+    positive = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.ones(1),
+    )
+    negative = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        -torch.ones(1),
+    )
+
+    assert torch.count_nonzero(no_reward).item() == 0
+    assert positive[0, target, 0] > 0
+    assert positive[0, target, 1] < 0
+    assert torch.allclose(negative, -positive)
+    assert positive.abs().max() <= model.cfg.credit_routing_preference_limit
+
+    with torch.no_grad():
+        model.active_edges[target, 0] = False
+    dormant = model._updated_credit_routing_preference(
+        preference,
+        routing_eligibility,
+        torch.ones(1),
+    )
+    assert dormant[0, target, 0] == 0
+
+
+def test_reward_plastic_preference_routes_future_decoder_credit() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    routed = _model(
+        output_error_credit_gain=1.0,
+        reward_plastic_output_credit_routing=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(
+            torch.eye(control.cfg.channels)
+        )
+        routed.message_value.weight.copy_(
+            torch.eye(routed.cfg.channels)
+        )
+    credit = torch.zeros(1, routed.cfg.cells, routed.cfg.channels)
+    coefficient = torch.zeros(
+        1, routed.cfg.cells, routed.cfg.dendrites
+    )
+    preference = torch.zeros_like(coefficient)
+    target = 4
+    sources = routed.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    preference[0, target, 0] = 0.25
+    preference[0, target, 1] = -0.25
+
+    baseline = control._transport_output_error_credit(
+        credit,
+        coefficient,
+    )
+    equal = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=torch.zeros_like(preference),
+    )
+    transported = routed._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference,
+    )
+
+    assert torch.allclose(equal, baseline)
+    assert transported[0, sources[0], 0] > baseline[0, sources[0], 0]
+    assert transported[0, sources[1], 0] < baseline[0, sources[1], 0]
+    assert sum(p.numel() for p in routed.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_reward_plastic_routing_closes_the_delayed_trace_loop() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        reward_plastic_output_credit_routing=True,
+        credit_routing_preference_decay=0.0,
+        credit_routing_plasticity_gain=0.1,
+        message_steps=1,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    source = int(model.sources[target, 0])
+    state.output_error_credit[:, target, 0] = 1.0
+    state.eligibility[:, source, 0] = 1.0
+
+    _, tagged, first = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, rewarded, second = model.tick(
+        tagged,
+        token=None,
+        reward=torch.ones(1),
+    )
+
+    assert torch.count_nonzero(
+        tagged.credit_routing_preference
+    ).item() == 0
+    assert tagged.credit_routing_eligibility.abs().sum().item() > 0
+    assert rewarded.credit_routing_preference.abs().sum().item() > 0
+    assert first["mean_credit_routing_eligibility"].item() > 0
+    assert second["mean_credit_routing_preference"].item() > 0
+
+
+def test_exploratory_routing_preserves_committed_preference_and_tags() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        exploratory_output_credit_routing=True,
+        eligibility_routing_gain=100.0,
+        message_steps=1,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    source = int(model.sources[target, 0])
+    state.credit_routing_preference[:, target, 0] = 0.1
+    state.credit_routing_preference[:, target, 1] = -0.1
+    state.output_error_credit[:, target, 0] = 1.0
+    state.eligibility[:, source, 0] = 1.0
+
+    _, updated, diagnostics = model.tick(
+        state,
+        token=None,
+        reward=torch.ones(1),
+    )
+
+    assert torch.equal(
+        updated.credit_routing_preference,
+        state.credit_routing_preference,
+    )
+    assert updated.credit_routing_eligibility.abs().sum().item() > 0
+    assert diagnostics["mean_credit_routing_eligibility"].item() > 0
+
+
+def test_exploratory_routing_proposal_is_local_zero_sum_traffic() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(torch.eye(control.cfg.channels))
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    state.credit_routing_eligibility[:, target, 0] = 1.0
+    state.credit_routing_eligibility[:, target, 1] = -1.0
+    trial = RoutingTrafficTrial()
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=4,
+        proposal_step=0.05,
+        minimum_eligibility=1e-6,
+    )
+
+    assert trial.begin(model, state, config, update=1)
+    assert trial.target == target
+    assert trial.slot == 0
+    assert trial.delta is not None
+    assert trial.delta[target].sum().item() == pytest.approx(
+        0.0, abs=1e-7
+    )
+    unrelated = trial.delta.clone()
+    unrelated[target] = 0
+    assert torch.count_nonzero(unrelated).item() == 0
+    assert torch.count_nonzero(
+        trial.delta[~model.active_edges]
+    ).item() == 0
+
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1, model.cfg.cells, model.cfg.dendrites
+    )
+    credit[:, target] = 1.0
+    coefficient[:, target] = 0.5
+    preference = torch.zeros_like(coefficient)
+    baseline = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference,
+    )
+    candidate = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference + trial.delta.unsqueeze(0),
+    )
+    chosen_source = int(model.sources[target, trial.slot])
+    assert candidate[0, chosen_source, 0] > baseline[
+        0, chosen_source, 0
+    ]
+    assert candidate.sum().item() == pytest.approx(
+        baseline.sum().item()
+    )
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_randomized_routing_commits_effect_and_rejects_harm() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    state = model.initial_state(2)
+    state.credit_routing_eligibility[:, 4, 0] = 1.0
+    state.credit_routing_eligibility[:, 4, 1] = -1.0
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=20,
+        randomization_alpha=0.10,
+        proposal_step=0.05,
+        minimum_eligibility=1e-6,
+    )
+    trial = RoutingTrafficTrial()
+    before = state.credit_routing_preference.clone()
+
+    assert trial.begin(model, state, config, update=1)
+    arms = []
+    for _ in range(config.trial_updates):
+        exposed = trial.candidate_exposed
+        arms.append(exposed)
+        trial.observe(1.0 if exposed else 0.0, exposed)
+    assert sum(arms) == config.trial_updates // 2
+    assert trial.resolve(model, state, config, update=21)
+    assert trial.last_randomization_p_value == pytest.approx(1 / 32)
+    assert not torch.equal(state.credit_routing_preference, before)
+    assert torch.allclose(
+        state.credit_routing_preference[:, trial.last_target].sum(dim=1),
+        torch.zeros(2),
+        atol=1e-7,
+    )
+    assert (
+        state.credit_routing_preference.abs().max()
+        <= model.cfg.credit_routing_preference_limit
+    )
+    committed = state.credit_routing_preference.clone()
+
+    assert trial.begin(model, state, config, update=22)
+    for _ in range(config.trial_updates):
+        exposed = trial.candidate_exposed
+        trial.observe(0.0 if exposed else 1.0, exposed)
+    assert not trial.resolve(model, state, config, update=42)
+    assert torch.equal(state.credit_routing_preference, committed)
+    assert trial.total_committed == 1
+    assert trial.total_rejected == 1
+    assert [event["outcome"] for event in trial.trial_history] == [
+        "committed",
+        "rejected",
+    ]
+    assert all(
+        len(event["reward_observations"]) == config.trial_updates
+        for event in trial.trial_history
+    )
+
+
+def test_routing_assignments_are_balanced_trend_neutral_and_seeded() -> None:
+    rng_before = torch.get_rng_state().clone()
+    codes = [
+        deterministic_assignment_code(
+            topology_seed=seed,
+            trial_index=2,
+            target=10,
+            slot=1,
+            start_update=300,
+            trial_updates=20,
+        )
+        for seed in (7, 13, 21)
+    ]
+    assert torch.equal(torch.get_rng_state(), rng_before)
+    assert len(set(codes)) == 3
+
+    for code in codes:
+        schedule = crossover_schedule(code, 20)
+        assert sum(schedule) == 10
+        for offset in range(0, 20, 4):
+            block = schedule[offset : offset + 4]
+            signs = [1 if exposed else -1 for exposed in block]
+            assert sum(signs) == 0
+            assert sum(index * sign for index, sign in enumerate(signs)) == 0
+
+
+def test_structural_assignments_include_candidate_identity_without_rng() -> None:
+    rng_before = torch.get_rng_state().clone()
+    codes = [
+        deterministic_crossover_assignment_code(
+            topology_seed=7,
+            identity=(2, 10, 1, candidate, 300),
+            trial_updates=20,
+        )
+        for candidate in (3, 4, 5)
+    ]
+    assert torch.equal(torch.get_rng_state(), rng_before)
+    assert len(set(codes)) == 3
+
+    for code in codes:
+        schedule = crossover_schedule(code, 20)
+        assert sum(schedule) == 10
+        for offset in range(0, 20, 4):
+            block = schedule[offset : offset + 4]
+            signs = [1 if exposed else -1 for exposed in block]
+            assert sum(signs) == 0
+            assert sum(index * sign for index, sign in enumerate(signs)) == 0
+
+
+def test_exact_routing_randomization_rejects_null_and_ranks_effect() -> None:
+    schedule = crossover_schedule(13, 20)
+    null_rewards = [0.25] * 20
+    effect_rewards = [
+        1.0 if exposed else 0.0
+        for exposed in schedule
+    ]
+
+    assert schedule_advantage(null_rewards, schedule) == pytest.approx(0.0)
+    assert exact_one_sided_randomization_p_value(
+        null_rewards,
+        schedule,
+    ) == pytest.approx(1.0)
+    assert schedule_advantage(effect_rewards, schedule) == pytest.approx(1.0)
+    assert exact_one_sided_randomization_p_value(
+        effect_rewards,
+        schedule,
+    ) == pytest.approx(1 / 32)
+    result = exact_one_sided_randomization_test(
+        effect_rewards,
+        schedule,
+    )
+    assert result.observed_advantage == pytest.approx(1.0)
+    assert result.extreme_assignments == 1
+    assert result.total_assignments == 32
+
+
+def test_active_fixed_abba_checkpoint_finishes_legacy_verdict() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    state = model.initial_state(1)
+    state.credit_routing_eligibility[:, 4, 0] = 1.0
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=4,
+        randomization_alpha=0.10,
+        minimum_eligibility=0.0,
+    )
+    trial = RoutingTrafficTrial()
+    assert trial.begin(model, state, config, update=1)
+    payload = trial.state_dict()
+    payload.update(
+        {
+            "observations": 1,
+            "candidate_reward_sum": 0.4,
+            "candidate_observations": 1,
+        }
+    )
+    for name in (
+        "assignment_code",
+        "candidate_schedule",
+        "reward_observations",
+        "randomization_p_value",
+        "randomization_extreme_assignments",
+        "randomization_total_assignments",
+        "legacy_fixed_schedule",
+        "last_randomization_p_value",
+        "last_randomization_extreme_assignments",
+        "last_randomization_total_assignments",
+    ):
+        del payload[name]
+
+    restored = RoutingTrafficTrial.from_state_dict(payload, "cpu")
+    assert restored.legacy_fixed_schedule
+    for reward in (0.1, 0.2, 0.5):
+        restored.observe(reward, restored.candidate_exposed)
+
+    assert restored.resolve(model, state, config, update=5)
+    assert restored.trial_history[-1]["legacy_fixed_schedule"]
+    assert (
+        restored.trial_history[-1]["randomization_p_value"]
+        is None
+    )
+
+
+def test_routing_traffic_keeps_body_learning_and_sequences_structure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+        ),
+        routing_traffic_config=RoutingTrafficConfig(
+            enabled=True,
+            interval=100,
+            warmup_updates=100,
+            trial_updates=4,
+            proposal_step=0.05,
+            minimum_eligibility=0.0,
+        ),
+    )
+    trainer.state.credit_routing_eligibility[:, 4, 0] = 1.0
+    assert trainer.routing_traffic_trial.begin(
+        trainer.model,
+        trainer.state,
+        trainer.routing_traffic_config,
+        update=0,
+    )
+    sources = trainer.model.sources.clone()
+    before = trainer.model.token_embedding.weight.detach().clone()
+
+    def forbidden_structural_phase(*args, **kwargs):
+        raise AssertionError("structure changed during routing trial")
+
+    monkeypatch.setattr(
+        "dmon.organism.train.apply_structural_phase",
+        forbidden_structural_phase,
+    )
+    first_expected = trainer.routing_traffic_trial.candidate_exposed
+    first = trainer.step()
+    after_first = trainer.model.token_embedding.weight.detach().clone()
+    second_expected = trainer.routing_traffic_trial.candidate_exposed
+    second = trainer.step()
+    after_second = trainer.model.token_embedding.weight.detach().clone()
+
+    assert first.routing_candidate_exposed == first_expected
+    assert second.routing_candidate_exposed == second_expected
+    assert {first_expected, second_expected} == {True, False}
+    assert not torch.equal(after_first, before)
+    assert not torch.equal(after_second, after_first)
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.routing_traffic_trial.active
+    assert trainer.routing_traffic_trial.candidate_observations == 1
+    assert trainer.routing_traffic_trial.incumbent_observations == 1
+
+
+def test_routing_preserves_structural_decision_and_boundary_phases() -> None:
+    routing_config = RoutingTrafficConfig(
+        enabled=True,
+        interval=25,
+        warmup_updates=75,
+        trial_updates=20,
+        boundary_interval=250,
+    )
+    structural_config = StructuralConfig(
+        enabled=True,
+        interval=25,
+        warmup_updates=50,
+        confirmation_phases=2,
+    )
+    routing_updates = [
+        update
+        for update in range(50, 326, 25)
+        if routing_traffic_due(
+            routing_config,
+            update,
+            structural_decision_due=structural_decision_due(
+                structural_config,
+                update,
+            ),
+        )
+    ]
+    structural_updates = [
+        update
+        for update in range(50, 326, 25)
+        if structural_decision_due(
+            structural_config,
+            update,
+        )
+    ]
+
+    assert routing_updates == [100, 150, 200, 300]
+    assert structural_updates == [75, 125, 175, 225, 275, 325]
+    assert set(routing_updates).isdisjoint(structural_updates)
+    assert 250 not in routing_updates
+    assert not routing_traffic_due(
+        RoutingTrafficConfig(
+            enabled=True,
+            interval=10,
+            warmup_updates=0,
+            trial_updates=20,
+            boundary_interval=50,
+        ),
+        40,
+        structural_decision_due=False,
+    )
+
+
+def test_routing_start_still_runs_structural_evidence_phase(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            interval=25,
+            warmup_updates=50,
+            confirmation_phases=2,
+            min_edge_age=0,
+        ),
+        routing_traffic_config=RoutingTrafficConfig(
+            enabled=True,
+            interval=25,
+            warmup_updates=75,
+            trial_updates=4,
+            boundary_interval=250,
+            proposal_step=0.05,
+            minimum_eligibility=0.0,
+        ),
+    )
+    trainer.updates = 99
+    calls: list[int] = []
+    real_structural_phase = apply_structural_phase
+
+    def observed_structural_phase(*args, **kwargs):
+        calls.append(args[4])
+        return real_structural_phase(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "dmon.organism.train.apply_structural_phase",
+        observed_structural_phase,
+    )
+    metrics = trainer.step()
+
+    assert metrics.routing_trial_started
+    assert metrics.routing_trial_active
+    assert calls == [100]
+    assert not structural_decision_due(trainer.structural_config, 100)
+
+
+def test_output_credit_routing_policies_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        replace(
+            _model().cfg,
+            eligibility_routed_output_credit=True,
+            reward_plastic_output_credit_routing=True,
+        )
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        replace(
+            _model().cfg,
+            reward_plastic_output_credit_routing=True,
+            exploratory_output_credit_routing=True,
+        )
+
+
+def test_eligibility_router_excludes_dormant_credit_paths() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+        model.active_edges[4, 0] = False
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1,
+        model.cfg.cells,
+        model.cfg.dendrites,
+    )
+    source_memory = torch.ones_like(credit)
+    credit[0, 4] = 1.0
+    coefficient[0, 4, 0] = 1.0
+
+    transported = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+
+    assert torch.count_nonzero(transported).item() == 0
+
+
+def test_output_error_credit_meets_channel_specific_event_memory() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        message_steps=1,
+    )
+    base = model.initial_state(1)
+    base.output_error_credit[:, 3, 2] = 1.0
+    orthogonal = base.clone()
+    orthogonal.eligibility[:, 3, 4] = 1.0
+    matching = base.clone()
+    matching.eligibility[:, 3, 2] = 1.0
+
+    _, orthogonal_next, _ = model.tick(
+        orthogonal,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    _, matching_next, diagnostics = model.tick(
+        matching,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert not torch.allclose(
+        orthogonal_next.hidden[:, 3],
+        matching_next.hidden[:, 3],
+    )
+    assert diagnostics["mean_output_error_credit"].item() > 0
+
+
+def test_free_tick_cannot_create_output_error_credit() -> None:
+    model = _model(output_error_credit_gain=1.0)
+    state = model.initial_state(1)
+    _, next_state, _ = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert torch.count_nonzero(next_state.output_error_credit).item() == 0
+
+
+def test_reverse_credit_alignment_produces_anatomical_evidence() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        structural_probe_gain=0.03,
+        message_steps=1,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(
+            torch.eye(model.cfg.channels)
+        )
+        model.output_readout.weight.zero_()
+        model.output_readout.weight[0, 0] = 1.0
+    state = model.initial_state(1)
+    state.eligibility.fill_(1.0)
+    state = model.observe_prediction(
+        state,
+        torch.tensor([[2.0, 0.0, -1.0]]),
+        torch.tensor([2]),
+    )
+    _, _, diagnostics = model.tick(
+        state,
+        token=None,
+        reward=torch.zeros(1),
+    )
+    assert (
+        diagnostics["structural_edge_vector_evidence"]
+        .abs()
+        .sum()
+        .item()
+        > 0
+    )
+    assert (
+        diagnostics["structural_probe_vector_evidence"]
+        .abs()
+        .sum()
+        .item()
+        > 0
+    )
+
+
+def test_delayed_reward_changes_only_tagged_fast_synapses() -> None:
+    model = _model(reward_gain=0.0, fast_weight_decay=0.0)
+    state = model.initial_state(1)
+    state.edge_eligibility[:, 3, 1] = 1.0
+    _, next_state, _ = model.tick(
+        state, token=None, reward=torch.ones(1)
+    )
+    expected = model.cfg.fast_weight_limit * torch.tanh(
+        torch.tensor(
+            model.cfg.fast_plasticity_gain
+            / model.cfg.fast_weight_limit
+        )
+    ).item()
+    assert next_state.fast_weight[0, 3, 1].item() == pytest.approx(expected)
+    untagged = next_state.fast_weight.clone()
+    untagged[:, 3, 1] = 0.0
+    assert torch.count_nonzero(untagged).item() == 0
+
+
+def test_learned_edge_tags_are_competitive_per_target() -> None:
+    model = _model(edge_eligibility_decay=0.0)
+    state = model.initial_state(2)
+    _, next_state, _ = model.tick(state, torch.tensor([0, 1]))
+    tag_sums = next_state.edge_eligibility.sum(dim=2)
+    assert torch.allclose(tag_sums, torch.zeros_like(tag_sums), atol=1e-6)
+    assert next_state.edge_eligibility.abs().sum().item() > 0
+
+
+def test_fast_synapses_are_reward_dependent_bounded_and_differentiable() -> None:
+    model = _model(reward_gain=0.0)
+    no_reward = model.initial_state(1)
+    no_reward.edge_eligibility.fill_(1.0)
+    _, unchanged, _ = model.tick(
+        no_reward, token=None, reward=torch.zeros(1)
+    )
+    assert torch.count_nonzero(unchanged.fast_weight).item() == 0
+
+    bounded = model.initial_state(1)
+    bounded.edge_eligibility.fill_(1.0)
+    for _ in range(40):
+        _, bounded, _ = model.tick(
+            bounded, token=None, reward=torch.full((1,), 100.0)
+        )
+    assert bounded.fast_weight.abs().max().item() <= model.cfg.fast_weight_limit
+
+    gradient_state = model.initial_state(1)
+    gradient_state.fast_weight.requires_grad_(True)
+    logits, _, _ = model.tick(gradient_state, torch.tensor([1]))
+    logits.square().sum().backward()
+    assert gradient_state.fast_weight.grad is not None
+    assert gradient_state.fast_weight.grad.abs().sum().item() > 0
+
+
+def test_pending_reward_is_consumed_exactly_once() -> None:
+    model = _model(reward_gain=0.0)
+    state = model.initial_state(1)
+    state.edge_eligibility.fill_(1.0)
+    state.reward.fill_(1.0)
+    _, after_reward, _ = model.tick(state, token=None)
+    _, after_quiet, _ = model.tick(after_reward, token=None)
+    assert torch.count_nonzero(after_reward.fast_weight).item() > 0
+    expected_quiet = model.cfg.fast_weight_limit * torch.tanh(
+        model.cfg.fast_weight_decay
+        * after_reward.fast_weight
+        / model.cfg.fast_weight_limit
+    )
+    assert torch.allclose(
+        after_quiet.fast_weight,
+        expected_quiet,
+    )
+    assert torch.count_nonzero(after_quiet.reward).item() == 0
+
+
+def test_surprise_reward_is_signed_around_persistent_expectation() -> None:
+    model = _model(reward_baseline_decay=0.5)
+    state = model.initial_state(1)
+    baseline = state.reward_baseline.clone()
+
+    neutral = model.observe_surprise(state.clone(), baseline)
+    assert neutral.reward.item() == pytest.approx(0.0)
+
+    better = model.observe_surprise(state.clone(), baseline - 0.5)
+    worse = model.observe_surprise(state.clone(), baseline + 0.5)
+    assert better.reward.item() > 0
+    assert worse.reward.item() < 0
+    assert better.reward_baseline.item() == pytest.approx(
+        baseline.item() - 0.25
+    )
+
+
+def test_reward_plasticity_does_not_mint_energy() -> None:
+    model = _model(stimulation_gain=0.0, reward_gain=1.0)
+    state = model.initial_state(1)
+    state.eligibility.fill_(1.0)
+    state.edge_eligibility.fill_(1.0)
+    before = state.energy.clone()
+    _, after, diagnostics = model.tick(
+        state, token=None, reward=torch.ones(1)
+    )
+    assert after.energy.sum().item() <= before.sum().item() + 1e-6
+    assert diagnostics["energy_input"].item() == 0
+
+
+def test_structural_probe_measures_a_causal_candidate_effect() -> None:
+    model = _model(structural_probe_gain=0.03)
+    state = model.initial_state(2)
+    _, state, diagnostics = model.tick(state, torch.tensor([0, 1]))
+    assert diagnostics["probe_flow"].mean().item() > 0
+    assert state.probe_eligibility.abs().sum().item() > 0
+
+    state.reward.fill_(1.0)
+    _, _, rewarded = model.tick(state, torch.tensor([1, 2]))
+    assert rewarded["structural_probe_evidence"].abs().sum().item() > 0
+    assert all(
+        int(candidate) not in model.sources[target].tolist()
+        for target, candidate in enumerate(model.probe_sources)
+    )
+
+
+def test_structural_probe_mask_gates_only_selected_exploratory_traffic() -> None:
+    model = _model(structural_probe_gain=0.03, message_steps=1)
+    state = model.initial_state(2)
+    token = torch.tensor([0, 1])
+    _, _, full = model.tick(state.clone(), token)
+    mask = torch.ones(model.cfg.cells)
+    target = 3
+    mask[target] = 0
+    _, masked_state, masked = model.tick(
+        state.clone(),
+        token,
+        structural_probe_mask=mask,
+    )
+
+    assert masked["probe_flow"][target].item() == 0
+    keep = torch.arange(model.cfg.cells) != target
+    assert torch.allclose(
+        masked["probe_flow"][keep], full["probe_flow"][keep]
+    )
+    assert masked_state.probe_eligibility[:, target].abs().sum() == 0
+    assert masked_state.probe_eligibility[:, keep].abs().sum() > 0
+
+
+def test_structural_probe_fitness_uses_global_loss_gradient() -> None:
+    model = _model(structural_probe_gain=0.03)
+    tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
+    targets = torch.tensor([[1, 2, 0, 1], [2, 0, 1, 2]])
+    logits, _, trace = model.forward_sequence(
+        tokens, targets=targets, retain_credit=True
+    )
+    loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
+    loss.backward()
+    fitness = trace.probe_fitness()
+    assert fitness.shape == (tokens.shape[1], model.cfg.cells)
+    assert torch.isfinite(fitness).all()
+    assert fitness.abs().sum().item() > 0
+
+
+def test_structural_phase_rewires_one_slot_without_losing_integrity() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        replacements_per_phase=1,
+        credit_decay=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_probe_credit.zero_()
+    model.structural_edge_age.fill_(10)
+
+    chosen: tuple[int, int, int] | None = None
+    for target in range(model.cfg.cells):
+        candidate = int(model.probe_sources[target].item())
+        for slot in range(model.cfg.dendrites):
+            proposed = model.sources.clone()
+            proposed[target, slot] = candidate
+            topology = analyze_topology(
+                proposed, model.sensory_indices, model.output_indices
+            )
+            if (
+                topology.reachable_fraction == 1.0
+                and topology.output_reachable_fraction == 1.0
+            ):
+                chosen = (target, slot, candidate)
+                break
+        if chosen is not None:
+            break
+    assert chosen is not None
+    target, slot, candidate = chosen
+    model.structural_edge_credit[target, slot] = 0.0
+    model.structural_probe_credit[target] = 1.0
+
+    sources_before = model.sources.clone()
+    weights_before = model.edge_weight.detach().clone()
+    energy_before = trainer.state.energy.sum().item()
+    edge_moment = trainer.optimizer.state[model.edge_weight]["exp_avg"]
+    assert edge_moment.abs().sum().item() > 0
+
+    update = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert update.rewired_edges == 1
+    assert update.total_rewires == 1
+    assert int(model.sources[target, slot].item()) == candidate
+    unchanged = torch.ones_like(model.sources, dtype=torch.bool)
+    unchanged[target, slot] = False
+    assert torch.equal(model.sources[unchanged], sources_before[unchanged])
+    expected_graft = math.atanh(
+        model.cfg.structural_probe_gain * model.cfg.dendrites
+    )
+    assert model.edge_weight[target, slot].item() == pytest.approx(
+        expected_graft
+    )
+    assert torch.equal(
+        model.edge_weight.detach()[unchanged], weights_before[unchanged]
+    )
+    assert edge_moment[target, slot].item() == 0
+    assert torch.count_nonzero(
+        trainer.state.edge_eligibility[:, target, slot]
+    ).item() == 0
+    assert torch.count_nonzero(
+        trainer.state.fast_weight[:, target, slot]
+    ).item() == 0
+    assert energy_before - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+    topology = analyze_topology(
+        model.sources, model.sensory_indices, model.output_indices
+    )
+    assert topology.reachable_fraction == 1.0
+    assert topology.output_reachable_fraction == 1.0
+    assert len(set(model.sources[target].tolist())) == model.cfg.dendrites
+    assert int(model.probe_sources[target]) not in model.sources[target].tolist()
+
+
+def test_probes_only_control_rotates_without_rewiring() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            allow_rewiring=False,
+            interval=1,
+            warmup_updates=0,
+            credit_decay=0.0,
+            min_edge_age=0,
+        ),
+    )
+    sources = trainer.model.sources.clone()
+    probes = trainer.model.probe_sources.clone()
+    metrics = trainer.step()
+    assert torch.equal(trainer.model.sources, sources)
+    assert not torch.equal(trainer.model.probe_sources, probes)
+    assert metrics.rewired_edges == 0
+    assert metrics.total_rewires == 0
+
+
+def test_structural_candidate_requires_consecutive_confirmations() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        replacements_per_phase=1,
+        confirmation_phases=3,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+
+    first = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert first.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
+    assert torch.all(model.structural_probe_confirmations == 1)
+
+    model.structural_probe_credit.fill_(1.0)
+    second = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert second.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
+    assert torch.all(model.structural_probe_confirmations == 2)
+
+    model.structural_probe_credit.fill_(1.0)
+    third = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=3
+    )
+    assert third.rewired_edges == 1
+    assert not torch.equal(model.sources, sources)
+    assert not torch.equal(model.probe_sources, probes)
+    assert torch.count_nonzero(
+        model.structural_probe_confirmations
+    ).item() == 0
+
+
+def test_structural_confirmation_streak_resets_on_negative_phase() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=3,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+
+    model.structural_probe_credit.fill_(1.0)
+    apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert torch.all(model.structural_probe_confirmations == 1)
+
+    model.structural_probe_credit.fill_(-1.0)
+    apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert torch.count_nonzero(
+        model.structural_probe_confirmations
+    ).item() == 0
+
+    model.structural_probe_credit.fill_(1.0)
+    third = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=3
+    )
+    assert third.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+    assert not torch.equal(model.probe_sources, probes)
+
+
+def test_global_fitness_can_veto_locally_credited_rewire() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        require_global_fitness=True,
+        global_fitness_margin=0.0,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    model = trainer.model
+    model.structural_edge_credit.fill_(0.0)
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_probe_fitness.fill_(-1.0)
+    model.structural_edge_age.fill_(10)
+    sources = model.sources.clone()
+
+    rejected = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=1
+    )
+    assert rejected.rewired_edges == 0
+    assert torch.equal(model.sources, sources)
+
+    model.structural_probe_credit.fill_(1.0)
+    model.structural_probe_fitness.fill_(1.0)
+    accepted = apply_structural_phase(
+        model, trainer.state, trainer.optimizer, config, update=2
+    )
+    assert accepted.rewired_edges == 1
+    assert not torch.equal(model.sources, sources)
+
+
+def _start_forced_probation(
+    trainer: ContinuousTrainer,
+    config: StructuralConfig,
+    update: int,
+) -> tuple[int, int, int]:
+    model = trainer.model
+    model.structural_edge_credit.fill_(1.0)
+    model.structural_probe_credit.zero_()
+    model.structural_edge_age.fill_(10)
+    for target in range(model.cfg.cells):
+        candidate = int(model.probe_sources[target].item())
+        for slot in range(model.cfg.dendrites):
+            proposed = model.sources.clone()
+            proposed[target, slot] = candidate
+            topology = analyze_topology(
+                proposed, model.sensory_indices, model.output_indices
+            )
+            if (
+                topology.reachable_fraction == 1.0
+                and topology.output_reachable_fraction == 1.0
+            ):
+                model.structural_edge_credit[target, slot] = 0.0
+                model.structural_probe_credit[target] = 1.0
+                result = apply_structural_phase(
+                    model,
+                    trainer.state,
+                    trainer.optimizer,
+                    config,
+                    update,
+                    trainer.structural_probation,
+                )
+                assert result.probation_started
+                return target, slot, candidate
+    raise AssertionError("no viable probation candidate found")
+
+
+def test_negative_probation_restores_exact_graft_slot() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    weights = model.edge_weight.detach().clone()
+    biases = model.edge_bias.detach().clone()
+    edge_eligibility = trainer.state.edge_eligibility.clone()
+    fast_weight = trainer.state.fast_weight.clone()
+    routing_eligibility = (
+        trainer.state.credit_routing_eligibility.clone()
+    )
+    routing_preference = trainer.state.credit_routing_preference.clone()
+    weight_moment = trainer.optimizer.state[model.edge_weight][
+        "exp_avg"
+    ].clone()
+    bias_moment = trainer.optimizer.state[model.edge_bias][
+        "exp_avg"
+    ].clone()
+    energy = trainer.state.energy.sum().item()
+
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+    backed_credit = trainer.structural_probation.edge_credit.clone()
+    backed_age = trainer.structural_probation.edge_age.clone()
+    assert int(model.sources[target, slot]) == candidate
+    with torch.no_grad():
+        model.token_embedding.weight.add_(1.0)
+        model.edge_weight[target, slot].add_(3.0)
+        model.edge_bias[target, slot].add_(2.0)
+    body_after_experience = model.token_embedding.weight.detach().clone()
+    trainer.optimizer.state[model.edge_weight]["exp_avg"][
+        target, slot
+    ] = 9.0
+    trainer.optimizer.state[model.edge_bias]["exp_avg"][
+        target, slot
+    ] = 8.0
+    trainer.state.edge_eligibility[:, target, slot] = 7.0
+    trainer.state.fast_weight[:, target, slot] = 6.0
+    trainer.state.credit_routing_eligibility[:, target, slot] = 5.0
+    trainer.state.credit_routing_preference[:, target, slot] = 4.0
+    trainer.structural_probation.observe(-0.5)
+    committed = trainer.structural_probation.resolve(
+        model, trainer.state, trainer.optimizer, margin=0.0
+    )
+
+    assert not committed
+    assert torch.equal(model.sources, sources)
+    assert model.edge_weight[target, slot] == weights[target, slot]
+    assert model.edge_bias[target, slot] == biases[target, slot]
+    assert (
+        model.structural_edge_credit[target, slot]
+        == backed_credit
+    )
+    assert model.structural_edge_age[target, slot] == backed_age
+    assert torch.equal(
+        trainer.state.edge_eligibility[:, target, slot],
+        edge_eligibility[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.fast_weight[:, target, slot],
+        fast_weight[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.credit_routing_eligibility[:, target, slot],
+        routing_eligibility[:, target, slot],
+    )
+    assert torch.equal(
+        trainer.state.credit_routing_preference[:, target, slot],
+        routing_preference[:, target, slot],
+    )
+    assert (
+        trainer.optimizer.state[model.edge_weight]["exp_avg"][
+            target, slot
+        ]
+        == weight_moment[target, slot]
+    )
+    assert (
+        trainer.optimizer.state[model.edge_bias]["exp_avg"][
+            target, slot
+        ]
+        == bias_moment[target, slot]
+    )
+    assert torch.equal(
+        model.token_embedding.weight, body_after_experience
+    )
+    assert energy - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+    assert trainer.structural_probation.total_rolled_back == 1
+
+
+def test_positive_probation_commits_adapted_graft() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=1
+    )
+    with torch.no_grad():
+        trainer.model.edge_weight[target, slot].add_(0.5)
+    adapted = trainer.model.edge_weight[target, slot].detach().clone()
+    trainer.structural_probation.observe(0.25)
+    committed = trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert committed
+    assert int(trainer.model.sources[target, slot]) == candidate
+    assert trainer.model.edge_weight[target, slot] == adapted
+    assert not torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_committed == 1
+
+
+def test_probation_scores_against_pre_graft_developmental_baseline() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    _start_forced_probation(trainer, config, update=1)
+    trainer.structural_probation.baseline_advantage = 0.2
+    trainer.structural_probation.observe(0.1)
+    assert trainer.structural_probation.mean_advantage == pytest.approx(-0.1)
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+
+
+def test_probes_only_uses_virtual_probation_without_mutation() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        allow_rewiring=False,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    _start_forced_probation(trainer, config, update=1)
+    assert trainer.structural_probation.active
+    assert trainer.structural_probation.virtual
+    assert torch.equal(trainer.model.sources, sources)
+    trainer.structural_probation.observe(1.0)
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_rolled_back == 0
+
+
+def test_exploratory_probation_uses_abba_traffic_before_grafting() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    energy = trainer.state.energy.sum().item()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+
+    assert torch.equal(model.sources, sources)
+    assert trainer.state.energy.sum().item() == energy
+    arms = []
+    for reward in (0.4, 0.1, 0.2, 0.5):
+        mask, exposed = (
+            trainer.structural_probation.exploratory_probe_mask(model)
+        )
+        assert mask is not None
+        assert mask[target].item() == float(exposed)
+        arms.append(exposed)
+        trainer.structural_probation.observe(reward, exposed)
+    assert arms == [True, False, False, True]
+    assert (
+        trainer.structural_probation.candidate_observations
+        == trainer.structural_probation.incumbent_observations
+        == 2
+    )
+    assert trainer.structural_probation.mean_advantage == pytest.approx(0.3)
+
+    committed = trainer.structural_probation.resolve(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        resolved_update=6,
+    )
+    assert committed
+    assert int(model.sources[target, slot]) == candidate
+    assert model.total_rewires.item() == 1
+    assert energy - trainer.state.energy.sum().item() == pytest.approx(
+        trainer.stream.batch_size * config.growth_cost,
+        abs=2e-6,
+    )
+    trial = trainer.structural_probation.trial_history[-1]
+    assert trial["mode"] == "exploratory_traffic"
+    assert trial["outcome"] == "committed"
+    assert trial["started_update"] == 2
+    assert trial["resolved_update"] == 6
+    assert trial["target"] == target
+    assert trial["candidate_source"] == candidate
+    assert trial["candidate_observations"] == 2
+    assert trial["incumbent_observations"] == 2
+    assert trial["decision_advantage"] == pytest.approx(0.3)
+    assert trial["body_energy_after"] < trial["body_energy_before"]
+
+
+def test_randomized_structural_probation_commits_exact_ranked_benefit() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    model = trainer.model
+    sources = model.sources.clone()
+    energy = trainer.state.energy.clone()
+    target, slot, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+
+    arms = []
+    for _ in range(config.probation_updates):
+        mask, exposed = (
+            trainer.structural_probation.exploratory_probe_mask(model)
+        )
+        assert mask is not None
+        assert mask[target].item() == float(exposed)
+        assert torch.equal(model.sources, sources)
+        assert torch.equal(trainer.state.energy, energy)
+        arms.append(exposed)
+        trainer.structural_probation.observe(
+            1.0 if exposed else 0.0,
+            exposed,
+        )
+
+    assert sum(arms) == config.probation_updates // 2
+    assert trainer.structural_probation.randomization_p_value == pytest.approx(
+        1 / 32
+    )
+    assert trainer.structural_probation.randomization_total_assignments == 32
+    assert trainer.structural_probation.resolve(
+        model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        randomization_alpha=config.probation_randomization_alpha,
+        resolved_update=22,
+    )
+    assert int(model.sources[target, slot]) == candidate
+    assert not torch.equal(model.sources, sources)
+    assert (
+        energy.sum().item() - trainer.state.energy.sum().item()
+        == pytest.approx(
+            trainer.stream.batch_size * config.growth_cost,
+            abs=2e-6,
+        )
+    )
+    trial = trainer.structural_probation.trial_history[-1]
+    assert trial["mode"] == "exploratory_randomized_traffic"
+    assert trial["candidate_schedule"] == arms
+    assert trial["reward_observations"] == [
+        1.0 if exposed else 0.0 for exposed in arms
+    ]
+    assert trial["randomization_p_value"] == pytest.approx(1 / 32)
+    assert trial["randomization_extreme_assignments"] == 1
+    assert trial["randomization_total_assignments"] == 32
+
+
+@pytest.mark.parametrize(
+    ("candidate_reward", "incumbent_reward"),
+    [(0.25, 0.25), (0.0, 1.0)],
+)
+def test_randomized_structural_probation_rejects_null_and_harm(
+    candidate_reward: float,
+    incumbent_reward: float,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    sources = trainer.model.sources.clone()
+    energy = trainer.state.energy.clone()
+    _start_forced_probation(trainer, config, update=1)
+
+    for _ in range(config.probation_updates):
+        exposed = trainer.structural_probation.candidate_exposed
+        reward = candidate_reward if exposed else incumbent_reward
+        trainer.structural_probation.observe(reward, exposed)
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        randomization_alpha=config.probation_randomization_alpha,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert torch.equal(trainer.state.energy, energy)
+    assert trainer.structural_probation.total_rejected == 1
+    assert trainer.structural_probation.trial_history[-1]["outcome"] == (
+        "rejected"
+    )
+
+
+def test_exploratory_rejection_preserves_live_anatomy_and_energy() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    sources = trainer.model.sources.clone()
+    energy = trainer.state.energy.clone()
+    _start_forced_probation(trainer, config, update=2)
+    trainer.structural_probation.observe(0.1, True)
+    trainer.structural_probation.observe(0.2, False)
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert torch.equal(trainer.state.energy, energy)
+    assert trainer.structural_probation.total_rejected == 1
+    assert trainer.structural_probation.total_rolled_back == 0
+
+
+def test_exploratory_commit_rechecks_endpoint_energy() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.02,
+        min_endpoint_energy=0.1,
+        probation_updates=2,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            energy_start=1.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    sources = trainer.model.sources.clone()
+    target, _, candidate = _start_forced_probation(
+        trainer, config, update=2
+    )
+    trainer.structural_probation.observe(0.4, True)
+    trainer.structural_probation.observe(0.1, False)
+    trainer.state.energy[:, target] = 0
+    trainer.state.energy[:, candidate] = 0
+
+    assert not trainer.structural_probation.resolve(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        margin=0.0,
+        growth_cost=config.growth_cost,
+        min_endpoint_energy=config.min_endpoint_energy,
+    )
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.structural_probation.total_rejected == 1
+
+
+def test_exploratory_traffic_keeps_shared_body_learning_in_both_arms() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=2)
+    before = trainer.model.token_embedding.weight.detach().clone()
+    candidate_metrics = trainer.step()
+    after_candidate = (
+        trainer.model.token_embedding.weight.detach().clone()
+    )
+    incumbent_metrics = trainer.step()
+    after_incumbent = (
+        trainer.model.token_embedding.weight.detach().clone()
+    )
+
+    assert candidate_metrics.probation_candidate_exposed
+    assert not incumbent_metrics.probation_candidate_exposed
+    assert not torch.equal(after_candidate, before)
+    assert not torch.equal(after_incumbent, after_candidate)
+    assert trainer.structural_probation.active
+    assert trainer.structural_probation.candidate_observations == 1
+    assert trainer.structural_probation.incumbent_observations == 1
+
+
+def test_harmful_structural_probe_cannot_rewire() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        min_edge_age=0,
+        credit_margin=0.0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=config,
+    )
+    trainer.model.structural_edge_credit.fill_(-1.0)
+    trainer.model.structural_probe_credit.fill_(-0.5)
+    trainer.model.structural_edge_age.fill_(10)
+    sources = trainer.model.sources.clone()
+    update = apply_structural_phase(
+        trainer.model,
+        trainer.state,
+        trainer.optimizer,
+        config,
+        update=1,
+    )
+    assert update.rewired_edges == 0
+    assert torch.equal(trainer.model.sources, sources)
+
+
+def test_backward_credit_reaches_cells_and_synapses() -> None:
+    model = _model()
+    tokens = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 1]])
+    targets = torch.tensor([[1, 2, 0, 1], [2, 0, 1, 2]])
+    logits, _, trace = model.forward_sequence(
+        tokens, targets=targets, retain_credit=True
+    )
+    loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
+    loss.backward()
+    assert model.edge_weight.grad is not None
+    assert model.edge_weight.grad.abs().sum().item() > 0
+    credit = trace.cell_credit()
+    assert credit.shape == (tokens.shape[1], model.cfg.cells)
+    assert credit[0].sum().item() > 0
+
+
+def test_tiny_continuous_corpus_loss_falls() -> None:
+    torch.manual_seed(9)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    model = _model(vocab_size=len(vocabulary))
+    trainer = ContinuousTrainer(
+        model,
+        text,
+        vocabulary,
+        batch_size=4,
+        chunk_length=6,
+        learning_rate=6e-3,
+    )
+    losses = [trainer.step().loss for _ in range(60)]
+    assert sum(losses[-8:]) / 8 < 0.55 * (sum(losses[:8]) / 8)
+    assert trainer.state.eligibility.abs().sum().item() > 0
+
+
+def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
+    torch.manual_seed(12)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            reward_gain=0.0,
+            backward_credit_gain=0.25,
+            output_error_credit_gain=0.25,
+            reward_plastic_output_credit_routing=True,
+            eligibility_routing_gain=100.0,
+        ),
+        text,
+        vocabulary,
+        batch_size=3,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=StructuralConfig(
+            enabled=True,
+            allow_rewiring=False,
+            interval=2,
+            warmup_updates=0,
+            credit_decay=0.5,
+            min_edge_age=0,
+        ),
+    )
+    for _ in range(3):
+        trainer.step()
+    checkpoint = save_checkpoint(tmp_path / "resume.pt", trainer, {"tag": "test"})
+    expected = trainer.step()
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = resumed.step()
+    assert metadata == {"tag": "test"}
+    assert resumed.updates == trainer.updates
+    assert resumed.stream.position == trainer.stream.position
+    assert actual.loss == expected.loss
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert torch.equal(
+        resumed.state.backward_credit,
+        trainer.state.backward_credit,
+    )
+    assert torch.equal(
+        resumed.state.output_error_credit,
+        trainer.state.output_error_credit,
+    )
+    assert torch.equal(
+        resumed.state.credit_routing_eligibility,
+        trainer.state.credit_routing_eligibility,
+    )
+    assert torch.equal(
+        resumed.state.credit_routing_preference,
+        trainer.state.credit_routing_preference,
+    )
+    assert torch.equal(resumed.state.edge_eligibility, trainer.state.edge_eligibility)
+    assert torch.equal(resumed.state.probe_eligibility, trainer.state.probe_eligibility)
+    assert torch.equal(resumed.state.fast_weight, trainer.state.fast_weight)
+    assert torch.equal(resumed.state.reward_baseline, trainer.state.reward_baseline)
+    assert torch.equal(resumed.model.probe_sources, trainer.model.probe_sources)
+    assert torch.equal(resumed.model.active_edges, trainer.model.active_edges)
+    assert torch.equal(
+        resumed.model.structural_edge_credit,
+        trainer.model.structural_edge_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_probe_credit,
+        trainer.model.structural_probe_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_probe_fitness,
+        trainer.model.structural_probe_fitness,
+    )
+    assert torch.equal(
+        resumed.model.structural_edge_usage,
+        trainer.model.structural_edge_usage,
+    )
+    assert torch.equal(
+        resumed.model.structural_edge_vector_credit,
+        trainer.model.structural_edge_vector_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_probe_vector_credit,
+        trainer.model.structural_probe_vector_credit,
+    )
+    assert torch.equal(
+        resumed.model.structural_probe_confirmations,
+        trainer.model.structural_probe_confirmations,
+    )
+    assert torch.equal(
+        resumed.model.structural_edge_age,
+        trainer.model.structural_edge_age,
+    )
+    assert resumed.structural_config == trainer.structural_config
+    assert resumed.model.cfg.reward_plastic_output_credit_routing
+    assert resumed.model.cfg.eligibility_routing_gain == 100.0
+
+
+def test_checkpoint_resume_preserves_active_probation(tmp_path: Path) -> None:
+    torch.manual_seed(21)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=2,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=2,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=2)
+    trainer.updates = 2
+    checkpoint = save_checkpoint(
+        tmp_path / "probation.pt", trainer, {"tag": "probation"}
+    )
+
+    expected_first = trainer.step()
+    expected_second = trainer.step()
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual_first = resumed.step()
+    actual_second = resumed.step()
+
+    assert metadata == {"tag": "probation"}
+    assert actual_first.loss == expected_first.loss
+    assert actual_second.loss == expected_second.loss
+    assert resumed.updates == trainer.updates
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(
+        resumed.model.edge_weight, trainer.model.edge_weight
+    )
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.total_committed
+        == trainer.structural_probation.total_committed
+    )
+    assert (
+        resumed.structural_probation.total_rolled_back
+        == trainer.structural_probation.total_rolled_back
+    )
+    assert (
+        resumed.structural_probation.active
+        == trainer.structural_probation.active
+    )
+    assert (
+        resumed.prequential_advantage_ema
+        == trainer.prequential_advantage_ema
+    )
+
+
+def test_checkpoint_resume_preserves_exploratory_traffic_arm(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(22)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    first = trainer.step()
+    assert first.probation_candidate_exposed
+    checkpoint = save_checkpoint(
+        tmp_path / "exploratory.pt",
+        trainer,
+        {"tag": "exploratory"},
+    )
+
+    expected = [trainer.step() for _ in range(3)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = [resumed.step() for _ in range(3)]
+
+    assert metadata == {"tag": "exploratory"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.probation_candidate_exposed for row in actual] == [
+        row.probation_candidate_exposed for row in expected
+    ]
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.total_committed
+        == trainer.structural_probation.total_committed
+    )
+    assert (
+        resumed.structural_probation.total_rejected
+        == trainer.structural_probation.total_rejected
+    )
+    assert (
+        resumed.structural_probation.last_mean_advantage
+        == trainer.structural_probation.last_mean_advantage
+    )
+    assert (
+        resumed.structural_probation.trial_history
+        == trainer.structural_probation.trial_history
+    )
+
+
+def test_checkpoint_resume_preserves_randomized_structural_trial(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(24)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=20,
+        probation_exploratory_traffic=True,
+        probation_randomized_traffic=True,
+        probation_randomization_alpha=0.10,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    prefix = [trainer.step() for _ in range(5)]
+    assert sum(
+        row.probation_candidate_exposed for row in prefix
+    ) in (2, 3)
+    checkpoint = save_checkpoint(
+        tmp_path / "randomized-structural.pt",
+        trainer,
+        {"tag": "randomized-structural"},
+    )
+    checkpoint_schedule = list(
+        trainer.structural_probation.candidate_schedule
+    )
+    checkpoint_rewards = list(
+        trainer.structural_probation.reward_observations
+    )
+
+    expected = [trainer.step() for _ in range(15)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    assert resumed.structural_probation.candidate_schedule == (
+        checkpoint_schedule
+    )
+    assert resumed.structural_probation.reward_observations == (
+        checkpoint_rewards
+    )
+    actual = [resumed.step() for _ in range(15)]
+
+    assert metadata == {"tag": "randomized-structural"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.probation_candidate_exposed for row in actual] == [
+        row.probation_candidate_exposed for row in expected
+    ]
+    assert torch.equal(resumed.model.sources, trainer.model.sources)
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert (
+        resumed.structural_probation.last_randomization_p_value
+        == trainer.structural_probation.last_randomization_p_value
+    )
+    assert (
+        resumed.structural_probation
+        .last_randomization_extreme_assignments
+        == trainer.structural_probation
+        .last_randomization_extreme_assignments
+    )
+    assert (
+        resumed.structural_probation.trial_history
+        == trainer.structural_probation.trial_history
+    )
+
+
+def test_old_active_fixed_structural_trial_keeps_abba_after_resume(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(25)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    config = StructuralConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=10,
+        confirmation_phases=1,
+        credit_decay=0.0,
+        credit_margin=0.0,
+        min_edge_age=0,
+        growth_cost=0.0,
+        min_endpoint_energy=0.0,
+        probation_updates=4,
+        probation_exploratory_traffic=True,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        structural_config=config,
+    )
+    trainer.step()
+    _start_forced_probation(trainer, config, update=10)
+    trainer.updates = 10
+    first = trainer.step()
+    assert first.probation_candidate_exposed
+    checkpoint = save_checkpoint(
+        tmp_path / "old-fixed-structural.pt",
+        trainer,
+    )
+    payload = torch.load(checkpoint, weights_only=False)
+    for name in (
+        "probation_randomized_traffic",
+        "probation_randomization_alpha",
+    ):
+        del payload["trainer"]["structural_config"][name]
+    for name in (
+        "randomized_traffic",
+        "assignment_code",
+        "candidate_schedule",
+        "reward_observations",
+        "randomization_p_value",
+        "randomization_extreme_assignments",
+        "randomization_total_assignments",
+        "last_randomization_p_value",
+        "last_randomization_extreme_assignments",
+        "last_randomization_total_assignments",
+    ):
+        del payload["trainer"]["structural_probation"][name]
+    torch.save(payload, checkpoint)
+
+    resumed, _ = load_checkpoint(checkpoint, text)
+    remaining = [resumed.step() for _ in range(3)]
+    assert [
+        row.probation_candidate_exposed for row in remaining
+    ] == [False, False, True]
+    assert not resumed.structural_probation.active
+    assert (
+        resumed.structural_probation.trial_history[-1]["mode"]
+        == "exploratory_traffic"
+    )
+
+
+def test_checkpoint_resume_preserves_routing_traffic_arm(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(23)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    routing_config = RoutingTrafficConfig(
+        enabled=True,
+        interval=100,
+        warmup_updates=100,
+        trial_updates=4,
+        proposal_step=0.05,
+        minimum_eligibility=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        routing_traffic_config=routing_config,
+    )
+    trainer.state.credit_routing_eligibility[:, 4, 0] = 1.0
+    assert trainer.routing_traffic_trial.begin(
+        trainer.model,
+        trainer.state,
+        routing_config,
+        update=0,
+    )
+    schedule = list(trainer.routing_traffic_trial.candidate_schedule)
+    first = trainer.step()
+    assert first.routing_candidate_exposed == schedule[0]
+    checkpoint = save_checkpoint(
+        tmp_path / "routing-exploratory.pt",
+        trainer,
+        {"tag": "routing-exploratory"},
+    )
+
+    expected = [trainer.step() for _ in range(3)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = [resumed.step() for _ in range(3)]
+
+    assert metadata == {"tag": "routing-exploratory"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.routing_candidate_exposed for row in actual] == [
+        row.routing_candidate_exposed for row in expected
+    ]
+    assert [row.routing_trial_resolved for row in actual] == [
+        row.routing_trial_resolved for row in expected
+    ]
+    assert resumed.routing_traffic_config == trainer.routing_traffic_config
+    assert (
+        resumed.routing_traffic_trial.candidate_schedule
+        == trainer.routing_traffic_trial.candidate_schedule
+    )
+    assert (
+        resumed.routing_traffic_trial.reward_observations
+        == trainer.routing_traffic_trial.reward_observations
+    )
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert torch.equal(
+        resumed.state.credit_routing_preference,
+        trainer.state.credit_routing_preference,
+    )
+    assert (
+        resumed.routing_traffic_trial.total_committed
+        == trainer.routing_traffic_trial.total_committed
+    )
+    assert (
+        resumed.routing_traffic_trial.total_rejected
+        == trainer.routing_traffic_trial.total_rejected
+    )
+    assert (
+        resumed.routing_traffic_trial.trial_history
+        == trainer.routing_traffic_trial.trial_history
+    )
+    assert (
+        resumed.routing_traffic_trial.last_randomization_p_value
+        == trainer.routing_traffic_trial.last_randomization_p_value
+    )
+
+
+def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    checkpoint = save_checkpoint(tmp_path / "old.pt", trainer)
+    payload = torch.load(checkpoint, weights_only=False)
+    del payload["trainer"]["field_state"]["edge_eligibility"]
+    del payload["trainer"]["field_state"]["probe_eligibility"]
+    del payload["trainer"]["field_state"]["fast_weight"]
+    del payload["trainer"]["field_state"]["reward_baseline"]
+    del payload["trainer"]["field_state"]["backward_credit"]
+    del payload["trainer"]["field_state"]["output_error_credit"]
+    del payload["trainer"]["field_state"]["credit_routing_eligibility"]
+    del payload["trainer"]["field_state"]["credit_routing_preference"]
+    del payload["trainer"]["model_config"]["output_error_credit_gain"]
+    del payload["trainer"]["model_config"]["output_error_credit_decay"]
+    del payload["trainer"]["model_config"][
+        "reward_plastic_output_credit_routing"
+    ]
+    del payload["trainer"]["model_config"][
+        "exploratory_output_credit_routing"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_preference_decay"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_plasticity_gain"
+    ]
+    del payload["trainer"]["model_config"][
+        "credit_routing_preference_limit"
+    ]
+    del payload["trainer"]["model_config"]["initial_active_dendrites"]
+    del payload["trainer"]["model_config"]["structural_probe_gain"]
+    del payload["trainer"]["model_config"]["energy_transport_rate"]
+    del payload["trainer"]["model_config"]["energy_maintenance_flow"]
+    del payload["trainer"]["model_config"]["quiescence_energy"]
+    del payload["trainer"]["model_config"]["full_activity_energy"]
+    del payload["trainer"]["structural_config"]
+    del payload["trainer"]["structural_probation"]
+    del payload["trainer"]["routing_traffic_config"]
+    del payload["trainer"]["routing_traffic_trial"]
+    del payload["trainer"]["prequential_advantage_ema"]
+    for name in (
+        "probe_sources",
+        "active_edges",
+        "structural_edge_credit",
+        "structural_edge_usage",
+        "structural_edge_vector_credit",
+        "structural_probe_credit",
+        "structural_probe_fitness",
+        "structural_probe_vector_credit",
+        "structural_probe_confirmations",
+        "structural_edge_age",
+        "total_rewires",
+        "total_spawns",
+        "total_prunes",
+    ):
+        del payload["trainer"]["model"][name]
+    torch.save(payload, checkpoint)
+    resumed, _ = load_checkpoint(checkpoint, text)
+    assert torch.count_nonzero(resumed.state.edge_eligibility).item() == 0
+    assert torch.count_nonzero(resumed.state.probe_eligibility).item() == 0
+    assert torch.count_nonzero(resumed.state.fast_weight).item() == 0
+    assert torch.count_nonzero(resumed.state.backward_credit).item() == 0
+    assert (
+        torch.count_nonzero(resumed.state.output_error_credit).item() == 0
+    )
+    assert (
+        torch.count_nonzero(
+            resumed.state.credit_routing_eligibility
+        ).item()
+        == 0
+    )
+    assert (
+        torch.count_nonzero(
+            resumed.state.credit_routing_preference
+        ).item()
+        == 0
+    )
+    assert torch.count_nonzero(
+        resumed.model.structural_edge_credit
+    ).item() == 0
+    assert resumed.model.total_rewires.item() == 0
+    assert resumed.model.active_edges.all()
+    assert resumed.model.cfg.energy_transport_rate == pytest.approx(0.50)
+    assert resumed.model.cfg.energy_maintenance_flow == pytest.approx(0.0)
+    assert resumed.model.cfg.quiescence_energy == pytest.approx(0.01)
+    assert resumed.model.cfg.full_activity_energy == pytest.approx(0.05)
+    assert not resumed.model.cfg.exploratory_output_credit_routing
+    assert not resumed.routing_traffic_config.enabled
+    assert not resumed.routing_traffic_trial.active
+    assert resumed.routing_traffic_trial.trial_history == []
+    assert torch.allclose(
+        resumed.state.reward_baseline,
+        torch.full_like(
+            resumed.state.reward_baseline,
+            torch.log(torch.tensor(float(len(vocabulary)))).item(),
+        ),
+    )
+
+
+def test_frozen_connectome_survives_training_and_resume(tmp_path: Path) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        frozen_parameters=("edge_weight", "edge_bias"),
+    )
+    before_weight = trainer.model.edge_weight.detach().clone()
+    before_bias = trainer.model.edge_bias.detach().clone()
+    trainer.step()
+    assert torch.equal(trainer.model.edge_weight, before_weight)
+    assert torch.equal(trainer.model.edge_bias, before_bias)
+    checkpoint = save_checkpoint(tmp_path / "frozen.pt", trainer)
+    resumed, _ = load_checkpoint(checkpoint, text)
+    assert resumed.frozen_parameters == ("edge_bias", "edge_weight")
+    assert not resumed.model.edge_weight.requires_grad
+    assert not resumed.model.edge_bias.requires_grad
+
+
+def test_live_checkpoint_bridge_generates_with_real_credit(
+    tmp_path: Path,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    trainer.step()
+    checkpoint = save_checkpoint(tmp_path / "live.pt", trainer)
+    organism = LiveOrganism(checkpoint)
+    result = organism.generate("abca", 6, seed=3)
+    assert result["mode"] == "live-checkpoint"
+    assert len(result["output"]) == 6
+    assert result["checkpoint"]["updates"] == 1
+    assert result["metrics"]["cellCredit"] > 0
+    assert result["metrics"]["edgeCredit"] > 0
+    assert result["metrics"]["energy"] >= 0
+    assert 0 <= result["metrics"]["viability"] <= 1
+    assert 0 <= result["metrics"]["quiescentFraction"] <= 1
+    assert result["metrics"]["energyInput"] >= 0
+    assert result["metrics"]["energySpent"] >= 0
+    assert result["metrics"]["energyTransportDrift"] <= 1e-6
+    assert result["metrics"]["fastWeight"] >= 0
+    assert 0 <= result["metrics"]["fastSaturation"] <= 1
+    snapshot = organism.snapshot()
+    assert snapshot["metrics"]["edgeEligibility"] != 0
+    assert 0 <= snapshot["metrics"]["fastSaturation"] <= 1
+    assert snapshot["metrics"]["rewardBaseline"] > 0
+    assert "backwardCredit" in snapshot["metrics"]
+    assert "outputErrorCredit" in snapshot["metrics"]
+    assert 0 <= snapshot["metrics"]["viability"] <= 1
+    assert 0 <= snapshot["metrics"]["quiescentFraction"] <= 1
+    assert snapshot["metrics"]["structuralRewires"] == 0
+    assert "probeSources" in snapshot["topology"]
+    assert "activeEdges" in snapshot["topology"]
+    assert len(snapshot["topology"]["fastWeights"]) == trainer.model.cfg.cells
+    assert len(snapshot["topology"]["sources"]) == trainer.model.cfg.cells
+    assert len(snapshot["topology"]["edgeFlow"]) == trainer.model.cfg.cells
+    assert all(
+        len(row) == trainer.model.cfg.dendrites
+        for row in snapshot["topology"]["edgeFlow"]
+    )
+    assert len(snapshot["topology"]["cellActivity"]) == trainer.model.cfg.cells
+    assert snapshot["checkpoint"]["cells"] == trainer.model.cfg.cells
+    assert snapshot["checkpoint"]["dendrites"] == trainer.model.cfg.dendrites
+
+    energy_before_silence = snapshot["metrics"]["energy"]
+    clock_before_silence = snapshot["clock"]["ticks"]
+    silent = organism.advance_silence(2, seed=5)
+    assert len(silent["output"]) == 2
+    assert silent["clock"]["ticks"] == clock_before_silence + 2
+    assert silent["clock"]["lastInput"] is None
+    assert silent["metrics"]["novelty"] == 0
+    assert silent["metrics"]["energyInput"] == 0
+    assert silent["metrics"]["energy"] <= energy_before_silence
+    assert any(
+        flow > 0
+        for row in silent["topology"]["edgeFlow"]
+        for flow in row
+    )
+
+
+def test_checkpoint_promotion_validates_and_selects_lowest_bpc(
+    tmp_path: Path,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(vocab_size=len(vocabulary)),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+    )
+    trainer.step()
+    runs = []
+    for name, bpc in (("first", 2.8), ("second", 2.4)):
+        run = tmp_path / name
+        run.mkdir()
+        save_checkpoint(run / "best.pt", trainer, {"best_bpc": bpc})
+        (run / "summary.json").write_text(
+            json.dumps(
+                {
+                    "model": "sol",
+                    "best_bpc": bpc,
+                    "updates": trainer.updates,
+                    "parameters": sum(
+                        parameter.numel()
+                        for parameter in trainer.model.parameters()
+                    ),
+                    "evaluation": {
+                        "persistent": {"bits_per_character": bpc}
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        (run / "metrics.jsonl").write_text(
+            json.dumps(
+                {
+                    "kind": "evaluation",
+                    "model": "sol",
+                    "update": trainer.updates,
+                    "ablations": {
+                        "persistent": {
+                            "bits_per_character": bpc
+                        }
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        runs.append(run)
+
+    unstable = tmp_path / "unstable"
+    unstable.mkdir()
+    save_checkpoint(
+        unstable / "best.pt", trainer, {"best_bpc": 2.2}
+    )
+    (unstable / "summary.json").write_text(
+        json.dumps(
+            {
+                "model": "sol",
+                "best_bpc": 2.2,
+                "updates": 2,
+                "parameters": sum(
+                    parameter.numel()
+                    for parameter in trainer.model.parameters()
+                ),
+                "evaluation": {
+                    "persistent": {"bits_per_character": 4.0}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (unstable / "metrics.jsonl").write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "kind": "evaluation",
+                    "model": "sol",
+                    "update": update,
+                    "ablations": {
+                        "persistent": {
+                            "bits_per_character": bpc
+                        }
+                    },
+                }
+            )
+            for update, bpc in ((1, 2.2), (2, 4.0))
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    destination = tmp_path / "live.pt"
+    manifest = promote_best_checkpoint(runs + [unstable], destination)
+    assert manifest["source_run"] == str(runs[1])
+    assert manifest["best_bpc"] == 2.4
+    assert manifest["stability"]["stable"]
+    assert manifest["rejected_candidates"][0]["run"] == str(unstable)
+    assert not manifest["rejected_candidates"][0]["stability"]["stable"]
+    assert destination.exists()
+    assert destination.with_suffix(".json").exists()
+    promoted = LiveOrganism(destination)
+    assert promoted.loaded.updates == trainer.updates
+
+
+def test_heldout_evaluation_reports_state_ablations() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    model = _model(vocab_size=len(vocabulary))
+    sources = model.sources.clone()
+    probes = model.probe_sources.clone()
+    metrics = evaluate_state_ablations(
+        model, vocabulary, text, tokens=12, warmup=4
+    )
+    assert set(metrics) == {
+        "persistent",
+        "reset_each_token",
+        "shuffled_cells",
+        "zero_fast_efficacy",
+        "birth_topology",
+    }
+    assert torch.equal(model.sources, sources)
+    assert torch.equal(model.probe_sources, probes)
+    assert all(value["tokens"] == 12 for value in metrics.values())
+    assert all(value["bits_per_character"] > 0 for value in metrics.values())
+    assert all("mean_fast_weight" in value for value in metrics.values())
+    assert all("mean_edge_eligibility" in value for value in metrics.values())
+    assert all("fast_weight_saturation" in value for value in metrics.values())
+    assert all("mean_probe_flow" in value for value in metrics.values())
+    assert all(
+        "mean_backward_credit" in value
+        for value in metrics.values()
+    )
+    assert all(
+        "mean_output_error_credit" in value
+        for value in metrics.values()
+    )
+    assert all("mean_viability" in value for value in metrics.values())
+    assert all("quiescent_fraction" in value for value in metrics.values())
+    assert all("energy_input" in value for value in metrics.values())
+    assert all("energy_spent" in value for value in metrics.values())
+    assert all(
+        value["energy_transport_drift"] <= 1e-6
+        for value in metrics.values()
+    )
+    assert all("total_rewires" in value for value in metrics.values())
+    assert metrics["zero_fast_efficacy"]["mean_fast_weight"] == 0
+    sweep = evaluate_warmup_sweep(
+        model,
+        vocabulary,
+        text,
+        [0, 2, 4],
+        tokens=12,
+        score_start=8,
+    )
+    assert set(sweep) == {"0", "2", "4"}
+    assert all(value["tokens"] == 12 for value in sweep.values())
+
+
+def test_stability_ignores_early_learning_but_rejects_post_best_collapse() -> None:
+    stable = summarize_stability(
+        [(1, 5.0), (2, 3.0), (3, 2.5), (4, 2.7)],
+        max_regression_bpc=0.5,
+    )
+    assert stable["stable"]
+    assert stable["best_update"] == 3
+    assert stable["final_regression_bpc"] == pytest.approx(0.2)
+
+    collapsed = summarize_stability(
+        [(1, 5.0), (2, 2.4), (3, 3.1), (3, 3.2)],
+        max_regression_bpc=0.5,
+    )
+    assert not collapsed["stable"]
+    assert collapsed["evaluations"] == 3
+    assert collapsed["worst_regression_bpc"] == pytest.approx(0.8)
+
+
+def test_exploratory_survival_aligns_each_trial_with_the_living_body() -> None:
+    trials = [
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "committed",
+            "virtual": False,
+            "started_update": 100,
+            "resolved_update": 140,
+            "decision_advantage": 0.04,
+        },
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "rejected",
+            "virtual": False,
+            "started_update": 220,
+            "resolved_update": 260,
+            "decision_advantage": -0.01,
+        },
+        {
+            "mode": "exploratory_traffic",
+            "outcome": "virtual",
+            "virtual": True,
+            "started_update": 300,
+            "resolved_update": 340,
+            "decision_advantage": 0.02,
+        },
+    ]
+    summary = summarize_exploratory_survival(
+        [
+            (50, 3.0),
+            (100, 2.8),
+            (150, 2.9),
+            (200, 2.7),
+            (250, 2.6),
+            (300, 3.4),
+        ],
+        trials,
+        max_regression_bpc=0.5,
+    )
+    assert summary["trials"] == 2
+    assert summary["committed"] == 1
+    assert summary["rejected"] == 1
+    assert summary["evaluated_trials"] == 2
+    assert summary["survived_trials"] == 1
+    assert summary["unstable_trials"] == 1
+    first, second = summary["trial_history"]
+    assert first["baseline_update"] == 100
+    assert first["first_post_update"] == 150
+    assert first["survived"]
+    assert second["baseline_update"] == 200
+    assert second["worst_regression_bpc"] == pytest.approx(0.7)
+    assert not second["survived"]
+
+
+def test_cell_shuffle_keeps_target_owned_edge_state_aligned() -> None:
+    model = _model()
+    state = model.initial_state(1)
+    markers = torch.arange(model.cfg.cells, dtype=state.fast_weight.dtype)
+    state.edge_eligibility[:, :, 0] = markers
+    state.fast_weight[:, :, 0] = markers + 100
+    state.credit_routing_eligibility[:, :, 0] = markers + 200
+    state.credit_routing_preference[:, :, 0] = markers + 300
+    state.probe_eligibility[:] = markers
+    state.backward_credit[:] = markers
+    state.output_error_credit[:, :, 0] = markers
+    permutation = torch.arange(model.cfg.cells - 1, -1, -1)
+    shuffled = _shuffle_cell_state(state, permutation)
+    assert torch.equal(
+        shuffled.edge_eligibility[:, :, 0], markers[permutation].unsqueeze(0)
+    )
+    assert torch.equal(
+        shuffled.fast_weight[:, :, 0],
+        (markers[permutation] + 100).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.credit_routing_eligibility[:, :, 0],
+        (markers[permutation] + 200).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.credit_routing_preference[:, :, 0],
+        (markers[permutation] + 300).unsqueeze(0),
+    )
+    assert torch.equal(
+        shuffled.probe_eligibility, markers[permutation].unsqueeze(0)
+    )
+    assert torch.equal(
+        shuffled.backward_credit, markers[permutation].unsqueeze(0)
+    )
+    assert torch.equal(
+        shuffled.output_error_credit[:, :, 0],
+        markers[permutation].unsqueeze(0),
+    )
+
+
+def test_gru_control_matches_budget_and_scores_stream() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    target = sum(parameter.numel() for parameter in _model().parameters())
+    hidden = match_gru_hidden_size(len(vocabulary), target)
+    model = CharacterGRU(len(vocabulary), hidden)
+    nearest_error = abs(model.parameter_count() - target)
+    assert nearest_error / target < 0.08
+    metrics = evaluate_gru(
+        model, vocabulary.encode(text), tokens=12, warmup=4
+    )
+    assert metrics["tokens"] == 12
+    assert metrics["bits_per_character"] > 0
+
+
+def test_transformer_control_is_causal_matched_and_stateful() -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    target = sum(parameter.numel() for parameter in _model().parameters())
+    hidden = match_transformer_hidden_size(
+        len(vocabulary), target, layers=1, heads=2, context=16, maximum=64
+    )
+    model = CausalCharacterTransformer(
+        len(vocabulary), hidden, layers=1, heads=2, context=16
+    )
+    assert abs(model.parameter_count() - target) / target < 0.20
+    state = model.initial_state(1, "cpu")
+    logits, state = model(vocabulary.encode("ab").view(1, -1), state)
+    assert logits.shape == (1, 2, len(vocabulary))
+    assert state.shape == (1, 2)
+    metrics = evaluate_transformer(
+        model, vocabulary.encode(text), tokens=12, warmup=4
+    )
+    assert metrics["tokens"] == 12
+    assert metrics["bits_per_character"] > 0
+
+
+def test_report_guards_budgets_and_measures_state_penalties(
+    tmp_path: Path,
+) -> None:
+    sol_dir = tmp_path / "sol"
+    gru_dir = tmp_path / "gru"
+    sol_dir.mkdir()
+    gru_dir.mkdir()
+    (sol_dir / "summary.json").write_text(
+        """{
+          "model": "sol",
+          "parameters": 1000,
+          "updates": 20,
+          "best_bpc": 2.4,
+          "evaluation": {
+            "persistent": {"bits_per_character": 2.5},
+            "reset_each_token": {"bits_per_character": 4.0},
+            "shuffled_cells": {"bits_per_character": 3.3}
+          }
+        }""",
+        encoding="utf-8",
+    )
+    (gru_dir / "summary.json").write_text(
+        """{
+          "model": "gru",
+          "parameters": 1020,
+          "updates": 20,
+          "best_bpc": 2.2,
+          "evaluation": {"bits_per_character": 2.3}
+        }""",
+        encoding="utf-8",
+    )
+    comparison = compare_runs(
+        [load_run("sol", sol_dir), load_run("gru", gru_dir)]
+    )
+    assert comparison["winner"] == "gru"
+    assert comparison["rows"][0]["reset_penalty_bpc"] == 1.5
+    assert "| sol |" in markdown_report(comparison)
+
+    mismatched = json.loads((gru_dir / "summary.json").read_text())
+    mismatched["parameters"] = 2000
+    (gru_dir / "summary.json").write_text(
+        json.dumps(mismatched), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="parameter ratio"):
+        compare_runs(
+            [load_run("sol", sol_dir), load_run("gru", gru_dir)]
+        )
