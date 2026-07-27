@@ -45,7 +45,11 @@ class TrainMetrics:
     mean_probe_flow: float
     mean_probe_fitness: float
     rewired_edges: int
+    spawned_edges: int
+    pruned_edges: int
     total_rewires: int
+    total_spawns: int
+    total_prunes: int
     candidate_advantage: float
     rejected_rewires: int
     probation_active: bool
@@ -100,6 +104,13 @@ class ContinuousTrainer:
         ):
             raise ValueError(
                 "structural plasticity requires a positive probe gain"
+            )
+        if (
+            self.structural_config.min_active_dendrites
+            > self.model.cfg.dendrites
+        ):
+            raise ValueError(
+                "minimum active dendrites cannot exceed slot capacity"
             )
         frozen_edges = bool(
             {"edge_weight", "edge_bias"}.intersection(
@@ -244,6 +255,13 @@ class ContinuousTrainer:
             trace.structural_probe_evidence
         ).mean(dim=0)
         probe_fitness = trace.probe_fitness().mean(dim=0)
+        edge_usage = torch.stack(trace.edge_flow).mean(dim=0)
+        edge_vector_evidence = torch.stack(
+            trace.structural_edge_vector_evidence
+        ).mean(dim=0)
+        probe_vector_evidence = torch.stack(
+            trace.structural_probe_vector_evidence
+        ).mean(dim=0)
         prequential_advantage = float(
             torch.stack(trace.prequential_reward).mean().item()
         )
@@ -253,6 +271,9 @@ class ContinuousTrainer:
             probe_evidence,
             probe_fitness,
             self.structural_config,
+            edge_usage=edge_usage,
+            edge_vector_evidence=edge_vector_evidence,
+            probe_vector_evidence=probe_vector_evidence,
         )
         baseline_before = self.prequential_advantage_ema
         exploratory_trial = (
@@ -297,10 +318,15 @@ class ContinuousTrainer:
                 next_probe_sources(
                     self.model.sources,
                     self.model.probe_sources,
+                    self.model.active_edges,
+                    prefer_local=(
+                        self.structural_config.locality_gain > 0
+                    ),
                 )
             )
             self.model.structural_probe_credit.zero_()
             self.model.structural_probe_fitness.zero_()
+            self.model.structural_probe_vector_credit.zero_()
             self.model.structural_probe_confirmations.zero_()
             self.state.probe_eligibility.zero_()
             resolved = True
@@ -395,7 +421,11 @@ class ContinuousTrainer:
                 self.model.structural_probe_fitness.mean().item()
             ),
             rewired_edges=structural_update.rewired_edges,
+            spawned_edges=structural_update.spawned_edges,
+            pruned_edges=structural_update.pruned_edges,
             total_rewires=structural_update.total_rewires,
+            total_spawns=int(self.model.total_spawns.item()),
+            total_prunes=int(self.model.total_prunes.item()),
             candidate_advantage=structural_update.candidate_advantage,
             rejected_rewires=(
                 structural_update.rejected_for_reachability
@@ -493,6 +523,7 @@ def main() -> None:
     parser.add_argument("--cells", type=int, default=32)
     parser.add_argument("--channels", type=int, default=32)
     parser.add_argument("--dendrites", type=int, default=4)
+    parser.add_argument("--initial-active-dendrites", type=int, default=None)
     parser.add_argument("--message-steps", type=int, default=3)
     parser.add_argument("--cell-reward-gain", type=float, default=0.25)
     parser.add_argument(
@@ -533,6 +564,7 @@ def main() -> None:
         cells=args.cells,
         channels=args.channels,
         dendrites=args.dendrites,
+        initial_active_dendrites=args.initial_active_dendrites,
         message_steps=args.message_steps,
         topology_seed=args.seed,
         reward_gain=args.cell_reward_gain,

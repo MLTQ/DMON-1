@@ -18,6 +18,8 @@ connectome.
   floor moves only existing energy along installed non-self axons when information
   traffic is silent.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
+- **Does**: Separates maximum dendrite-slot capacity from the number active at birth;
+  the disabled default activates every slot for historical checkpoint equivalence.
 
 ### `FieldState`
 - **Does**: Carries hidden state, energy, causal stimulation, eligibility, sensory memory,
@@ -49,6 +51,8 @@ connectome.
 - **Does**: Persist current candidate sources, incumbent/candidate credit, edge age, and
   per-candidate global fitness and confirmation streaks, and total rewrites with the
   model while upgrading older checkpoints additively.
+- **Does**: Persist the active-slot mask, traffic EMA, decoder-credit alignment, and
+  spawn/prune counters. Older checkpoints reconstruct an all-active mask.
 - **Interacts with**: `apply_structural_phase` in `structure.py`.
 
 ### `birth_sources`
@@ -63,6 +67,13 @@ connectome.
   an exploratory traffic trial without silencing any other candidate traffic.
 - **Rationale**: Growth evidence comes from an intervention, not geometric proximity or
   an all-to-all correlation.
+
+### Active dendrite slots
+- **Does**: Masks attention, signed coefficients, fast efficacy, eligibility, reverse
+  credit, and maintenance energy for dormant slots while preserving fixed tensor and
+  optimizer shapes.
+- **Rationale**: Axons and dendrites can be born and pruned without rebuilding the model
+  or resetting unrelated organism memory.
 
 ### `_transport_backward_credit`
 - **Does**: Scatter-adds target credit to each target's named sources using the signed
@@ -101,6 +112,9 @@ connectome.
 - **Does**: Consumes one optional streamed character, performs recurrent graph updates,
   tags individual dendrites and causal probes from local activity, applies delayed
   reward to remembered tags, updates energy, and emits next-character logits.
+- **Does**: Measures whether channel-shaped reverse credit crossing each installed edge
+  or causal probe actually aligns with event eligibility at the source cell, providing
+  signed anatomical evidence distinct from raw traffic.
 - **Rationale**: `token=None` remains a live interval and proves energy depletion without
   stimulation.
 - **Reward contract**: A pending reward is consumed once. `forward_sequence` stores the
@@ -144,7 +158,7 @@ connectome.
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `train.py` | Tokens and logits use `(batch, time, ...)`; returned state remains attached | Shapes, return arity |
-| Tests and diagnostics | `sources[target, slot]` is the authoritative fixed-fan-in directed graph | Topology representation |
+| Tests and diagnostics | `sources[target, slot]` plus `active_edges[target, slot]` define the directed graph | Topology representation |
 | `structure.py` | Probe sources are non-edges and structural buffers retain fixed shapes | Buffer shapes |
 | Future modalities | A modality injects cell-aligned stimulus and causal stimulation | Replacing `tick` semantics |
 | Metabolic experiments | Total energy can rise only by reported external input | Energy update or transport normalization |

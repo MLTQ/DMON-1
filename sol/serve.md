@@ -40,6 +40,8 @@ It binds to `127.0.0.1` by default and has no hosting or external-service depend
   no observed target from which to create a new decoder correction.
 - **Does**: Derives current viability and quiescent fraction from the checkpoint lane's
   actual cell energies without mutating it.
+- **Does**: Returns the exact active-slot mask so dormant capacity is visually and
+  semantically distinct from a live dendrite.
 
 ### HTTP handler
 - **Does**: Serves `GET /health`, `GET /snapshot`, `POST /generate`, and

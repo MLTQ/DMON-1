@@ -33,7 +33,8 @@ including controls that test whether persistent cellular state is doing useful w
 - **Does**: Scores the trained organism while zeroing fast efficacy before every tick,
   isolating whether online synaptic memory contributes at inference.
 - **Does**: Replaces a grown source table with the deterministic birth topology while
-  preserving learned weights and recurrent policy, then restores the live connectome.
+  preserving learned weights and recurrent policy, then restores both the live source
+  table and active-slot mask.
 - **Rationale**: A matched training gain is stronger evidence when the winning organism
   also causally depends on its installed morphology.
 - **Rationale**: A good loss is not evidence of memory unless breaking memory hurts.

@@ -51,6 +51,11 @@ with checkpointing and append-only metrics.
 - **Does**: Structural flags record probe gain, phase cadence, replacement budget,
   consecutive confirmation phases, credit decay/margin, maturity, and endpoint energy
   cost.
+- **Does**: `--initial-active-dendrites` sets birth fan-in below fixed slot capacity.
+  `--structural-variable-fan-in` enables spawn/prune decisions, with explicit minimum
+  fan-in, traffic/credit pruning thresholds, and usage/vector/locality evidence gains.
+- **Rationale**: Capacity-matched controls retain identical learned parameters while
+  active anatomy is allowed to earn or lose connections.
 - **Does**: `--structural-global-fitness` requires locally confirmed probes to also
   predict a reduction in exact sequence loss before permanent installation.
 - **Does**: Structural probation flags hold a confirmed graft provisionally, accumulate

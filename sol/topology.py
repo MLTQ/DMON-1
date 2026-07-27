@@ -27,6 +27,7 @@ def analyze_topology(
     sources: torch.Tensor,
     sensory_indices: torch.Tensor,
     output_indices: torch.Tensor,
+    active_edges: torch.Tensor | None = None,
 ) -> TopologyMetrics:
     """Measure forward reachability on a target-by-dendrite source table."""
 
@@ -36,6 +37,11 @@ def analyze_topology(
     if cells < 1 or dendrites < 1:
         raise ValueError("sources must be non-empty")
     source_rows = sources.detach().cpu().tolist()
+    if active_edges is None:
+        active_edges = torch.ones_like(sources, dtype=torch.bool)
+    if active_edges.shape != sources.shape:
+        raise ValueError("active_edges must match sources")
+    active_rows = active_edges.detach().cpu().tolist()
     sensory = [int(index) for index in sensory_indices.detach().cpu()]
     outputs = [int(index) for index in output_indices.detach().cpu()]
     if not sensory or not outputs:
@@ -43,13 +49,21 @@ def analyze_topology(
 
     adjacency: list[list[int]] = [[] for _ in range(cells)]
     self_edges = 0
+    directed_edges = 0
     for target, row in enumerate(source_rows):
-        for source in row:
+        for source, active in zip(
+            row,
+            active_rows[target],
+            strict=True,
+        ):
+            if not active:
+                continue
             source = int(source)
             if not 0 <= source < cells:
                 raise ValueError("source index is outside the cell field")
             adjacency[source].append(target)
             self_edges += int(source == target)
+            directed_edges += 1
 
     distance: list[int | None] = [None] * cells
     queue: deque[int] = deque()
@@ -76,7 +90,7 @@ def analyze_topology(
     reachable_cells = sum(value is not None for value in distance)
     return TopologyMetrics(
         cells=cells,
-        directed_edges=cells * dendrites,
+        directed_edges=directed_edges,
         self_edges=self_edges,
         reachable_cells=reachable_cells,
         reachable_fraction=reachable_cells / cells,

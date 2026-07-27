@@ -15,6 +15,8 @@ connectomes.
 ### `analyze_topology`
 - **Does**: Converts target-owned source slots into forward adjacency and performs a
   multi-source breadth-first search from sensory cells.
+- **Does**: Accepts an optional active-slot mask; directed-edge counts and reachability
+  ignore dormant capacity.
 - **Interacts with**: `SparseAxonField.sources` in `model.py` and `benchmark.py`.
 - **Rationale**: A growth or pruning rule cannot claim useful morphology if it silently
   disconnects the output organ.

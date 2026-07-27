@@ -172,6 +172,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         cells=args.cells,
         channels=args.channels,
         dendrites=args.dendrites,
+        initial_active_dendrites=args.initial_active_dendrites,
         sensory_cells=args.sensory_cells,
         output_cells=args.output_cells,
         message_steps=args.message_steps,
@@ -232,6 +233,21 @@ def _run_sol(
                 probation_exploratory_traffic=(
                     args.structural_probation_exploratory_traffic
                 ),
+                variable_fan_in=args.structural_variable_fan_in,
+                min_active_dendrites=(
+                    args.structural_min_active_dendrites
+                ),
+                prune_usage_threshold=(
+                    args.structural_prune_usage_threshold
+                ),
+                prune_credit_threshold=(
+                    args.structural_prune_credit_threshold
+                ),
+                usage_gain=args.structural_usage_gain,
+                vector_credit_gain=(
+                    args.structural_vector_credit_gain
+                ),
+                locality_gain=args.structural_locality_gain,
             ),
             device=device,
         )
@@ -367,6 +383,7 @@ def _run_sol(
             trainer.model.sources,
             trainer.model.sensory_indices,
             trainer.model.output_indices,
+            trainer.model.active_edges,
         ).to_dict(),
         "structure": structural_summary(
             trainer.model,
@@ -656,6 +673,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cells", type=int, default=64)
     parser.add_argument("--channels", type=int, default=64)
     parser.add_argument("--dendrites", type=int, default=8)
+    parser.add_argument("--initial-active-dendrites", type=int, default=None)
     parser.add_argument("--sensory-cells", type=int, default=8)
     parser.add_argument("--output-cells", type=int, default=8)
     parser.add_argument("--message-steps", type=int, default=3)
@@ -715,6 +733,39 @@ def parse_args() -> argparse.Namespace:
             "alternate one candidate probe on/off inside the same "
             "continuously learning organism before grafting"
         ),
+    )
+    parser.add_argument(
+        "--structural-variable-fan-in",
+        action="store_true",
+        help=(
+            "allow active dendrite count to change within fixed slot capacity"
+        ),
+    )
+    parser.add_argument(
+        "--structural-min-active-dendrites",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--structural-prune-usage-threshold",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--structural-prune-credit-threshold",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--structural-usage-gain", type=float, default=1.0)
+    parser.add_argument(
+        "--structural-vector-credit-gain",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--structural-locality-gain",
+        type=float,
+        default=0.0,
     )
     parser.add_argument("--max-final-regression-bpc", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=7)
@@ -819,6 +870,25 @@ def parse_args() -> argparse.Namespace:
         )
     if args.max_final_regression_bpc < 0:
         parser.error("--max-final-regression-bpc must be non-negative")
+    if args.structural_min_active_dendrites < 1:
+        parser.error("--structural-min-active-dendrites must be positive")
+    if (
+        args.structural_min_active_dendrites
+        > args.dendrites
+    ):
+        parser.error(
+            "--structural-min-active-dendrites cannot exceed --dendrites"
+        )
+    if args.structural_prune_usage_threshold < 0:
+        parser.error(
+            "--structural-prune-usage-threshold must be non-negative"
+        )
+    if (
+        args.structural_usage_gain < 0
+        or args.structural_vector_credit_gain < 0
+        or args.structural_locality_gain < 0
+    ):
+        parser.error("structural evidence gains must be non-negative")
     if not 0 <= args.structural_credit_decay < 1:
         parser.error("--structural-credit-decay must be in [0, 1)")
     if args.structural_credit_margin < 0:

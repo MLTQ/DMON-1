@@ -260,15 +260,25 @@ def evaluate_state_ablations(
         for name, options in policies.items()
     }
     sources = model.sources.clone()
+    active_edges = model.active_edges.clone()
     probes = model.probe_sources.clone()
     birth_sources = model.birth_sources()
+    birth_active_edges = model.birth_active_edges()
     birth_probes = probes.clone()
-    fallback_probes = next_probe_sources(birth_sources, probes)
+    fallback_probes = next_probe_sources(
+        birth_sources,
+        probes,
+        birth_active_edges,
+    )
     for target in range(model.cfg.cells):
-        if int(birth_probes[target]) in birth_sources[target].tolist():
+        active_sources = birth_sources[target][
+            birth_active_edges[target]
+        ].tolist()
+        if int(birth_probes[target]) in active_sources:
             birth_probes[target] = fallback_probes[target]
     try:
         model.sources.copy_(birth_sources)
+        model.active_edges.copy_(birth_active_edges)
         model.probe_sources.copy_(birth_probes)
         results["birth_topology"] = evaluate_sol(
             model,
@@ -281,6 +291,7 @@ def evaluate_state_ablations(
         ).to_dict()
     finally:
         model.sources.copy_(sources)
+        model.active_edges.copy_(active_edges)
         model.probe_sources.copy_(probes)
     return results
 

@@ -72,6 +72,12 @@ tensor shapes.
   output cells, moves through the signed transpose of the actual message transform,
   acts only where its channels meet event eligibility, cannot appear without an
   observed target, and adds no parameters.
+- **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
+  topology metrics count only active anatomy, a qualified decoder-credit candidate can
+  spawn into dormant capacity, and a redundant unused edge can be pruned without
+  violating reachability or changing parameter count.
+- **Does**: Proves reverse decoder credit meeting source eligibility produces separate
+  signed anatomical evidence for installed edges and exploratory candidates.
 - **Does**: Proves delayed reward changes only tagged dendrites, zero reward cannot
   create fast efficacy, fast weights remain bounded and differentiable, and plasticity
   cannot mint metabolic energy.

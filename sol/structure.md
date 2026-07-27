@@ -4,7 +4,8 @@
 
 Runs bounded non-differentiable connectome changes between truncated-BPTT windows.
 Targets compare mature dendrites with one causally measured candidate while preserving
-fixed fan-in, reachability, persistent state, optimizer integrity, and energy provenance.
+fixed slot capacity, reachability, persistent state, optimizer integrity, and energy
+provenance. An optional policy permits actual fan-in to grow and shrink.
 
 ## Components
 
@@ -13,6 +14,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   improvement margin, required consecutive confirmation phases, endpoint energy cost,
   whether global predictive fitness is required, and whether matched probes may actually
   rewrite topology.
+- **Does**: Optionally defines minimum active fan-in, pruning thresholds, and gains for
+  traffic, decoder-credit alignment, and circular locality evidence.
 - **Does**: Optionally defines a post-graft probation duration and minimum observed
   prequential improvement for committing provisional anatomy, plus the developmental
   baseline decay used to distinguish graft benefit from ordinary learning.
@@ -31,6 +34,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 ### `accumulate_structural_credit`
 - **Does**: Retains reward-addressed incumbent and causal-probe evidence across
   optimizer windows together with each probe's first-order global loss benefit.
+- **Does**: Retains installed-edge traffic and signed alignment between source event
+  memory and decoder-shaped credit transported backward over installed/probe paths.
 - **Interacts with**: Structural evidence in `FieldTrace`.
 
 ### `apply_structural_phase`
@@ -44,6 +49,11 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   optimizer or discarding the organism's other memories.
 - **Rationale**: A successful candidate must not lose its causal traffic at the moment
   it becomes a permanent dendrite.
+- **Does**: In variable-fan-in mode, activates a dormant slot for qualified growth or
+  deactivates a mature low-traffic, low-credit edge only when minimum fan-in and complete
+  sensory/output reachability survive.
+- **Does**: Scores retention and growth from separate scalar reward, traffic,
+  decoder-credit alignment, global fitness, locality, age, and endpoint-energy terms.
 
 ### `StructuralProbation`
 - **Does**: Backs up one incumbent source, edge parameters, optimizer moments,
@@ -75,7 +85,7 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `train.py` | Structural phases run only after a differentiable window and optimizer step | Phase ordering |
-| `benchmark.py` | Fixed and growing runs retain identical parameter counts and fan-in | Resizing tensors |
+| `benchmark.py` | Fixed and growing runs retain identical parameter counts and slot capacity | Resizing tensors |
 | Checkpoint resume | Model buffers and trainer policy preserve exact future rewiring | Buffer or config keys |
 | Topology guard | All cells and outputs remain reachable from sensory cells | Removing viability test |
 | Survival analysis | Every resolved exploratory trial exposes start/resolution updates and decision evidence | Trial ledger keys |
@@ -96,6 +106,8 @@ fixed fan-in, reachability, persistent state, optimizer integrity, and energy pr
   before it can replace even the target's worst mature incumbent; one adverse phase
   resets the streak.
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.
+- Dormant slots carry no information, reverse credit, eligibility, fast efficacy, or
+  energy. Variable fan-in is disabled by default.
 - Rollback does not refund growth energy or revert unrelated model/state changes:
   probation is anatomical reversibility, not erasure of lived experience.
 - Exploratory-traffic rejection never mutates anatomy or spends growth energy. The

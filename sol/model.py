@@ -24,6 +24,7 @@ class SolConfig:
     cells: int = 32
     channels: int = 32
     dendrites: int = 4
+    initial_active_dendrites: int | None = None
     sensory_cells: int = 4
     output_cells: int = 4
     message_steps: int = 3
@@ -60,6 +61,15 @@ class SolConfig:
             raise ValueError("cells must be at least four")
         if not 1 <= self.dendrites <= self.cells:
             raise ValueError("dendrites must be in [1, cells]")
+        if (
+            self.initial_active_dendrites is not None
+            and not 1
+            <= self.initial_active_dendrites
+            <= self.dendrites
+        ):
+            raise ValueError(
+                "initial_active_dendrites must be in [1, dendrites]"
+            )
         if not 1 <= self.sensory_cells < self.cells:
             raise ValueError("sensory_cells must be in [1, cells)")
         if not 1 <= self.output_cells < self.cells:
@@ -197,6 +207,12 @@ class FieldTrace:
     mean_probe_flow: list[torch.Tensor] = field(default_factory=list)
     structural_edge_evidence: list[torch.Tensor] = field(default_factory=list)
     structural_probe_evidence: list[torch.Tensor] = field(default_factory=list)
+    structural_edge_vector_evidence: list[torch.Tensor] = field(
+        default_factory=list
+    )
+    structural_probe_vector_evidence: list[torch.Tensor] = field(
+        default_factory=list
+    )
     probe_effect: list[torch.Tensor] = field(default_factory=list)
     prequential_reward: list[torch.Tensor] = field(default_factory=list)
 
@@ -263,15 +279,30 @@ def _directed_sources(cfg: SolConfig) -> torch.Tensor:
     return torch.tensor(rows, dtype=torch.long)
 
 
-def _initial_probe_sources(sources: torch.Tensor) -> torch.Tensor:
+def _initial_probe_sources(
+    sources: torch.Tensor,
+    active_edges: torch.Tensor | None = None,
+) -> torch.Tensor:
     """Choose one deterministic non-edge source for each target."""
 
     cells, dendrites = sources.shape
+    if active_edges is None:
+        active_edges = torch.ones_like(sources, dtype=torch.bool)
+    if active_edges.shape != sources.shape:
+        raise ValueError("active_edges must match sources")
     if dendrites >= cells:
         return torch.zeros(cells, dtype=torch.long)
     candidates: list[int] = []
     for target, row in enumerate(sources.tolist()):
-        occupied = {int(source) for source in row}
+        occupied = {
+            int(source)
+            for source, active in zip(
+                row,
+                active_edges[target].tolist(),
+                strict=True,
+            )
+            if active
+        }
         for offset in range(1, cells + 1):
             candidate = (target + offset) % cells
             if candidate not in occupied:
@@ -290,17 +321,37 @@ class SparseAxonField(nn.Module):
 
         initial_sources = _directed_sources(cfg)
         self.register_buffer("sources", initial_sources)
+        initial_active = torch.zeros(n, k, dtype=torch.bool)
+        initial_active[
+            :,
+            : (
+                k
+                if cfg.initial_active_dendrites is None
+                else cfg.initial_active_dendrites
+            ),
+        ] = True
+        self.register_buffer("active_edges", initial_active)
         self.register_buffer(
-            "probe_sources", _initial_probe_sources(initial_sources)
+            "probe_sources",
+            _initial_probe_sources(initial_sources, initial_active),
         )
         self.register_buffer(
             "structural_edge_credit", torch.zeros(n, k)
+        )
+        self.register_buffer(
+            "structural_edge_usage", torch.zeros(n, k)
+        )
+        self.register_buffer(
+            "structural_edge_vector_credit", torch.zeros(n, k)
         )
         self.register_buffer(
             "structural_probe_credit", torch.zeros(n)
         )
         self.register_buffer(
             "structural_probe_fitness", torch.zeros(n)
+        )
+        self.register_buffer(
+            "structural_probe_vector_credit", torch.zeros(n)
         )
         self.register_buffer(
             "structural_probe_confirmations",
@@ -311,6 +362,12 @@ class SparseAxonField(nn.Module):
         )
         self.register_buffer(
             "total_rewires", torch.zeros((), dtype=torch.long)
+        )
+        self.register_buffer(
+            "total_spawns", torch.zeros((), dtype=torch.long)
+        )
+        self.register_buffer(
+            "total_prunes", torch.zeros((), dtype=torch.long)
         )
         self.register_buffer("sensory_indices", torch.arange(cfg.sensory_cells))
         self.register_buffer(
@@ -426,12 +483,18 @@ class SparseAxonField(nn.Module):
         restored = dict(payload)
         additive = (
             "probe_sources",
+            "active_edges",
             "structural_edge_credit",
+            "structural_edge_usage",
+            "structural_edge_vector_credit",
             "structural_probe_credit",
             "structural_probe_fitness",
+            "structural_probe_vector_credit",
             "structural_probe_confirmations",
             "structural_edge_age",
             "total_rewires",
+            "total_spawns",
+            "total_prunes",
         )
         missing = {name for name in additive if name not in restored}
         current = self.state_dict()
@@ -439,7 +502,9 @@ class SparseAxonField(nn.Module):
             restored[name] = current[name]
         self.load_state_dict(restored)
         if "probe_sources" in missing:
-            self.probe_sources.copy_(_initial_probe_sources(self.sources))
+            self.probe_sources.copy_(
+                _initial_probe_sources(self.sources, self.active_edges)
+            )
 
     def _cell_context(self) -> torch.Tensor:
         return self.cell_identity + self.role_projection(self.roles)
@@ -448,6 +513,18 @@ class SparseAxonField(nn.Module):
         """Reconstruct the deterministic pre-growth connectome."""
 
         return _directed_sources(self.cfg).to(self.sources.device)
+
+    def birth_active_edges(self) -> torch.Tensor:
+        """Reconstruct which fixed-capacity slots were active at birth."""
+
+        active = torch.zeros_like(self.active_edges)
+        count = (
+            self.cfg.dendrites
+            if self.cfg.initial_active_dendrites is None
+            else self.cfg.initial_active_dendrites
+        )
+        active[:, :count] = True
+        return active
 
     def _viability(self, energy: torch.Tensor) -> torch.Tensor:
         """Map energy to a reversible quiescence gate without adding state."""
@@ -479,7 +556,12 @@ class SparseAxonField(nn.Module):
             (target_query * source_key).sum(dim=-1) / math.sqrt(self.cfg.channels)
             + self.edge_bias
         )
-        attention = torch.softmax(score, dim=2)
+        active = self.active_edges.unsqueeze(0)
+        attention = torch.softmax(
+            score.masked_fill(~active, float("-inf")),
+            dim=2,
+        )
+        attention = attention * active
         emission = torch.sigmoid(self.emit_gate(source_hidden)).squeeze(-1)
         emission = emission * viability[:, self.sources]
         signed_weight = torch.tanh(self.edge_weight.unsqueeze(0) + fast_weight)
@@ -598,7 +680,9 @@ class SparseAxonField(nn.Module):
             cfg.cells,
             device=self.sources.device,
         ).unsqueeze(1)
-        nonself = (self.sources != targets).to(edge_flow.dtype)
+        nonself = (
+            (self.sources != targets) & self.active_edges
+        ).to(edge_flow.dtype)
         named_flow = (
             edge_flow
             + cfg.energy_maintenance_flow * nonself.unsqueeze(0)
@@ -671,9 +755,10 @@ class SparseAxonField(nn.Module):
             * reward[:, None, None]
             * edge_eligibility
         )
-        return cfg.fast_weight_limit * torch.tanh(
+        updated = cfg.fast_weight_limit * torch.tanh(
             drive / cfg.fast_weight_limit
         )
+        return updated * self.active_edges.unsqueeze(0)
 
     def observe_surprise(
         self,
@@ -806,10 +891,16 @@ class SparseAxonField(nn.Module):
         probe_eligibility = state.probe_eligibility
         structural_edge_evidence = (
             reward[:, None, None] * edge_eligibility
-        ).mean(dim=0)
+        ).mean(dim=0) * self.active_edges
         structural_probe_evidence = (
             reward[:, None] * probe_eligibility
         ).mean(dim=0)
+        structural_edge_vector_evidence = torch.zeros_like(
+            self.structural_edge_credit
+        )
+        structural_probe_vector_evidence = torch.zeros_like(
+            self.structural_probe_credit
+        )
         fast_weight = (
             self._updated_fast_weight(
                 state.fast_weight,
@@ -851,6 +942,41 @@ class SparseAxonField(nn.Module):
                 )
             )
             incoming_with_probe = incoming + probe_message
+            transposed_target_credit = F.linear(
+                output_error_credit,
+                self.message_value.weight.transpose(0, 1),
+            )
+            edge_sourceward_credit = (
+                coefficient.unsqueeze(-1)
+                * transposed_target_credit.unsqueeze(2)
+            )
+            edge_source_memory = eligibility[:, self.sources]
+            edge_vector_tag = torch.tanh(
+                (
+                    edge_sourceward_credit
+                    * edge_source_memory
+                ).mean(dim=3)
+                * math.sqrt(cfg.channels)
+            )
+            structural_edge_vector_evidence = (
+                structural_edge_vector_evidence
+                + edge_vector_tag.mean(dim=0) / cfg.message_steps
+            )
+            probe_sourceward_credit = (
+                probe_flow.unsqueeze(-1) * transposed_target_credit
+            )
+            probe_source_memory = eligibility[:, self.probe_sources]
+            probe_vector_tag = torch.tanh(
+                (
+                    probe_sourceward_credit
+                    * probe_source_memory
+                ).mean(dim=2)
+                * math.sqrt(cfg.channels)
+            )
+            structural_probe_vector_evidence = (
+                structural_probe_vector_evidence
+                + probe_vector_tag.mean(dim=0) / cfg.message_steps
+            )
             stimulation = (
                 cfg.stimulation_decay * propagated + external_stimulation
             ).clamp(0.0, 1.0)
@@ -923,10 +1049,11 @@ class SparseAxonField(nn.Module):
             edge_tag = (
                 edge_tag - edge_tag.mean(dim=2, keepdim=True)
             ).clamp(-1.0, 1.0)
+            edge_tag = edge_tag * self.active_edges.unsqueeze(0)
             edge_eligibility = (
                 cfg.edge_eligibility_decay * edge_eligibility
                 + (1 - cfg.edge_eligibility_decay) * edge_tag
-            )
+            ) * self.active_edges.unsqueeze(0)
             probe_eligibility = (
                 cfg.edge_eligibility_decay * probe_eligibility
                 + (1 - cfg.edge_eligibility_decay) * probe_tag
@@ -1020,6 +1147,12 @@ class SparseAxonField(nn.Module):
             "probe_flow": mean_probe_flow,
             "structural_edge_evidence": structural_edge_evidence,
             "structural_probe_evidence": structural_probe_evidence,
+            "structural_edge_vector_evidence": (
+                structural_edge_vector_evidence
+            ),
+            "structural_probe_vector_evidence": (
+                structural_probe_vector_evidence
+            ),
             "probe_effect": final_probe_effect,
             "total_rewires": self.total_rewires.detach().clone(),
             "fast_weight_saturation": (
@@ -1103,6 +1236,12 @@ class SparseAxonField(nn.Module):
             )
             trace.structural_probe_evidence.append(
                 diag["structural_probe_evidence"]
+            )
+            trace.structural_edge_vector_evidence.append(
+                diag["structural_edge_vector_evidence"]
+            )
+            trace.structural_probe_vector_evidence.append(
+                diag["structural_probe_vector_evidence"]
             )
             trace.probe_effect.append(diag["probe_effect"])
 

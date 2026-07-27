@@ -21,6 +21,9 @@ optimizer, corpus position, or random stream.
   initialized deterministically rather than invalidating trained organisms.
   Channel-shaped output-error credit and its configuration use disabled/zero defaults
   when absent.
+- **Compatibility**: Pre-growth checkpoints reconstruct every historical dendrite slot
+  as active and initialize usage, vector-credit evidence, and spawn/prune counters to
+  zero.
 
 ### `load_organism`
 - **Does**: Loads one persistent batch lane, its model, vocabulary, update count, and

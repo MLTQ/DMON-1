@@ -12,6 +12,8 @@ one-character-at-a-time organism path used during training.
   edge credit, fast synaptic state, causal-probe traffic, candidate advantage, and
   bounded rewiring counts, including mean first-order probe fitness and persistent
   scalar and channel-shaped backward-credit magnitudes.
+- **Does**: Separately reports replacements, spawns, prunes, and their cumulative
+  anatomical mutation counts.
 - **Does**: Reports mean viability, quiescent fraction, external energy input, actual
   metabolic spending, and transport drift for every continuous training window.
 - **Does**: Reports active probation, provisional starts, commits, rollbacks, and
@@ -29,6 +31,9 @@ one-character-at-a-time organism path used during training.
 - **Structural fitness**: After backward, contracts every measured probe intervention
   with its target hidden state's exact global loss gradient before detaching the next
   continuous window.
+- **Structural evidence**: Accumulates installed-edge traffic plus signed
+  reverse-credit/event-memory alignment for installed and exploratory paths before the
+  between-window anatomy decision.
 - **Probation order**: Accumulates the just-completed window's signed prequential reward,
   resolves a due probation after the optimizer step, and skips a new graft on that same
   update. It passes the exact resolution update into the permanent trial ledger.

@@ -134,6 +134,7 @@ class LiveOrganism:
             },
             "topology": {
                 "sources": model.sources.cpu().tolist(),
+                "activeEdges": model.active_edges.cpu().tolist(),
                 "probeSources": model.probe_sources.cpu().tolist(),
                 "structuralEdgeCredit": (
                     model.structural_edge_credit.cpu().tolist()

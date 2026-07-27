@@ -37,6 +37,13 @@ class StructuralConfig:
     probation_margin: float = 0.0
     probation_baseline_decay: float = 0.99
     probation_exploratory_traffic: bool = False
+    variable_fan_in: bool = False
+    min_active_dendrites: int = 1
+    prune_usage_threshold: float = 0.0
+    prune_credit_threshold: float = 0.0
+    usage_gain: float = 1.0
+    vector_credit_gain: float = 1.0
+    locality_gain: float = 0.0
 
     def __post_init__(self) -> None:
         if self.interval < 1:
@@ -61,6 +68,18 @@ class StructuralConfig:
             raise ValueError("minimum endpoint energy must be in [0, 1]")
         if self.probation_updates < 0:
             raise ValueError("probation_updates must be non-negative")
+        if self.min_active_dendrites < 1:
+            raise ValueError("min_active_dendrites must be positive")
+        if self.prune_usage_threshold < 0:
+            raise ValueError("prune_usage_threshold must be non-negative")
+        if (
+            self.usage_gain < 0
+            or self.vector_credit_gain < 0
+            or self.locality_gain < 0
+        ):
+            raise ValueError(
+                "structural evidence gains must be non-negative"
+            )
         if not 0 <= self.probation_baseline_decay < 1:
             raise ValueError(
                 "probation_baseline_decay must be in [0, 1)"
@@ -93,6 +112,8 @@ class StructuralUpdate:
     probation_rejected: int = 0
     probation_advantage: float = 0.0
     probation_candidate_exposed: bool = False
+    spawned_edges: int = 0
+    pruned_edges: int = 0
 
 
 @dataclass
@@ -105,6 +126,7 @@ class StructuralProbation:
     target: int = -1
     slot: int = -1
     old_source: int = -1
+    old_active: bool = True
     candidate_source: int = -1
     started_update: int = 0
     advantage_sum: float = 0.0
@@ -119,10 +141,13 @@ class StructuralProbation:
     candidate_observations: int = 0
     incumbent_observations: int = 0
     candidate_edge_credit: float = 0.0
+    candidate_vector_credit: float = 0.0
     last_mean_advantage: float = 0.0
     edge_weight: torch.Tensor | None = None
     edge_bias: torch.Tensor | None = None
     edge_credit: torch.Tensor | None = None
+    edge_vector_credit: torch.Tensor | None = None
+    edge_usage: torch.Tensor | None = None
     edge_age: torch.Tensor | None = None
     edge_eligibility: torch.Tensor | None = None
     fast_weight: torch.Tensor | None = None
@@ -194,6 +219,8 @@ class StructuralProbation:
             "edge_weight",
             "edge_bias",
             "edge_credit",
+            "edge_vector_credit",
+            "edge_usage",
             "edge_age",
             "edge_eligibility",
             "fast_weight",
@@ -225,6 +252,8 @@ class StructuralProbation:
             "edge_weight",
             "edge_bias",
             "edge_credit",
+            "edge_vector_credit",
+            "edge_usage",
             "edge_age",
             "edge_eligibility",
             "fast_weight",
@@ -254,6 +283,7 @@ class StructuralProbation:
         virtual: bool,
         exploratory_traffic: bool = False,
         candidate_edge_credit: float = 0.0,
+        candidate_vector_credit: float = 0.0,
     ) -> None:
         if self.active:
             raise RuntimeError("structural probation is already active")
@@ -263,6 +293,7 @@ class StructuralProbation:
         self.target = target
         self.slot = slot
         self.old_source = int(model.sources[target, slot].item())
+        self.old_active = bool(model.active_edges[target, slot].item())
         self.candidate_source = candidate
         self.started_update = update
         self.advantage_sum = 0.0
@@ -273,6 +304,7 @@ class StructuralProbation:
         self.candidate_observations = 0
         self.incumbent_observations = 0
         self.candidate_edge_credit = float(candidate_edge_credit)
+        self.candidate_vector_credit = float(candidate_vector_credit)
         self.last_mean_advantage = 0.0
         self.total_started += 1
         if virtual:
@@ -281,6 +313,14 @@ class StructuralProbation:
         self.edge_bias = model.edge_bias[target, slot].detach().clone()
         self.edge_credit = (
             model.structural_edge_credit[target, slot].detach().clone()
+        )
+        self.edge_vector_credit = (
+            model.structural_edge_vector_credit[target, slot]
+            .detach()
+            .clone()
+        )
+        self.edge_usage = (
+            model.structural_edge_usage[target, slot].detach().clone()
         )
         self.edge_age = (
             model.structural_edge_age[target, slot].detach().clone()
@@ -351,6 +391,7 @@ class StructuralProbation:
         elif self.exploratory_traffic and committed:
             target, slot = self.target, self.slot
             model.sources[target, slot] = self.candidate_source
+            model.active_edges[target, slot] = True
             model.edge_weight[target, slot] = _probe_equivalent_weight(model)
             model.edge_bias[target, slot] = 0
             _reset_optimizer_slot(
@@ -364,20 +405,30 @@ class StructuralProbation:
             model.structural_edge_credit[target, slot] = (
                 self.candidate_edge_credit
             )
+            model.structural_edge_vector_credit[target, slot] = (
+                self.candidate_vector_credit
+            )
             model.structural_edge_age[target, slot] = 0
             _charge_growth(
                 state, target, self.candidate_source, growth_cost
             )
             model.total_rewires.add_(1)
+            if not self.old_active:
+                model.total_spawns.add_(1)
         elif not committed:
             if self.exploratory_traffic:
                 self.total_rejected += 1
             else:
                 target, slot = self.target, self.slot
                 model.sources[target, slot] = self.old_source
+                model.active_edges[target, slot] = self.old_active
                 model.edge_weight[target, slot] = self.edge_weight
                 model.edge_bias[target, slot] = self.edge_bias
                 model.structural_edge_credit[target, slot] = self.edge_credit
+                model.structural_edge_vector_credit[target, slot] = (
+                    self.edge_vector_credit
+                )
+                model.structural_edge_usage[target, slot] = self.edge_usage
                 model.structural_edge_age[target, slot] = self.edge_age
                 state.edge_eligibility[:, target, slot] = (
                     self.edge_eligibility
@@ -435,6 +486,7 @@ class StructuralProbation:
                 "target": self.target,
                 "slot": self.slot,
                 "old_source": self.old_source,
+                "old_active": self.old_active,
                 "candidate_source": self.candidate_source,
                 "observations": self.observations,
                 "candidate_observations": self.candidate_observations,
@@ -450,6 +502,7 @@ class StructuralProbation:
                 "decision_advantage": decision_advantage,
                 "decision_margin": float(margin),
                 "candidate_edge_credit": self.candidate_edge_credit,
+                "candidate_vector_credit": self.candidate_vector_credit,
                 "body_energy_before": body_energy_before,
                 "body_energy_after": float(state.energy.mean().item()),
                 "target_energy_before": target_energy_before,
@@ -468,6 +521,8 @@ class StructuralProbation:
         self.edge_weight = None
         self.edge_bias = None
         self.edge_credit = None
+        self.edge_vector_credit = None
+        self.edge_usage = None
         self.edge_age = None
         self.edge_eligibility = None
         self.fast_weight = None
@@ -478,12 +533,18 @@ class StructuralProbation:
 def next_probe_sources(
     sources: torch.Tensor,
     current: torch.Tensor | None = None,
+    active_edges: torch.Tensor | None = None,
+    prefer_local: bool = False,
 ) -> torch.Tensor:
     """Choose the next deterministic non-edge candidate for every target."""
 
     if sources.ndim != 2:
         raise ValueError("sources must have shape (cells, dendrites)")
     cells, dendrites = sources.shape
+    if active_edges is None:
+        active_edges = torch.ones_like(sources, dtype=torch.bool)
+    if active_edges.shape != sources.shape:
+        raise ValueError("active_edges must match sources")
     if dendrites >= cells:
         raise ValueError("structural probes require at least one non-edge source")
     device = sources.device
@@ -493,14 +554,41 @@ def next_probe_sources(
         raise ValueError("current probe sources must have shape (cells,)")
 
     rows = sources.detach().cpu().tolist()
+    active_rows = active_edges.detach().cpu().tolist()
     starts = current.detach().cpu().tolist()
     candidates: list[int] = []
     for target, row in enumerate(rows):
-        occupied = {int(source) for source in row}
+        occupied = {
+            int(source)
+            for source, active in zip(
+                row,
+                active_rows[target],
+                strict=True,
+            )
+            if active
+        }
         start = (int(starts[target]) + 1) % cells
-        for offset in range(cells):
-            candidate = (start + offset) % cells
-            if candidate not in occupied:
+        if prefer_local:
+            ranked = sorted(
+                range(cells),
+                key=lambda candidate: (
+                    _locality_score(target, candidate, cells) * -1,
+                    (candidate - start) % cells,
+                ),
+            )
+        else:
+            ranked = [
+                (start + offset) % cells
+                for offset in range(cells)
+            ]
+        for candidate in ranked:
+            if (
+                candidate not in occupied
+                and (
+                    candidate != int(starts[target])
+                    or len(occupied) >= cells - 1
+                )
+            ):
                 candidates.append(candidate)
                 break
         else:  # pragma: no cover - guarded by dendrites < cells
@@ -515,6 +603,9 @@ def accumulate_structural_credit(
     probe_evidence: torch.Tensor,
     probe_fitness: torch.Tensor,
     config: StructuralConfig,
+    edge_usage: torch.Tensor | None = None,
+    edge_vector_evidence: torch.Tensor | None = None,
+    probe_vector_evidence: torch.Tensor | None = None,
 ) -> None:
     """Retain reward-addressed edge and candidate evidence across windows."""
 
@@ -526,6 +617,23 @@ def accumulate_structural_credit(
         raise ValueError("probe structural evidence has the wrong shape")
     if probe_fitness.shape != model.structural_probe_fitness.shape:
         raise ValueError("probe fitness evidence has the wrong shape")
+    if (
+        edge_usage is not None
+        and edge_usage.shape != model.structural_edge_usage.shape
+    ):
+        raise ValueError("edge usage evidence has the wrong shape")
+    if (
+        edge_vector_evidence is not None
+        and edge_vector_evidence.shape
+        != model.structural_edge_vector_credit.shape
+    ):
+        raise ValueError("edge vector-credit evidence has the wrong shape")
+    if (
+        probe_vector_evidence is not None
+        and probe_vector_evidence.shape
+        != model.structural_probe_vector_credit.shape
+    ):
+        raise ValueError("probe vector-credit evidence has the wrong shape")
     keep = config.credit_decay
     model.structural_edge_credit.mul_(keep).add_(
         edge_evidence.detach().to(model.structural_edge_credit), alpha=1 - keep
@@ -537,6 +645,27 @@ def accumulate_structural_credit(
         probe_fitness.detach().to(model.structural_probe_fitness),
         alpha=1 - keep,
     )
+    if edge_usage is not None:
+        model.structural_edge_usage.mul_(keep).add_(
+            edge_usage.detach().to(model.structural_edge_usage),
+            alpha=1 - keep,
+        )
+        model.structural_edge_usage.mul_(model.active_edges)
+    if edge_vector_evidence is not None:
+        model.structural_edge_vector_credit.mul_(keep).add_(
+            edge_vector_evidence.detach().to(
+                model.structural_edge_vector_credit
+            ),
+            alpha=1 - keep,
+        )
+        model.structural_edge_vector_credit.mul_(model.active_edges)
+    if probe_vector_evidence is not None:
+        model.structural_probe_vector_credit.mul_(keep).add_(
+            probe_vector_evidence.detach().to(
+                model.structural_probe_vector_credit
+            ),
+            alpha=1 - keep,
+        )
     model.structural_edge_age.add_(1)
 
 
@@ -558,19 +687,44 @@ def _topology_remains_viable(
     model: "SparseAxonField",
     target: int,
     slot: int,
-    candidate: int,
+    candidate: int | None,
 ) -> bool:
     proposed = model.sources.clone()
-    proposed[target, slot] = candidate
+    proposed_active = model.active_edges.clone()
+    if candidate is None:
+        proposed_active[target, slot] = False
+    else:
+        proposed[target, slot] = candidate
+        proposed_active[target, slot] = True
     metrics = analyze_topology(
         proposed,
         model.sensory_indices,
         model.output_indices,
+        proposed_active,
     )
     return (
         metrics.reachable_fraction == 1.0
         and metrics.output_reachable_fraction == 1.0
     )
+
+
+def _reset_edge_slot(
+    model: "SparseAxonField",
+    state: "FieldState",
+    optimizer: "Optimizer",
+    target: int,
+    slot: int,
+) -> None:
+    """Clear transient evidence and optimizer momentum for a repurposed slot."""
+
+    _reset_optimizer_slot(optimizer, model.edge_weight, target, slot)
+    _reset_optimizer_slot(optimizer, model.edge_bias, target, slot)
+    state.edge_eligibility[:, target, slot] = 0
+    state.fast_weight[:, target, slot] = 0
+    model.structural_edge_credit[target, slot] = 0
+    model.structural_edge_vector_credit[target, slot] = 0
+    model.structural_edge_usage[target, slot] = 0
+    model.structural_edge_age[target, slot] = 0
 
 
 def _endpoints_can_pay(
@@ -612,6 +766,14 @@ def _probe_equivalent_weight(model: "SparseAxonField") -> float:
     return math.atanh(signed_weight)
 
 
+def _locality_score(target: int, source: int, cells: int) -> float:
+    """Return a circular proximity prior in [0, 1]."""
+
+    distance = abs(target - source)
+    distance = min(distance, cells - distance)
+    return 1.0 - distance / max(1.0, cells / 2)
+
+
 @torch.no_grad()
 def apply_structural_phase(
     model: "SparseAxonField",
@@ -643,30 +805,66 @@ def apply_structural_phase(
     ):
         return StructuralUpdate(0, total, 0.0, 0)
 
-    proposals: list[tuple[float, int, int, int, float]] = []
+    proposals: list[
+        tuple[float, int, int, int, float, float]
+    ] = []
     observed_advantages: list[float] = []
     for target in range(model.cfg.cells):
-        mature = model.structural_edge_age[target] >= config.min_edge_age
-        if not bool(mature.any()):
-            model.structural_probe_confirmations[target] = 0
-            continue
-        eligible_slots = torch.nonzero(mature, as_tuple=False).flatten()
-        eligible_credit = model.structural_edge_credit[target, eligible_slots]
-        position = int(torch.argmin(eligible_credit).item())
-        slot = int(eligible_slots[position].item())
-        edge_credit = float(model.structural_edge_credit[target, slot].item())
+        inactive_slots = torch.nonzero(
+            ~model.active_edges[target],
+            as_tuple=False,
+        ).flatten()
+        if config.variable_fan_in and inactive_slots.numel() > 0:
+            slot = int(inactive_slots[0].item())
+            edge_score = 0.0
+        else:
+            mature = (
+                model.structural_edge_age[target] >= config.min_edge_age
+            ) & model.active_edges[target]
+            if not bool(mature.any()):
+                model.structural_probe_confirmations[target] = 0
+                continue
+            eligible_slots = torch.nonzero(mature, as_tuple=False).flatten()
+            eligible_credit = model.structural_edge_credit[
+                target, eligible_slots
+            ]
+            position = int(torch.argmin(eligible_credit).item())
+            slot = int(eligible_slots[position].item())
+            edge_score = (
+                float(model.structural_edge_credit[target, slot].item())
+                + config.vector_credit_gain
+                * float(
+                    model.structural_edge_vector_credit[
+                        target, slot
+                    ].item()
+                )
+                + config.usage_gain
+                * float(
+                    model.structural_edge_usage[target, slot].item()
+                )
+            )
         probe_credit = float(model.structural_probe_credit[target].item())
+        probe_vector_credit = float(
+            model.structural_probe_vector_credit[target].item()
+        )
         probe_fitness = float(
             model.structural_probe_fitness[target].item()
         )
-        advantage = probe_credit - edge_credit
+        candidate = int(model.probe_sources[target].item())
+        probe_score = (
+            probe_credit
+            + config.vector_credit_gain * probe_vector_credit
+            + config.locality_gain
+            * _locality_score(target, candidate, model.cfg.cells)
+        )
+        advantage = probe_score - edge_score
         observed_advantages.append(advantage)
         globally_fit = (
             not config.require_global_fitness
             or probe_fitness > config.global_fitness_margin
         )
         if (
-            probe_credit > 0
+            probe_score > 0
             and advantage > config.credit_margin
             and globally_fit
         ):
@@ -679,9 +877,15 @@ def apply_structural_phase(
             and int(model.structural_probe_confirmations[target].item())
             >= config.confirmation_phases
         ):
-            candidate = int(model.probe_sources[target].item())
             proposals.append(
-                (advantage, target, slot, candidate, probe_credit)
+                (
+                    advantage,
+                    target,
+                    slot,
+                    candidate,
+                    probe_credit,
+                    probe_vector_credit,
+                )
             )
 
     proposals.sort(key=lambda value: (-value[0], value[1], value[2]))
@@ -704,14 +908,91 @@ def apply_structural_phase(
         return StructuralUpdate(0, total, best_advantage, 0)
 
     rewired = 0
+    spawned = 0
+    pruned = 0
     probation_started = False
     rejected_for_reachability = 0
-    for advantage, target, slot, candidate, probe_credit in proposals:
+    if config.variable_fan_in and config.allow_rewiring:
+        prune_candidates: list[tuple[float, float, int, int]] = []
+        for target in range(model.cfg.cells):
+            if (
+                int(model.active_edges[target].sum().item())
+                <= config.min_active_dendrites
+            ):
+                continue
+            mature = (
+                model.structural_edge_age[target] >= config.min_edge_age
+            ) & model.active_edges[target]
+            for slot_tensor in torch.nonzero(
+                mature,
+                as_tuple=False,
+            ).flatten():
+                slot = int(slot_tensor.item())
+                usage = float(
+                    model.structural_edge_usage[target, slot].item()
+                )
+                credit = float(
+                    model.structural_edge_credit[target, slot].item()
+                )
+                retention = (
+                    credit
+                    + config.vector_credit_gain
+                    * float(
+                        model.structural_edge_vector_credit[
+                            target, slot
+                        ].item()
+                    )
+                    + config.usage_gain * usage
+                )
+                if (
+                    usage <= config.prune_usage_threshold
+                    and retention <= config.prune_credit_threshold
+                ):
+                    prune_candidates.append(
+                        (usage, retention, target, slot)
+                    )
+        prune_candidates.sort()
+        for _, _, target, slot in prune_candidates:
+            if pruned >= config.replacements_per_phase:
+                break
+            if (
+                int(model.active_edges[target].sum().item())
+                <= config.min_active_dendrites
+            ):
+                continue
+            if not _topology_remains_viable(
+                model,
+                target,
+                slot,
+                None,
+            ):
+                rejected_for_reachability += 1
+                continue
+            model.active_edges[target, slot] = False
+            _reset_edge_slot(
+                model,
+                state,
+                optimizer,
+                target,
+                slot,
+            )
+            pruned += 1
+
+    for (
+        advantage,
+        target,
+        slot,
+        candidate,
+        probe_credit,
+        probe_vector_credit,
+    ) in proposals:
         if rewired >= config.replacements_per_phase:
             break
         if advantage <= config.credit_margin:
             break
-        if candidate in model.sources[target].tolist():
+        if candidate in model.sources[target][
+            model.active_edges[target]
+        ].tolist():
             continue
         if not _endpoints_can_pay(state, target, candidate, config):
             continue
@@ -735,32 +1016,43 @@ def apply_structural_phase(
                     config.probation_exploratory_traffic
                 ),
                 candidate_edge_credit=probe_credit,
+                candidate_vector_credit=probe_vector_credit,
             )
             probation_started = True
         if (
             config.allow_rewiring
             and not config.probation_exploratory_traffic
         ):
+            was_active = bool(model.active_edges[target, slot].item())
             model.sources[target, slot] = candidate
+            model.active_edges[target, slot] = True
             model.edge_weight[target, slot] = _probe_equivalent_weight(model)
             model.edge_bias[target, slot] = 0
-            _reset_optimizer_slot(
-                optimizer, model.edge_weight, target, slot
+            _reset_edge_slot(
+                model,
+                state,
+                optimizer,
+                target,
+                slot,
             )
-            _reset_optimizer_slot(
-                optimizer, model.edge_bias, target, slot
-            )
-            state.edge_eligibility[:, target, slot] = 0
-            state.fast_weight[:, target, slot] = 0
             model.structural_edge_credit[target, slot] = probe_credit
-            model.structural_edge_age[target, slot] = 0
+            model.structural_edge_vector_credit[
+                target, slot
+            ] = probe_vector_credit
             _charge_growth(state, target, candidate, config.growth_cost)
             rewired += 1
+            if not was_active:
+                spawned += 1
         if probation_started:
             break
 
-    if rewired:
-        model.total_rewires.add_(rewired)
+    mutations = rewired + pruned
+    if mutations:
+        model.total_rewires.add_(mutations)
+    if spawned:
+        model.total_spawns.add_(spawned)
+    if pruned:
+        model.total_prunes.add_(pruned)
 
     if (
         probation_started
@@ -776,13 +1068,21 @@ def apply_structural_phase(
             probation_committed=probation.total_committed,
             probation_rolled_back=probation.total_rolled_back,
             probation_rejected=probation.total_rejected,
+            spawned_edges=spawned,
+            pruned_edges=pruned,
         )
 
     model.probe_sources.copy_(
-        next_probe_sources(model.sources, model.probe_sources)
+        next_probe_sources(
+            model.sources,
+            model.probe_sources,
+            model.active_edges,
+            prefer_local=config.locality_gain > 0,
+        )
     )
     model.structural_probe_credit.zero_()
     model.structural_probe_fitness.zero_()
+    model.structural_probe_vector_credit.zero_()
     model.structural_probe_confirmations.zero_()
     state.probe_eligibility.zero_()
     return StructuralUpdate(
@@ -801,6 +1101,8 @@ def apply_structural_phase(
         probation_rejected=(
             0 if probation is None else probation.total_rejected
         ),
+        spawned_edges=spawned,
+        pruned_edges=pruned,
     )
 
 
@@ -814,14 +1116,29 @@ def structural_summary(
     return {
         "config": asdict(config),
         "total_rewires": int(model.total_rewires.item()),
+        "total_spawns": int(model.total_spawns.item()),
+        "total_prunes": int(model.total_prunes.item()),
+        "active_edges": int(model.active_edges.sum().item()),
+        "mean_active_dendrites": float(
+            model.active_edges.sum(dim=1).float().mean().item()
+        ),
         "mean_edge_credit": float(
             model.structural_edge_credit.mean().item()
+        ),
+        "mean_edge_usage": float(
+            model.structural_edge_usage.mean().item()
         ),
         "mean_probe_credit": float(
             model.structural_probe_credit.mean().item()
         ),
         "mean_probe_fitness": float(
             model.structural_probe_fitness.mean().item()
+        ),
+        "mean_edge_vector_credit": float(
+            model.structural_edge_vector_credit.mean().item()
+        ),
+        "mean_probe_vector_credit": float(
+            model.structural_probe_vector_credit.mean().item()
         ),
         "max_probe_confirmations": int(
             model.structural_probe_confirmations.max().item()
