@@ -802,6 +802,41 @@ def _locality_score(target: int, source: int, cells: int) -> float:
     return 1.0 - distance / max(1.0, cells / 2)
 
 
+def structural_phase_due(
+    config: StructuralConfig,
+    update: int,
+) -> bool:
+    """Return whether this update contributes one structural evidence phase."""
+
+    return (
+        config.enabled
+        and update >= config.warmup_updates
+        and update % config.interval == 0
+    )
+
+
+def structural_decision_due(
+    config: StructuralConfig,
+    update: int,
+) -> bool:
+    """Return whether a due phase may begin a structural intervention."""
+
+    if not structural_phase_due(config, update):
+        return False
+    first_phase_update = max(
+        config.interval,
+        (
+            (config.warmup_updates + config.interval - 1)
+            // config.interval
+            * config.interval
+        ),
+    )
+    phase_number = (
+        (update - first_phase_update) // config.interval + 1
+    )
+    return phase_number % config.confirmation_phases == 0
+
+
 @torch.no_grad()
 def apply_structural_phase(
     model: "SparseAxonField",
@@ -826,11 +861,7 @@ def apply_structural_phase(
             probation_rejected=probation.total_rejected,
             probation_advantage=probation.mean_advantage,
         )
-    if (
-        not config.enabled
-        or update < config.warmup_updates
-        or update % config.interval != 0
-    ):
+    if not structural_phase_due(config, update):
         return StructuralUpdate(0, total, 0.0, 0)
 
     proposals: list[
@@ -924,19 +955,7 @@ def apply_structural_phase(
     best_advantage = (
         max(observed_advantages) if observed_advantages else 0.0
     )
-    first_phase_update = max(
-        config.interval,
-        (
-            (config.warmup_updates + config.interval - 1)
-            // config.interval
-            * config.interval
-        ),
-    )
-    phase_number = (
-        (update - first_phase_update) // config.interval + 1
-    )
-    decision_due = phase_number % config.confirmation_phases == 0
-    if not decision_due:
+    if not structural_decision_due(config, update):
         return StructuralUpdate(0, total, best_advantage, 0)
 
     rewired = 0

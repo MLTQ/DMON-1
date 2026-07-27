@@ -10,7 +10,8 @@ commit/reject signal.
 
 ### `RoutingTrafficConfig`
 - **Does**: Defines cadence, warmup, balanced trial length, decision margin, bounded
-  preference step, and minimum proposal evidence.
+  preference step, minimum proposal evidence, and an optional protected reporting
+  boundary interval.
 - **Rationale**: Experimental routing must be explicit, default-disabled, and
   checkpoint-reproducible.
 
@@ -28,9 +29,11 @@ commit/reject signal.
 - **Does**: Produces one compact trainer telemetry snapshot after a transition.
 
 ### `routing_traffic_due`
-- **Does**: Gives routing every other due phase when structural traffic shares the same
-  organism, while allowing every due phase when structure is disabled.
-- **Rationale**: Deterministic sequencing must not starve either causal experiment.
+- **Does**: Admits a routing trial only on its own cadence, outside structural decision
+  phases, and only when it can resolve before a protected validation/checkpoint
+  boundary.
+- **Rationale**: Structural confirmation and mutation phases must remain live; a
+  reporting boundary should describe only fully resolved routing state.
 
 ### `routing_traffic_summary`
 - **Does**: Exposes policy, active phase, aggregates, counts, and full decision history
@@ -48,7 +51,8 @@ commit/reject signal.
 ## Notes
 
 - Only targets with at least two active dendrites can receive a zero-sum proposal.
-- Structural evidence and ordinary learning continue during a routing trial; topology
-  decisions are sequenced so the named fan cannot change mid-trial.
+- A routing start shares the structural organ's non-decision evidence phase. Its short
+  trial resolves before the next structural decision, so confirmations, topology
+  changes, and ordinary learning retain their original cadence.
 - Preference commits are centered and smoothly bounded by the model's existing routing
   limit. They do not add trainable parameters.

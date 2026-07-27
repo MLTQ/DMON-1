@@ -55,9 +55,12 @@ with checkpointing and append-only metrics.
   to propose a bounded zero-sum preference change, alternates that change on/off in one
   live organism, and commits from candidate-minus-incumbent prequential reward.
   Cadence, warmup, trial length, margin, proposal step, and minimum evidence are
-  explicit manifest fields.
-- **Does**: Routing and structural exploratory trials are sequenced while ordinary
-  forward traffic, probes, parameter learning, persistent state, and evidence
+  explicit manifest fields. The benchmark also records `--eval-every` as the protected
+  routing boundary interval, preventing a new trial from starting or crossing a plotted
+  checkpoint.
+- **Does**: Routing starts only on structural non-decision phases, which still update
+  structural confirmations. It resolves before the next consolidation phase while
+  ordinary forward traffic, probes, parameter learning, persistent state, and evidence
   accumulation remain active.
 - **Rationale**: Direct reward, scalar reverse transport, decoder-shaped reverse
   transport, and their combinations must be compared explicitly rather than silently

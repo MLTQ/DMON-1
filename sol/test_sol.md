@@ -88,7 +88,8 @@ tensor shapes.
 - **Does**: Proves exploratory routing preserves committed preference without
   correlational reward updates, proposes a local zero-sum fan perturbation, maintains
   total reverse-credit scale, commits/rejects from balanced ABBA evidence, keeps shared
-  body learning active in both arms, sequences topology decisions, and resumes the
+  body learning active in both arms, preserves every structural decision and reporting
+  boundary, still runs structural confirmation on routing-start phases, and resumes the
   exact next arm and outcome.
 - **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
   topology metrics count only active anatomy, a qualified decoder-credit candidate can

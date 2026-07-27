@@ -33,9 +33,10 @@ signal.
 ## Scheduling
 
 Only one routing trial is active at a time. Routing trials do not begin while a
-structural exploratory-traffic trial is active, and structural trials do not overwrite
-the routing trial's named branch. This separates two whole-body causal questions
-without pausing ordinary learning or disabling either exploration system.
+structural exploratory-traffic trial is active or on a structural consolidation phase.
+A routing start still executes that update's structural evidence/confirmation phase,
+then resolves before the next structural decision. This separates two whole-body causal
+questions without pausing ordinary learning or consuming the morphology organ's cadence.
 
 Use the existing even-window ABBA convention:
 
@@ -47,10 +48,12 @@ Each arm receives the same number of windows. The proposal affects reverse-credi
 allocation during its candidate windows; reward observed on the live stream is retained
 with the exact target, branch, direction, phase, update, and observation counts.
 
-The matched preflight uses a 25-update shared cadence and a 75-update routing warmup.
-Routing therefore starts at updates 75, 125, ..., 975 and each 20-window ABBA trial
-resolves by 95, 145, ..., 995. The 250-update validation/checkpoint boundaries remain
-trial-free, so every plotted point describes a fully decided routing state.
+The matched preflight uses a 25-update shared cadence, two-phase structural
+confirmation, a 75-update routing warmup, and 20-window trials. Structural decisions
+remain due at 75, 125, 175, ..., 975. Routing uses the intervening non-decision phases:
+100, 150, 200, 300, ..., 950, skipping each 250-update validation/checkpoint boundary.
+Every routing trial resolves 20 updates after it starts, before the next structural
+decision, and every plotted point therefore describes fully decided routing state.
 
 ## State and invariants
 
@@ -102,8 +105,8 @@ retain every arm and decision.
 The first 200-update, 12-cell Tiny Shakespeare smoke deliberately gave routing and
 structural traffic the same ten-update cadence. A first scheduling attempt allowed
 structural probation to claim every phase and produced zero routing trials. That is an
-invalid mechanism test, not a negative result. Deterministic phase sharing now reserves
-alternating opportunities, and a fresh run produced:
+invalid mechanism test, not a negative result. A provisional alternating schedule
+produced:
 
 | Mechanism | Started | Committed | Rejected | Active at boundary |
 |---|---:|---:|---:|---:|
@@ -124,11 +127,48 @@ Accepted routing was active and bounded:
 Held-out BPC moved from `5.450` at update 100 to `5.444` at update 200. With only two
 validations this is a mechanism smoke, not a stopping-horizon or capability claim.
 
-Verification: 97 repository tests pass. They cover local zero-sum/constant-scale
+Initial implementation verification: 97 repository tests passed. They cover local zero-sum/constant-scale
 traffic, positive commit, negative rejection, shared-body adaptation in both arms,
 deterministic non-starvation, policy exclusivity, dormant masks, old-checkpoint
 compatibility, and exact active-trial resume.
 
 ### Matched preflight
 
-Pending.
+#### Rejected parity launch
+
+The first three-seed RTX 4090 launch exposed a scheduler defect that the equal-warmup
+smoke did not: routing occupied exactly every even structural phase, while structural
+consolidation was also allowed only on those even phases. By update 500, every seed had
+completed nine routing trials but **zero structural trials, rewires, spawns, or prunes**.
+The live and birth-topology evaluation were therefore identical in every seed.
+
+| Seed | Update 250 BPC | S22 − S17 | Update 500 BPC | S22 − S17 |
+|---:|---:|---:|---:|---:|
+| 7 | 4.447995 | +0.404574 | 3.927811 | +0.285330 |
+| 13 | 4.308367 | +0.084082 | 3.807570 | +0.059470 |
+| 21 | 4.268418 | -0.090179 | 3.931390 | -0.218864 |
+
+The mixed loss is not routing evidence because anatomy exposure is unmatched. All
+three services were stopped after their completed update-500 evaluations/checkpoints,
+and the artifacts were retained as a scheduler regression case.
+
+#### Corrected scheduler smoke
+
+The scheduler now asks the structural policy whether a phase is a decision phase rather
+than alternating from an unrelated warmup origin. Routing uses only non-decision
+phases, still calls the structural phase to retain confirmations, and protects benchmark
+evaluation boundaries. A fresh 200-update smoke with the same phase geometry produced:
+
+| Mechanism | Started | Committed | Rejected | Active at boundary |
+|---|---:|---:|---:|---:|
+| Routing traffic | 7 | 3 | 4 | 0 |
+| Structural traffic | 7 | 5 | 2 | 0 |
+
+All fourteen trials were balanced two-candidate/two-incumbent observations. Anatomy
+performed seven mutations (five spawns and two prunes), ending at 27 active edges from
+24 at birth with complete sensory/output reachability. Routing skipped both
+100/200-update reporting boundaries. Held-out BPC moved from `5.449` to `5.377`; with
+two evaluations this remains a mechanism smoke, not a capability or convergence claim.
+
+Corrected verification: 98 repository tests pass with four pre-existing DMON
+return-value warnings. The matched 1,000-update launch can proceed.

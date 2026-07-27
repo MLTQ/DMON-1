@@ -48,7 +48,11 @@ from .stability import (
     summarize_stability,
 )
 from .stream import CharacterVocabulary, ContinuousCharStream
-from .structure import StructuralConfig, apply_structural_phase
+from .structure import (
+    StructuralConfig,
+    apply_structural_phase,
+    structural_decision_due,
+)
 from .topology import analyze_topology
 from .train import ContinuousTrainer
 
@@ -1268,34 +1272,109 @@ def test_routing_traffic_keeps_body_learning_and_sequences_structure(
     assert trainer.routing_traffic_trial.incumbent_observations == 1
 
 
-def test_routing_and_structural_traffic_share_due_phases() -> None:
-    config = RoutingTrafficConfig(
+def test_routing_preserves_structural_decision_and_boundary_phases() -> None:
+    routing_config = RoutingTrafficConfig(
         enabled=True,
-        interval=10,
-        warmup_updates=10,
-        trial_updates=4,
+        interval=25,
+        warmup_updates=75,
+        trial_updates=20,
+        boundary_interval=250,
     )
-    shared = [
+    structural_config = StructuralConfig(
+        enabled=True,
+        interval=25,
+        warmup_updates=50,
+        confirmation_phases=2,
+    )
+    routing_updates = [
         update
-        for update in range(10, 61, 10)
+        for update in range(50, 326, 25)
         if routing_traffic_due(
-            config,
+            routing_config,
             update,
-            share_with_structure=True,
+            structural_decision_due=structural_decision_due(
+                structural_config,
+                update,
+            ),
         )
     ]
-    independent = [
+    structural_updates = [
         update
-        for update in range(10, 61, 10)
-        if routing_traffic_due(
-            config,
+        for update in range(50, 326, 25)
+        if structural_decision_due(
+            structural_config,
             update,
-            share_with_structure=False,
         )
     ]
 
-    assert shared == [10, 30, 50]
-    assert independent == [10, 20, 30, 40, 50, 60]
+    assert routing_updates == [100, 150, 200, 300]
+    assert structural_updates == [75, 125, 175, 225, 275, 325]
+    assert set(routing_updates).isdisjoint(structural_updates)
+    assert 250 not in routing_updates
+    assert not routing_traffic_due(
+        RoutingTrafficConfig(
+            enabled=True,
+            interval=10,
+            warmup_updates=0,
+            trial_updates=20,
+            boundary_interval=50,
+        ),
+        40,
+        structural_decision_due=False,
+    )
+
+
+def test_routing_start_still_runs_structural_evidence_phase(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            interval=25,
+            warmup_updates=50,
+            confirmation_phases=2,
+            min_edge_age=0,
+        ),
+        routing_traffic_config=RoutingTrafficConfig(
+            enabled=True,
+            interval=25,
+            warmup_updates=75,
+            trial_updates=4,
+            boundary_interval=250,
+            proposal_step=0.05,
+            minimum_eligibility=0.0,
+        ),
+    )
+    trainer.updates = 99
+    calls: list[int] = []
+    real_structural_phase = apply_structural_phase
+
+    def observed_structural_phase(*args, **kwargs):
+        calls.append(args[4])
+        return real_structural_phase(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "sol.train.apply_structural_phase",
+        observed_structural_phase,
+    )
+    metrics = trainer.step()
+
+    assert metrics.routing_trial_started
+    assert metrics.routing_trial_active
+    assert calls == [100]
+    assert not structural_decision_due(trainer.structural_config, 100)
 
 
 def test_output_credit_routing_policies_are_mutually_exclusive() -> None:

@@ -19,6 +19,7 @@ class RoutingTrafficConfig:
     interval: int = 25
     warmup_updates: int = 75
     trial_updates: int = 20
+    boundary_interval: int = 0
     margin: float = 0.0
     proposal_step: float = 0.05
     minimum_eligibility: float = 1e-6
@@ -34,6 +35,10 @@ class RoutingTrafficConfig:
             raise ValueError(
                 "routing traffic trial requires an even number "
                 "of at least two updates"
+            )
+        if self.boundary_interval < 0:
+            raise ValueError(
+                "routing traffic boundary interval must be non-negative"
             )
         if self.margin < 0:
             raise ValueError("routing traffic margin must be non-negative")
@@ -313,28 +318,29 @@ def routing_traffic_due(
     config: RoutingTrafficConfig,
     update: int,
     *,
-    share_with_structure: bool,
+    structural_decision_due: bool,
 ) -> bool:
-    """Reserve every other due phase when structural trials share the stream."""
+    """Use a due phase only when no structural or reporting decision owns it."""
 
     if (
         not config.enabled
         or update < config.warmup_updates
         or update % config.interval != 0
+        or structural_decision_due
+        or (
+            config.boundary_interval > 0
+            and (
+                update % config.boundary_interval == 0
+                or (
+                    update % config.boundary_interval
+                    + config.trial_updates
+                    > config.boundary_interval
+                )
+            )
+        )
     ):
         return False
-    if not share_with_structure:
-        return True
-    first_due = max(
-        config.interval,
-        (
-            (config.warmup_updates + config.interval - 1)
-            // config.interval
-            * config.interval
-        ),
-    )
-    phase = (update - first_due) // config.interval
-    return phase % 2 == 0
+    return True
 
 
 def routing_traffic_update(

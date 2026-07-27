@@ -62,9 +62,11 @@ one-character-at-a-time organism path used during training.
 - **Exploratory routing**: Applies a fixed zero-sum preference delta only during
   checkpointed candidate windows, observes both ABBA arms after ordinary optimization,
   and commits only a positive within-organism reward difference.
-- **Exploration order**: Structural probes and credit accumulation remain live during a
-  routing trial, but topology decisions are sequenced until the named fan resolves.
-  Structural and routing probation therefore never alter the same intervention at once.
+- **Exploration order**: A routing trial may start only on a structural non-decision
+  phase and that phase still accumulates confirmations. The routing trial resolves
+  before the next structural decision phase; protected evaluation/checkpoint boundaries
+  start neither trial. Both organs therefore retain their cadence without overlapping
+  causal decisions.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,

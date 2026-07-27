@@ -25,6 +25,7 @@ from .structure import (
     accumulate_structural_credit,
     apply_structural_phase,
     next_probe_sources,
+    structural_decision_due,
 )
 from .stream import CharacterVocabulary, ContinuousCharStream
 
@@ -422,7 +423,10 @@ class ContinuousTrainer:
             and routing_traffic_due(
                 self.routing_traffic_config,
                 next_update,
-                share_with_structure=self.structural_config.enabled,
+                structural_decision_due=structural_decision_due(
+                    self.structural_config,
+                    next_update,
+                ),
             )
         ):
             routing_started = self.routing_traffic_trial.begin(
@@ -478,7 +482,10 @@ class ContinuousTrainer:
                         candidate_exposed
                     ),
                 )
-                if self.routing_traffic_trial.active
+                if (
+                    self.routing_traffic_trial.active
+                    and not routing_started
+                )
                 else apply_structural_phase(
                     self.model,
                     self.state,

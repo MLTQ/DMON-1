@@ -275,6 +275,7 @@ def _run_sol(
                 interval=args.routing_traffic_interval,
                 warmup_updates=args.routing_traffic_warmup,
                 trial_updates=args.routing_traffic_updates,
+                boundary_interval=args.eval_every,
                 margin=args.routing_traffic_margin,
                 proposal_step=args.routing_traffic_step,
                 minimum_eligibility=(

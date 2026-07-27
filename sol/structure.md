@@ -38,6 +38,13 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
   memory and decoder-shaped credit transported backward over installed/probe paths.
 - **Interacts with**: Structural evidence in `FieldTrace`.
 
+### `structural_phase_due` / `structural_decision_due`
+- **Does**: Separates evidence/confirmation phases from the subset that may begin a
+  structural intervention.
+- **Interacts with**: The routing scheduler in `train.py`.
+- **Rationale**: Another causal traffic experiment may share a non-decision phase but
+  must never consume a structural consolidation phase.
+
 ### `apply_structural_phase`
 - **Does**: Replaces at most a bounded number of mature low-credit edges when a probe is
   better across every required confirmation phase, both endpoints can pay, and complete
@@ -107,6 +114,9 @@ provenance. An optional policy permits actual fan-in to grow and shrink.
   it earns one confirmation. It must do so in every consecutive confirmation phase
   before it can replace even the target's worst mature incumbent; one adverse phase
   resets the streak.
+- Shared routing traffic still executes every due structural evidence phase. Routing
+  resolves before the following decision phase, preserving the morphology organ's
+  confirmation and mutation cadence.
 - Growth consumes energy and never creates it. Rewiring remains disabled by default.
 - Dormant slots carry no information, reverse credit, eligibility, routing preference,
   fast efficacy, or energy. Variable fan-in is disabled by default.
