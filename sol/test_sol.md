@@ -51,6 +51,8 @@ tensor shapes.
   predictions.
 - **Does**: Requires terminal-trend analysis to reject a still-improving horizon and
   accept only a statistically supported practical plateau.
+- **Does**: Accepts a consistently separated paired comparison before either arm is
+  flat, while rejecting an inconsistent ordering buried in terminal noise.
 - **Does**: Proves optional cosine learning-rate decay is disabled by default, uses
   absolute update boundaries, reaches its configured floor, updates every optimizer
   group, and rejects malformed policies.
@@ -146,6 +148,8 @@ tensor shapes.
   repeated evaluation updates after resume.
 - **Does**: Separates stability from convergence so a non-collapsing run cannot be
   mistaken for an informative stopping horizon.
+- **Does**: Separates per-run plateau evidence from comparison-level robustness so
+  continued noisy learning does not automatically erase a persistent treatment effect.
 - **Does**: Aligns each real exploratory intervention with validation before and after
   it, excludes virtual controls, and distinguishes survived from unstable bodies.
 

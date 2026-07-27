@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Determines whether a completed SOL run stopped on a statistically supported plateau or
-while held-out loss was still changing. This prevents endpoint rankings from being
-treated as capability evidence when the chosen training horizon is arbitrary.
+Determines whether a completed SOL run stopped on a statistically supported plateau and
+whether a paired treatment/control ordering remains meaningful despite nonzero terminal
+trend. This prevents arbitrary endpoints without requiring learning curves to become
+mathematically flat.
 
 ## Components
 
@@ -18,16 +19,29 @@ treated as capability evidence when the chosen training horizon is arbitrary.
   the configured practical-equivalence band; merely ending at the best checkpoint is
   not convergence.
 
+### `summarize_comparison_horizon`
+- **Does**: Aligns the final treatment/control evaluations and reports mean, endpoint,
+  and worst paired gaps plus the fraction won by each arm.
+- **Does**: Compares the paired effect with combined terminal residual noise and reports
+  relative slope and a clearly labeled linear crossing extrapolation.
+- **Does**: Accepts a comparison horizon when either both arms support a practical
+  plateau or one ordering is sufficiently consistent and large relative to measured
+  terminal noise.
+- **Rationale**: Continued noisy improvement does not invalidate a treatment effect
+  that persists throughout the terminal window; slope remains a caveat rather than an
+  impossible zero-change prerequisite.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
 | `benchmark.py` | Every completed SOL summary includes a terminal-horizon verdict | Summary keys or status names |
-| Experiment reports | A meaningful comparison includes curves plus the stored terminal slope/noise evidence | Slope units or interval semantics |
+| Experiment reports | A meaningful comparison includes curves, paired gaps, and stored terminal slope/noise evidence | Slope units, alignment, or status semantics |
 
 ## Notes
 
-- `horizon_informative` means the observed window supports a practical plateau; it is
-  not a claim that later optimization can never resume.
-- Comparison gaps must still be judged against seed variance and terminal movement
-  across every arm.
+- Per-run `horizon_informative` means the observed window supports a practical plateau;
+  comparison-level `horizon_informative` can instead mean the paired ordering is robust.
+- Linear crossing time assumes terminal slopes persist indefinitely. It is diagnostic,
+  not a forecast or an automatic veto.
+- Seed variance and replication remain separate requirements.

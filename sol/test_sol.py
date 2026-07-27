@@ -21,7 +21,10 @@ from .baselines import (
 )
 from .benchmark import _device_memory
 from .checkpoint import load_checkpoint, save_checkpoint
-from .convergence import summarize_convergence
+from .convergence import (
+    summarize_comparison_horizon,
+    summarize_convergence,
+)
 from .evaluate import (
     _shuffle_cell_state,
     evaluate_state_ablations,
@@ -100,6 +103,60 @@ def test_convergence_requires_a_supported_practical_plateau() -> None:
     assert summary["horizon_informative"]
     assert summary["terminal_slope_ci95_low"] == pytest.approx(0.0)
     assert summary["terminal_slope_ci95_high"] == pytest.approx(0.0)
+
+
+def test_comparison_can_be_informative_before_curves_are_flat() -> None:
+    candidate = [
+        (100, 4.80),
+        (200, 4.60),
+        (300, 4.40),
+        (400, 4.20),
+        (500, 4.00),
+    ]
+    control = [
+        (100, 4.98),
+        (200, 4.77),
+        (300, 4.56),
+        (400, 4.35),
+        (500, 4.14),
+    ]
+    summary = summarize_comparison_horizon(
+        candidate,
+        control,
+        window=5,
+    )
+    assert summary["status"] == "candidate_advantage_supported"
+    assert summary["horizon_informative"]
+    assert summary["winner"] == "candidate"
+    assert summary["candidate_win_fraction"] == 1.0
+    assert summary["candidate_terminal"]["status"] == "still_improving"
+    assert summary["control_terminal"]["status"] == "still_improving"
+    assert summary["linear_updates_to_crossing"] is not None
+
+
+def test_comparison_rejects_an_inconsistent_noisy_ordering() -> None:
+    candidate = [
+        (100, 4.00),
+        (200, 4.05),
+        (300, 3.98),
+        (400, 4.04),
+        (500, 3.99),
+    ]
+    control = [
+        (100, 4.02),
+        (200, 4.00),
+        (300, 4.01),
+        (400, 4.00),
+        (500, 4.01),
+    ]
+    summary = summarize_comparison_horizon(
+        candidate,
+        control,
+        window=5,
+    )
+    assert summary["status"] == "inconclusive"
+    assert not summary["horizon_informative"]
+    assert summary["winner"] is None
 
 
 def test_topology_is_sparse_directed_and_output_reachable() -> None:

@@ -86,13 +86,14 @@ would idle the faster device.
 
 Every meaningful SOL comparison must include the complete held-out trajectory, not only
 best/final BPC. Completed summaries fit the final validation window and record its slope,
-noise, 95% interval, and a horizon verdict. An endpoint ranking is provisional whenever
-any arm is still improving, worsening, or too noisy to support a practical plateau.
+noise, and 95% interval. Paired reports additionally measure the aligned gap, win
+fraction, effect relative to residual noise, and relative slope.
 
 Reports must graph every arm and seed, disclose mixed-device controls, and compare the
-between-arm gap with terminal movement and seed variance. Runs should be resumed from
-their existing checkpoints until the horizon is informative; a fast run is permission
-to observe more of its learning curve, not evidence that an early endpoint is final.
+between-arm gap with terminal movement and seed variance. A comparison horizon is
+informative when both arms support a practical plateau or when one ordering remains
+consistent and large relative to terminal noise. Continued noisy learning is reported,
+but mathematical flatness is not required to recognize a robust treatment effect.
 
 ## Falsification
 

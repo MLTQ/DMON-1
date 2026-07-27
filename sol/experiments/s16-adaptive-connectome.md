@@ -45,7 +45,7 @@ mature incumbent.
 
 ## Protected contracts
 
-The local suite currently passes 71 tests. New tests require:
+The local suite currently passes 73 tests. New tests require:
 
 - dormant slots to carry no traffic or transient synaptic state;
 - topology metrics to count only active anatomy;
@@ -128,3 +128,27 @@ converged relative capability.
 Resume these exact organisms rather than restarting them. Use longer validation windows
 and require complete curves plus terminal slope/noise intervals before deciding whether
 global-fitness or stricter vector-credit gating is the next structural intervention.
+
+## Two-thousand-update comparison horizon
+
+Long-window evaluation resumed the exact checkpoints with 4,096 validation characters.
+The per-run curves still had small nonzero terminal slopes, so mathematical plateau
+tests remained inconclusive. The paired hypothesis does not require zero learning:
+adaptive morphology must retain a consistent advantage large relative to observed
+terminal noise.
+
+Across the five aligned evaluations from update 1,000 through 2,000:
+
+| Seed | Adaptive mean advantage | Terminal wins | Effect / residual noise | Endpoint advantage |
+|---|---:|---:|---:|---:|
+| 7 | 0.1667 BPC | 5 / 5 | 5.69x | 0.1721 BPC |
+| 13 | 0.1601 BPC | 5 / 5 | 7.34x | 0.1094 BPC |
+
+Both comparisons therefore support the claim that learned sparse anatomy improves
+capability over equally sparse fixed anatomy at this horizon. Probes-only was descending
+faster in both seeds; relative slopes and naive linear crossing estimates remain
+reported caveats, not forecasts or automatic vetoes. Seed 21 is required before treating
+the result as a replicated structural-policy effect.
+
+The fixed-full controls remained lower in absolute BPC, so S16 supports adaptive
+communication relative to sparse birth anatomy, not parity with maximum live fan-in.
