@@ -70,3 +70,30 @@ Call larger tissue promising only if it:
 
 Do not replace the local live checkpoint unless the larger organism also passes the
 existing promotion and UI compatibility gates.
+
+## Capacity result
+
+All probes completed 50 train updates followed by persistent, reset, and shuffled-state
+evaluation, generation, and checkpointing. CUDA peak statistics were reset after model
+and optimizer construction and recorded inside each run artifact.
+
+| Cells | Parameters | Peak reserved | Train tokens/s | Reachable |
+|---:|---:|---:|---:|---:|
+| 128 | 127,426 | 2.67 GiB | 1,675 | 100% |
+| 256 | 137,666 | 5.61 GiB | 1,682 | 100% |
+| 512 | 158,146 | 10.84 GiB | 1,616 | 100% |
+| 896 | 188,866 | 18.99 GiB | 1,607 | 100% |
+
+The 896-cell probe retained `4.53 GiB` between PyTorch's peak reserved memory and the
+card's reported total. A 1,024-cell run was not attempted: the measured linear slope
+projects roughly `21.3 GiB` reserved before process/driver overhead, violating the
+planned 3 GiB safety reserve. Scaling from 128 to 896 cells reduced measured throughput
+by only about 4%, showing that the 4090 was underutilized by the smaller fields.
+
+## Full-run status
+
+The selected 896-cell organism is training for 5,000 updates on the RTX 4090 with fixed
+anatomy, energy held at one, no fast efficacy, and the S12 decay from updates 2,500 to
+5,000. It is a 14-fold increase in persistent cells over the local-live checkpoint but
+only a 1.54-fold increase in learned parameters because the cell transition rule is
+shared.

@@ -63,3 +63,26 @@ other than the inactive future schedule and output directory. This confirms that
 different GPU architecture prevents the planned bitwise pre-boundary identity. Continue
 the run as a useful robustness candidate, but require a 4090 same-device replication
 before attributing any final difference causally to decay.
+
+## Seed-7 robustness result
+
+The RTX 2070 Super run completed all 5,000 updates at its best checkpoint:
+
+- best and final held-out BPC: `2.32164`;
+- final and worst post-best regression: `0.00000`;
+- next-character accuracy: `50.93%`;
+- reset-each-token BPC: `7.91480`;
+- shuffled-cell BPC: `6.14728`;
+- mean healthy-stream energy: `0.97856`;
+- viability: `1.0`; quiescent fraction: `0.0`;
+- full sensory and output reachability.
+
+Against the RTX 4090 S11 constant-rate control, S13 won all ten post-boundary aligned
+evaluations. Mean second-half BPC improved from `2.53423` to `2.42483`, a `-0.10940`
+delta. Best BPC improved by `0.09352`, final BPC improved by `0.19718`, and the final
+checkpoint narrowly beat the S12 local-live checkpoint by `0.01015` BPC.
+
+This passes the robustness and physiology gate, but the cross-architecture
+pre-boundary differences prevent a bitwise causal attribution to optimizer decay. A
+seed-13 replication is running on the same RTX 2070 Super. Promotion remains gated on a
+same-device 4090 comparison or sufficiently strong replication evidence.

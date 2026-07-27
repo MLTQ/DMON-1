@@ -169,3 +169,30 @@ This seed passes the living-organism morphology gate: exploratory traffic can ac
 reject candidate axons selectively while the shared body learns continuously, and every
 resolved grafted/rejected body survives. It does not establish a global language benefit
 from rewiring; seed-7 and seed-21 replications remain queued.
+
+## Full GPU seed-7 result
+
+Seed 7 reached the nominal 5,000-update boundary with an eighth trial only 100 windows
+into its 300-window ABBA observation period. The same checkpointed organism therefore
+continued to update 5,200, preserving its state, optimizer, anatomy, stream position,
+and reward memories until the trial resolved.
+
+The final ledger contains eight resolved trials:
+
+- five commits and three rejections;
+- exactly 150 candidate-on and 150 incumbent-only windows per trial;
+- mean within-organism decision advantage `+0.002020`;
+- eight of eight decision-aligned whole-body survival passes;
+- zero pending or unstable trials;
+- five rewires with fixed fan-in and complete directed reachability.
+
+The last candidate committed with advantage `+0.007272`, after which mean body energy
+was `0.99922` and all cells remained viable. Language quality was weaker and less stable
+than the S12 fixed-topology decay checkpoint: seed 7 reached `2.49942` best and `2.63140`
+final BPC, a `0.13198` final regression. Resetting state worsened final BPC to `9.71051`;
+shuffling cell identity worsened it to `6.47580`.
+
+Together, seeds 7 and 13 establish two independent full-scale living bodies with a mix
+of accepted and rejected organs and 16/16 trial-level survival. They do not show a
+language benefit from rewiring. Seed 21 is deferred while the 4090 tests the higher
+priority cell-count scaling hypothesis.
