@@ -18,7 +18,8 @@ connectome.
   floor moves only existing energy along installed non-self axons when information
   traffic is silent.
 - **Does**: Optionally routes channel-shaped reverse credit toward installed sources
-  whose remembered event eligibility aligns with the signed corrective contribution.
+  whose remembered event eligibility aligns with the signed corrective contribution,
+  with an explicit parameter-free alignment gain that defaults to the original scale.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 - **Does**: Separates maximum dendrite-slot capacity from the number active at birth;
   the disabled default activates every slot for historical checkpoint equivalence.
@@ -91,6 +92,9 @@ connectome.
   signed reverse contribution's alignment with source event memory, then normalizes
   multipliers within the target dendrite fan. Equal evidence reproduces historical
   transport scale and dormant slots receive no credit.
+- **Does**: Applies `eligibility_routing_gain` before the bounded alignment nonlinearity,
+  making weak real-organism event traces experimentally calibratable without changing
+  decoder-credit amplitude or adding learned parameters.
 - **Rationale**: The reverse signal preserves which hidden-state directions would
   correct the decoder instead of collapsing error to one scalar.
 - **Rationale**: Persistent credit should preferentially reach cells tied to the event
@@ -141,7 +145,8 @@ connectome.
   cell's eligibility trace.
 - **Eligibility-routed output credit**: The optional router uses that same source event
   memory to distribute reverse credit among installed dendrites. It is disabled by
-  default for checkpoint and experiment compatibility.
+  default for checkpoint and experiment compatibility; routing gain `1` exactly
+  reproduces the original S19 mechanism.
 - **Energy provenance**: A character's novelty supplies one bounded external budget to
   sensory cells. Basal/activity costs destroy energy and directed traffic only moves it;
   no internal path may mint or discard energy.

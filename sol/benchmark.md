@@ -44,7 +44,9 @@ with checkpointing and append-only metrics.
   `--no-reward` disables all three reward paths for a complete matched ablation.
 - **Does**: `--eligibility-routed-output-credit` redistributes the decoder-shaped vector
   within each installed dendrite fan according to signed alignment with source event
-  eligibility. Equal evidence preserves the historical transport scale.
+  eligibility. `--eligibility-routing-gain` scales that evidence before its bounded
+  normalization; gain `1` preserves the original routed mechanism and equal evidence
+  preserves historical transport scale at every gain.
 - **Rationale**: Direct reward, scalar reverse transport, decoder-shaped reverse
   transport, and their combinations must be compared explicitly rather than silently
   changing the organism's learning rule.

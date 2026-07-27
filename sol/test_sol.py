@@ -837,6 +837,72 @@ def test_output_error_credit_routes_toward_matching_source_memory() -> None:
     )
 
 
+def test_eligibility_routing_gain_scales_branch_selectivity() -> None:
+    low_gain = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+        eligibility_routing_gain=1.0,
+    )
+    calibrated = _model(
+        output_error_credit_gain=1.0,
+        eligibility_routed_output_credit=True,
+        eligibility_routing_gain=100.0,
+    )
+    with torch.no_grad():
+        low_gain.message_value.weight.copy_(
+            torch.eye(low_gain.cfg.channels)
+        )
+        calibrated.message_value.weight.copy_(
+            torch.eye(calibrated.cfg.channels)
+        )
+    credit = torch.zeros(
+        1, low_gain.cfg.cells, low_gain.cfg.channels
+    )
+    coefficient = torch.zeros(
+        1,
+        low_gain.cfg.cells,
+        low_gain.cfg.dendrites,
+    )
+    source_memory = torch.zeros_like(credit)
+    target = 4
+    sources = low_gain.sources[target].tolist()
+    credit[0, target] = 1.0
+    coefficient[0, target] = 0.5
+    source_memory[0, sources[0]] = 0.02
+    source_memory[0, sources[1]] = -0.02
+
+    baseline = low_gain._transport_output_error_credit(
+        credit,
+        coefficient,
+        torch.zeros_like(source_memory),
+    )
+    low = low_gain._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+    high = calibrated._transport_output_error_credit(
+        credit,
+        coefficient,
+        source_memory,
+    )
+    low_deviation = (
+        low[0, sources[0]] - baseline[0, sources[0]]
+    ).abs().sum()
+    high_deviation = (
+        high[0, sources[0]] - baseline[0, sources[0]]
+    ).abs().sum()
+
+    assert high_deviation > 10 * low_deviation
+    assert high[0, sources[0], 0] > low[0, sources[0], 0]
+    assert high[0, sources[1], 0] < low[0, sources[1], 0]
+
+
+def test_eligibility_routing_gain_must_be_nonnegative() -> None:
+    with pytest.raises(ValueError, match="gains must be nonnegative"):
+        replace(_model().cfg, eligibility_routing_gain=-1.0)
+
+
 def test_eligibility_router_excludes_dormant_credit_paths() -> None:
     model = _model(
         output_error_credit_gain=1.0,
@@ -1978,6 +2044,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
             backward_credit_gain=0.25,
             output_error_credit_gain=0.25,
             eligibility_routed_output_credit=True,
+            eligibility_routing_gain=100.0,
         ),
         text,
         vocabulary,
@@ -2052,6 +2119,7 @@ def test_checkpoint_resume_preserves_the_next_update(tmp_path: Path) -> None:
     )
     assert resumed.structural_config == trainer.structural_config
     assert resumed.model.cfg.eligibility_routed_output_credit
+    assert resumed.model.cfg.eligibility_routing_gain == 100.0
 
 
 def test_checkpoint_resume_preserves_active_probation(tmp_path: Path) -> None:

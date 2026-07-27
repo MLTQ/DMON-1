@@ -41,6 +41,7 @@ class SolConfig:
     output_error_credit_gain: float = 0.0
     output_error_credit_decay: float = 0.80
     eligibility_routed_output_credit: bool = False
+    eligibility_routing_gain: float = 1.0
     fast_weight_decay: float = 0.995
     fast_plasticity_gain: float = 0.04
     fast_weight_limit: float = 0.25
@@ -96,6 +97,7 @@ class SolConfig:
             self.reward_gain < 0
             or self.backward_credit_gain < 0
             or self.output_error_credit_gain < 0
+            or self.eligibility_routing_gain < 0
             or self.fast_plasticity_gain < 0
             or self.structural_probe_gain < 0
         ):
@@ -665,6 +667,7 @@ class SparseAxonField(nn.Module):
             alignment = torch.tanh(
                 (edge_sourceward * source_memory).mean(dim=3)
                 * math.sqrt(self.cfg.channels)
+                * self.cfg.eligibility_routing_gain
             )
             active = self.active_edges.unsqueeze(0)
             routing = torch.softmax(

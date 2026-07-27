@@ -154,6 +154,7 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "eligibility_routed_output_credit": (
             args.eligibility_routed_output_credit
         ),
+        "eligibility_routing_gain": args.eligibility_routing_gain,
         "structural_probe_gain": (
             args.structural_probe_gain
             if args.structural_plasticity or args.structural_probes_only
@@ -709,6 +710,15 @@ def parse_args() -> argparse.Namespace:
             "whose event eligibility aligns with that correction"
         ),
     )
+    parser.add_argument(
+        "--eligibility-routing-gain",
+        type=float,
+        default=1.0,
+        help=(
+            "scale event-memory alignment before normalizing decoder-credit "
+            "routing; 1 reproduces the original routed mechanism"
+        ),
+    )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
     parser.add_argument("--energy-transport-rate", type=float, default=0.50)
@@ -872,6 +882,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--output-error-credit-gain must be non-negative")
     if not 0 <= args.output_error_credit_decay < 1:
         parser.error("--output-error-credit-decay must be in [0, 1)")
+    if args.eligibility_routing_gain < 0:
+        parser.error("--eligibility-routing-gain must be non-negative")
     if args.structural_probe_gain <= 0 and (
         args.structural_plasticity or args.structural_probes_only
     ):
