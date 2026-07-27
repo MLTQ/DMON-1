@@ -52,6 +52,8 @@ tensor shapes.
 - **Does**: Proves optional cosine learning-rate decay is disabled by default, uses
   absolute update boundaries, reaches its configured floor, updates every optimizer
   group, and rejects malformed policies.
+- **Does**: Requires benchmark memory telemetry to identify non-CUDA devices explicitly
+  without invoking CUDA-only APIs.
 
 ### Metabolism and eligibility tests
 - **Does**: Proves unstimulated energy depletion and delayed reward dependence on a

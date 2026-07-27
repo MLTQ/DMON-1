@@ -19,6 +19,7 @@ from .baselines import (
     match_gru_hidden_size,
     match_transformer_hidden_size,
 )
+from .benchmark import _device_memory
 from .checkpoint import load_checkpoint, save_checkpoint
 from .evaluate import (
     _shuffle_cell_state,
@@ -56,6 +57,10 @@ def _model(**overrides) -> SparseAxonField:
         topology_seed=7,
     )
     return SparseAxonField(replace(cfg, **overrides))
+
+
+def test_device_memory_is_explicit_for_cpu() -> None:
+    assert _device_memory(torch.device("cpu")) == {"device_type": "cpu"}
 
 
 def test_topology_is_sparse_directed_and_output_reachable() -> None:

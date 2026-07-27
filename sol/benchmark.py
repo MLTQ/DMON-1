@@ -42,6 +42,25 @@ from .train import ContinuousTrainer, generate
 DEFAULT_CORPUS = Path("data/tinyshakespeare/input.txt")
 
 
+def _device_memory(device: torch.device) -> dict[str, int | str]:
+    """Return comparable current and peak memory telemetry for a device."""
+
+    memory: dict[str, int | str] = {"device_type": device.type}
+    if device.type != "cuda":
+        return memory
+    properties = torch.cuda.get_device_properties(device)
+    memory.update(
+        {
+            "allocated_bytes": torch.cuda.memory_allocated(device),
+            "reserved_bytes": torch.cuda.memory_reserved(device),
+            "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+            "peak_reserved_bytes": torch.cuda.max_memory_reserved(device),
+            "total_bytes": properties.total_memory,
+        }
+    )
+    return memory
+
+
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -214,6 +233,8 @@ def _run_sol(
             device=device,
         )
 
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     parameter_count = sum(
         parameter.numel()
         for parameter in trainer.model.parameters()
@@ -252,6 +273,7 @@ def _run_sol(
                     / max(elapsed, 1e-9)
                 ),
                 "learning_rate": learning_rate,
+                "device_memory": _device_memory(device),
                 **asdict(metrics),
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", row)
@@ -288,6 +310,7 @@ def _run_sol(
                 "update": update,
                 "ablations": last_eval,
                 "sample": sample,
+                "device_memory": _device_memory(device),
             }
             _append_jsonl(args.out_dir / "metrics.jsonl", eval_row)
             evaluation_history.append((update, persistent_bpc))
@@ -335,6 +358,7 @@ def _run_sol(
         "evaluation": last_eval,
         "config": asdict(trainer.model.cfg),
         "optimization": _optimization_config(args, trainer.learning_rate),
+        "device_memory": _device_memory(device),
         "frozen_parameters": list(trainer.frozen_parameters),
         "topology": analyze_topology(
             trainer.model.sources,

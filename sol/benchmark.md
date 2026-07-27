@@ -104,6 +104,9 @@ with checkpointing and append-only metrics.
 ### CLI
 - **Does**: Records a manifest, JSONL history, summary, and local checkpoint beneath an
   explicit output directory.
+- **Does**: Records current and process-peak allocated/reserved CUDA bytes in SOL train,
+  evaluation, and summary artifacts so capacity decisions include the full evaluation
+  and generation path.
 - **Rationale**: Large tensors stay out of Git while small evidence files remain easy to
   inspect and copy home.
 
