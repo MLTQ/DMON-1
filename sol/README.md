@@ -36,6 +36,10 @@ probabilities out. It is not a transformer imitation.
   correction, then lets later signed reward reinforce or suppress those branch choices.
   This closes a local forward-event/backward-credit/future-fitness loop with persistent
   state and no new model parameters.
+- A counterfactual router can instead use alignment only to propose a bounded branch
+  preference, alternate candidate/incumbent reverse-credit traffic inside the same
+  continuously learning organism, and commit from the measured prequential reward
+  difference.
 - One weak exploratory source per target is measured by running the shared cell rule
   with and without that candidate message. Between differentiable windows, a bounded
   structural phase may replace a mature low-credit dendrite when the candidate is
@@ -72,6 +76,10 @@ python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
 python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
   --reward-plastic-output-credit-routing --eligibility-routing-gain 100 \
   --out-dir sol/runs/reward-plastic-routing
+python -m sol.benchmark --model sol --output-error-credit-gain 0.5 \
+  --exploratory-output-credit-routing --eligibility-routing-gain 100 \
+  --routing-traffic-updates 20 \
+  --out-dir sol/runs/counterfactual-routing
 python -m sol.benchmark --model sol --no-fast-plasticity \
   --structural-plasticity --out-dir sol/runs/growing-connectome
 python -m sol.benchmark --model sol --no-fast-plasticity \

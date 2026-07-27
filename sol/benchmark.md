@@ -51,6 +51,14 @@ with checkpointing and append-only metrics.
   reward meet a remembered branch-specific routing event. Explicit decay, plasticity
   gain, and preference limit govern this parameter-free fast state; it is mutually
   exclusive with instantaneous eligibility routing.
+- **Does**: `--exploratory-output-credit-routing` instead uses branch eligibility only
+  to propose a bounded zero-sum preference change, alternates that change on/off in one
+  live organism, and commits from candidate-minus-incumbent prequential reward.
+  Cadence, warmup, trial length, margin, proposal step, and minimum evidence are
+  explicit manifest fields.
+- **Does**: Routing and structural exploratory trials are sequenced while ordinary
+  forward traffic, probes, parameter learning, persistent state, and evidence
+  accumulation remain active.
 - **Rationale**: Direct reward, scalar reverse transport, decoder-shaped reverse
   transport, and their combinations must be compared explicitly rather than silently
   changing the organism's learning rule.
@@ -98,6 +106,8 @@ with checkpointing and append-only metrics.
   summary.
 - **Does**: Records probation activity, attempts, commits, rollbacks, observations, and
   mean observed advantage.
+- **Does**: Records the independent routing-traffic phase, proposal, ABBA reward
+  aggregates, commit/reject totals, and complete decision ledger.
 - **Interacts with**: `analyze_topology` in `topology.py`.
 
 ### Stability report

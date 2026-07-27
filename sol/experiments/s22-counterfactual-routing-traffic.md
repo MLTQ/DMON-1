@@ -47,6 +47,11 @@ Each arm receives the same number of windows. The proposal affects reverse-credi
 allocation during its candidate windows; reward observed on the live stream is retained
 with the exact target, branch, direction, phase, update, and observation counts.
 
+The matched preflight uses a 25-update shared cadence and a 75-update routing warmup.
+Routing therefore starts at updates 75, 125, ..., 975 and each 20-window ABBA trial
+resolves by 95, 145, ..., 995. The 250-update validation/checkpoint boundaries remain
+trial-free, so every plotted point describes a fully decided routing state.
+
 ## State and invariants
 
 Checkpointed routing-trial state must include:
@@ -85,5 +90,45 @@ The primary capability control remains S17. S20 and S21 are mechanistic context,
 new baselines.
 
 ## Results
+
+### Implementation and natural-stream smoke
+
+The default-disabled implementation adds a separate checkpointed routing-trial policy
+without learned parameters. The model preserves accepted preference, continuously
+updates branch proposal eligibility, and accepts a temporary `(cells, dendrites)`
+zero-sum delta only during candidate windows. Trainer telemetry and benchmark summaries
+retain every arm and decision.
+
+The first 200-update, 12-cell Tiny Shakespeare smoke deliberately gave routing and
+structural traffic the same ten-update cadence. A first scheduling attempt allowed
+structural probation to claim every phase and produced zero routing trials. That is an
+invalid mechanism test, not a negative result. Deterministic phase sharing now reserves
+alternating opportunities, and a fresh run produced:
+
+| Mechanism | Started | Committed | Rejected | Active at boundary |
+|---|---:|---:|---:|---:|
+| Routing traffic | 10 | 7 | 3 | 0 |
+| Structural traffic | 9 | 4 | 4 | 1 |
+
+Every completed routing trial had exactly two candidate and two incumbent observations.
+Ordinary body weights changed in both arms; structural probes and evidence continued;
+the named topology remained fixed during each routing trial; structural traffic resumed
+on its next reserved phase. Final anatomy had 25 active edges from 24 at birth.
+
+Accepted routing was active and bounded:
+
+| Mean active preference | Maximum preference | Mean routing deviation | Maximum deviation | Saturated slots |
+|---:|---:|---:|---:|---:|
+| 0.01289 | 0.11213 | 1.28% | 11.17% | 0% |
+
+Held-out BPC moved from `5.450` at update 100 to `5.444` at update 200. With only two
+validations this is a mechanism smoke, not a stopping-horizon or capability claim.
+
+Verification: 97 repository tests pass. They cover local zero-sum/constant-scale
+traffic, positive commit, negative rejection, shared-body adaptation in both arms,
+deterministic non-starvation, policy exclusivity, dormant masks, old-checkpoint
+compatibility, and exact active-trial resume.
+
+### Matched preflight
 
 Pending.

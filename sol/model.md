@@ -20,9 +20,11 @@ connectome.
 - **Does**: Optionally routes channel-shaped reverse credit toward installed sources
   whose remembered event eligibility aligns with the signed corrective contribution,
   with an explicit parameter-free alignment gain that defaults to the original scale.
-- **Does**: Alternatively enables a reward-plastic routing policy whose per-branch
-  eligibility and bounded preference are fast organism state rather than learned
-  parameters. The two experimental routing policies are mutually exclusive.
+- **Does**: Alternatively enables either reward-plastic preference updates or a
+  preference-routed exploratory policy whose candidate delta is supplied by a live
+  counterfactual traffic trial. Branch eligibility and bounded preference remain fast
+  organism state rather than learned parameters. All three routing policies are
+  mutually exclusive.
 - **Rationale**: All scientific knobs travel with the model rather than hiding in a CLI.
 - **Does**: Separates maximum dendrite-slot capacity from the number active at birth;
   the disabled default activates every slot for historical checkpoint equivalence.
@@ -99,9 +101,11 @@ connectome.
 - **Does**: Applies `eligibility_routing_gain` before the bounded alignment nonlinearity,
   making weak real-organism event traces experimentally calibratable without changing
   decoder-credit amplitude or adding learned parameters.
-- **Does**: Under the reward-plastic policy, normalizes checkpointed branch preferences
+- **Does**: Under either preference policy, normalizes checkpointed branch preferences
   within each active target fan; equal preference exactly reproduces historical
-  transport and dormant capacity receives none.
+  transport and dormant capacity receives none. Exploratory trials may add one
+  target-owned zero-sum delta for the current streamed window without writing it into
+  persistent state.
 - **Rationale**: The reverse signal preserves which hidden-state directions would
   correct the decoder instead of collapsing error to one scalar.
 - **Rationale**: Persistent credit should preferentially reach cells tied to the event
@@ -146,6 +150,9 @@ connectome.
 - **Does**: Measures whether channel-shaped reverse credit crossing each installed edge
   or causal probe actually aligns with event eligibility at the source cell, providing
   signed anatomical evidence distinct from raw traffic.
+- **Does**: When exploratory routing is configured, preserves committed preference,
+  accumulates proposal eligibility, and applies an optional `(cells, dendrites)`
+  counterfactual delta only to reverse-credit transport.
 - **Rationale**: `token=None` remains a live interval and proves energy depletion without
   stimulation.
 - **Reward contract**: A pending reward is consumed once. `forward_sequence` stores the

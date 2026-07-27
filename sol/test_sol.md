@@ -85,6 +85,11 @@ tensor shapes.
   reward, responds oppositely to positive and negative reward, routes future correction
   according to bounded preference, preserves equal-evidence transport and parameter
   count, and cannot coexist with instantaneous routing.
+- **Does**: Proves exploratory routing preserves committed preference without
+  correlational reward updates, proposes a local zero-sum fan perturbation, maintains
+  total reverse-credit scale, commits/rejects from balanced ABBA evidence, keeps shared
+  body learning active in both arms, sequences topology decisions, and resumes the
+  exact next arm and outcome.
 - **Does**: Proves dormant dendrite slots carry no traffic or transient synaptic state,
   topology metrics count only active anatomy, a qualified decoder-credit candidate can
   spawn into dormant capacity, and a redundant unused edge can be pruned without
@@ -119,6 +124,8 @@ tensor shapes.
   policy/credit/global-fitness/confirmation buffers, and metadata.
 - **Does**: Includes branch routing eligibility/preference in exact resume, probation
   rollback, old-checkpoint additive initialization, and target-owned cell shuffling.
+- **Does**: Includes exploratory routing policy and active trial proposal, phase,
+  aggregates, counters, and ledger in exact resume and old-checkpoint compatibility.
 - **Does**: Resumes an active provisional graft through its decision and requires the
   same loss, topology, body state, and commit/rollback counters.
 - **Does**: Resumes midway through an exploratory ABBA trial with the same next traffic

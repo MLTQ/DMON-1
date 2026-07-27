@@ -13,6 +13,8 @@ one-character-at-a-time organism path used during training.
   bounded rewiring counts, including mean first-order probe fitness and persistent
   scalar and channel-shaped backward-credit magnitudes plus reward-plastic routing
   eligibility, preference, and saturation.
+- **Does**: Reports routing-traffic trial phase, actual ABBA arm, target/slot, per-arm
+  observations and rewards, advantage, and cumulative commit/reject counts.
 - **Does**: Separately reports replacements, spawns, prunes, and their cumulative
   anatomical mutation counts.
 - **Does**: Reports mean viability, quiescent fraction, external energy input, actual
@@ -25,7 +27,8 @@ one-character-at-a-time organism path used during training.
 ### `ContinuousTrainer`
 - **Does**: Owns the persistent field state, corpus cursor, optimizer, and credit loop.
 - **Interacts with**: `SparseAxonField` in `model.py`, structural phases in
-  `structure.py`, and `ContinuousCharStream` in `stream.py`.
+  `structure.py`, routing trials in `routing.py`, and `ContinuousCharStream` in
+  `stream.py`.
 - **Rationale**: An optimizer boundary detaches history but never resets experience.
 - **Structural order**: Accumulates causal evidence and performs any fixed-shape
   rewiring only after backward, gradient clipping, and the optimizer step.
@@ -56,6 +59,12 @@ one-character-at-a-time organism path used during training.
 - **Reward-plastic routing**: Carries target-owned branch eligibility and preference
   across optimizer windows so later prequential reward can assign fitness to an earlier
   decoder-credit routing event without pausing ordinary BPTT.
+- **Exploratory routing**: Applies a fixed zero-sum preference delta only during
+  checkpointed candidate windows, observes both ABBA arms after ordinary optimization,
+  and commits only a positive within-organism reward difference.
+- **Exploration order**: Structural probes and credit accumulation remain live during a
+  routing trial, but topology decisions are sequenced until the named fan resolves.
+  Structural and routing probation therefore never alter the same intervention at once.
 
 ### `ContinuousTrainer.state_dict` / `from_state_dict`
 - **Does**: Round-trips model weights, optimizer moments, field state, stream cursor,
@@ -63,6 +72,8 @@ one-character-at-a-time organism path used during training.
   random-number state.
 - **Does**: Includes the complete active graft backup and probation evidence so resume
   produces the same future commit or rollback, plus all completed trial records.
+- **Does**: Includes routing-traffic configuration, proposal tensor, exact next ABBA
+  arm, reward aggregates, counters, and decision ledger.
 - **Interacts with**: `save_checkpoint` and `load_checkpoint` in `checkpoint.py`.
 - **Rationale**: Resuming only weights would silently create a new organism and a new
   stream position.

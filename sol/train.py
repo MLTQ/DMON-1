@@ -12,6 +12,12 @@ import torch
 from torch.nn import functional as F
 
 from .model import FieldState, SolConfig, SparseAxonField
+from .routing import (
+    RoutingTrafficConfig,
+    RoutingTrafficTrial,
+    routing_traffic_due,
+    routing_traffic_update,
+)
 from .structure import (
     StructuralConfig,
     StructuralProbation,
@@ -38,6 +44,21 @@ class TrainMetrics:
     mean_credit_routing_eligibility: float
     mean_credit_routing_preference: float
     credit_routing_preference_saturation: float
+    routing_trial_active: bool
+    routing_trial_started: bool
+    routing_trial_resolved: bool
+    routing_trial_committed: bool
+    routing_candidate_exposed: bool
+    routing_trials_started: int
+    routing_trials_committed: int
+    routing_trials_rejected: int
+    routing_trial_advantage: float
+    routing_trial_target: int
+    routing_trial_slot: int
+    routing_candidate_observations: int
+    routing_incumbent_observations: int
+    routing_candidate_reward: float
+    routing_incumbent_reward: float
     mean_novelty: float
     cell_credit: float
     edge_credit: float
@@ -84,6 +105,7 @@ class ContinuousTrainer:
         grad_clip: float = 1.0,
         frozen_parameters: tuple[str, ...] = (),
         structural_config: StructuralConfig | None = None,
+        routing_traffic_config: RoutingTrafficConfig | None = None,
         device: torch.device | str = "cpu",
     ):
         self.device = torch.device(device)
@@ -96,6 +118,9 @@ class ContinuousTrainer:
         self.grad_clip = grad_clip
         self.learning_rate = learning_rate
         self.structural_config = structural_config or StructuralConfig()
+        self.routing_traffic_config = (
+            routing_traffic_config or RoutingTrafficConfig()
+        )
         parameters_by_name = dict(self.model.named_parameters())
         unknown_frozen = sorted(set(frozen_parameters) - set(parameters_by_name))
         if unknown_frozen:
@@ -115,6 +140,23 @@ class ContinuousTrainer:
             raise ValueError(
                 "minimum active dendrites cannot exceed slot capacity"
             )
+        if self.routing_traffic_config.enabled:
+            if not self.model.cfg.exploratory_output_credit_routing:
+                raise ValueError(
+                    "routing traffic requires exploratory output-credit routing"
+                )
+            if self.model.cfg.output_error_credit_gain <= 0:
+                raise ValueError(
+                    "routing traffic requires output-error credit"
+                )
+            if (
+                self.routing_traffic_config.proposal_step
+                > self.model.cfg.credit_routing_preference_limit
+            ):
+                raise ValueError(
+                    "routing traffic proposal step cannot exceed "
+                    "the preference limit"
+                )
         frozen_edges = bool(
             {"edge_weight", "edge_bias"}.intersection(
                 self.frozen_parameters
@@ -141,6 +183,7 @@ class ContinuousTrainer:
         )
         self.state = self.model.initial_state(batch_size, self.device)
         self.structural_probation = StructuralProbation()
+        self.routing_traffic_trial = RoutingTrafficTrial()
         self.prequential_advantage_ema = 0.0
         self.updates = 0
 
@@ -164,6 +207,12 @@ class ContinuousTrainer:
             "frozen_parameters": list(self.frozen_parameters),
             "structural_config": asdict(self.structural_config),
             "structural_probation": self.structural_probation.state_dict(),
+            "routing_traffic_config": asdict(
+                self.routing_traffic_config
+            ),
+            "routing_traffic_trial": (
+                self.routing_traffic_trial.state_dict()
+            ),
             "prequential_advantage_ema": self.prequential_advantage_ema,
             "updates": self.updates,
             "torch_rng_state": torch.get_rng_state(),
@@ -195,6 +244,9 @@ class ContinuousTrainer:
             structural_config=StructuralConfig(
                 **payload.get("structural_config", {})
             ),
+            routing_traffic_config=RoutingTrafficConfig(
+                **payload.get("routing_traffic_config", {})
+            ),
             device=device,
         )
         trainer.model.load_compatible_state_dict(payload["model"])
@@ -207,6 +259,12 @@ class ContinuousTrainer:
         trainer.structural_probation = StructuralProbation.from_state_dict(
             payload.get("structural_probation"),
             trainer.device,
+        )
+        trainer.routing_traffic_trial = (
+            RoutingTrafficTrial.from_state_dict(
+                payload.get("routing_traffic_trial"),
+                trainer.device,
+            )
         )
         trainer.prequential_advantage_ema = float(
             payload.get("prequential_advantage_ema", 0.0)
@@ -228,6 +286,10 @@ class ContinuousTrainer:
                 self.model
             )
         )
+        routing_candidate_exposed = (
+            self.routing_traffic_trial.candidate_exposed
+        )
+        routing_delta = self.routing_traffic_trial.active_delta()
         self.optimizer.zero_grad(set_to_none=True)
         logits, next_state, trace = self.model.forward_sequence(
             inputs,
@@ -235,6 +297,7 @@ class ContinuousTrainer:
             targets=targets,
             retain_credit=True,
             structural_probe_mask=probe_mask,
+            credit_routing_preference_delta=routing_delta,
         )
         loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
         loss.backward()
@@ -279,6 +342,24 @@ class ContinuousTrainer:
             probe_vector_evidence=probe_vector_evidence,
         )
         baseline_before = self.prequential_advantage_ema
+        self.routing_traffic_trial.observe(
+            prequential_advantage,
+            routing_candidate_exposed,
+        )
+        routing_resolved = False
+        routing_committed = False
+        if (
+            self.routing_traffic_trial.active
+            and self.routing_traffic_trial.observations
+            >= self.routing_traffic_config.trial_updates
+        ):
+            routing_committed = self.routing_traffic_trial.resolve(
+                self.model,
+                self.state,
+                self.routing_traffic_config,
+                next_update,
+            )
+            routing_resolved = True
         exploratory_trial = (
             self.structural_probation.active
             and self.structural_probation.exploratory_traffic
@@ -333,6 +414,23 @@ class ContinuousTrainer:
             self.model.structural_probe_confirmations.zero_()
             self.state.probe_eligibility.zero_()
             resolved = True
+        routing_started = False
+        if (
+            not self.routing_traffic_trial.active
+            and not routing_resolved
+            and not self.structural_probation.active
+            and routing_traffic_due(
+                self.routing_traffic_config,
+                next_update,
+                share_with_structure=self.structural_config.enabled,
+            )
+        ):
+            routing_started = self.routing_traffic_trial.begin(
+                self.model,
+                self.state,
+                self.routing_traffic_config,
+                next_update,
+            )
         structural_update = (
             StructuralUpdate(
                 0,
@@ -355,14 +453,48 @@ class ContinuousTrainer:
                 probation_candidate_exposed=candidate_exposed,
             )
             if resolved
-            else apply_structural_phase(
-                self.model,
-                self.state,
-                self.optimizer,
-                self.structural_config,
-                next_update,
-                self.structural_probation,
+            else (
+                StructuralUpdate(
+                    0,
+                    int(self.model.total_rewires.item()),
+                    0.0,
+                    0,
+                    probation_active=(
+                        self.structural_probation.active
+                    ),
+                    probation_committed=(
+                        self.structural_probation.total_committed
+                    ),
+                    probation_rolled_back=(
+                        self.structural_probation.total_rolled_back
+                    ),
+                    probation_rejected=(
+                        self.structural_probation.total_rejected
+                    ),
+                    probation_advantage=(
+                        self.structural_probation.mean_advantage
+                    ),
+                    probation_candidate_exposed=(
+                        candidate_exposed
+                    ),
+                )
+                if self.routing_traffic_trial.active
+                else apply_structural_phase(
+                    self.model,
+                    self.state,
+                    self.optimizer,
+                    self.structural_config,
+                    next_update,
+                    self.structural_probation,
+                )
             )
+        )
+        routing_update = routing_traffic_update(
+            self.routing_traffic_trial,
+            started=routing_started,
+            resolved=routing_resolved,
+            committed=routing_committed,
+            candidate_exposed=routing_candidate_exposed,
         )
         if structural_update.probation_started:
             self.structural_probation.baseline_advantage = baseline_before
@@ -429,6 +561,41 @@ class ContinuousTrainer:
             ),
             credit_routing_preference_saturation=(
                 credit_routing_preference_saturation
+            ),
+            routing_trial_active=routing_update.active,
+            routing_trial_started=routing_update.started,
+            routing_trial_resolved=routing_update.resolved,
+            routing_trial_committed=routing_update.committed,
+            routing_candidate_exposed=(
+                routing_update.candidate_exposed
+            ),
+            routing_trials_started=routing_update.total_started,
+            routing_trials_committed=(
+                routing_update.total_committed
+            ),
+            routing_trials_rejected=routing_update.total_rejected,
+            routing_trial_advantage=routing_update.advantage,
+            routing_trial_target=routing_update.target,
+            routing_trial_slot=routing_update.slot,
+            routing_candidate_observations=(
+                self.routing_traffic_trial.candidate_observations
+            ),
+            routing_incumbent_observations=(
+                self.routing_traffic_trial.incumbent_observations
+            ),
+            routing_candidate_reward=(
+                self.routing_traffic_trial.candidate_reward_sum
+                / max(
+                    1,
+                    self.routing_traffic_trial.candidate_observations,
+                )
+            ),
+            routing_incumbent_reward=(
+                self.routing_traffic_trial.incumbent_reward_sum
+                / max(
+                    1,
+                    self.routing_traffic_trial.incumbent_observations,
+                )
             ),
             mean_novelty=mean_novelty,
             cell_credit=cell_credit,
@@ -572,6 +739,10 @@ def main() -> None:
         action="store_true",
     )
     parser.add_argument(
+        "--exploratory-output-credit-routing",
+        action="store_true",
+    )
+    parser.add_argument(
         "--credit-routing-preference-decay",
         type=float,
         default=0.995,
@@ -585,6 +756,16 @@ def main() -> None:
         "--credit-routing-preference-limit",
         type=float,
         default=0.25,
+    )
+    parser.add_argument("--routing-traffic-interval", type=int, default=25)
+    parser.add_argument("--routing-traffic-warmup", type=int, default=75)
+    parser.add_argument("--routing-traffic-updates", type=int, default=20)
+    parser.add_argument("--routing-traffic-margin", type=float, default=0.0)
+    parser.add_argument("--routing-traffic-step", type=float, default=0.05)
+    parser.add_argument(
+        "--routing-traffic-minimum-eligibility",
+        type=float,
+        default=1e-6,
     )
     parser.add_argument("--lr", type=float, default=3e-3)
     parser.add_argument("--seed", type=int, default=0)
@@ -615,6 +796,9 @@ def main() -> None:
         reward_plastic_output_credit_routing=(
             args.reward_plastic_output_credit_routing
         ),
+        exploratory_output_credit_routing=(
+            args.exploratory_output_credit_routing
+        ),
         credit_routing_preference_decay=(
             args.credit_routing_preference_decay
         ),
@@ -633,6 +817,17 @@ def main() -> None:
         batch_size=args.batch,
         chunk_length=args.chunk,
         learning_rate=args.lr,
+        routing_traffic_config=RoutingTrafficConfig(
+            enabled=args.exploratory_output_credit_routing,
+            interval=args.routing_traffic_interval,
+            warmup_updates=args.routing_traffic_warmup,
+            trial_updates=args.routing_traffic_updates,
+            margin=args.routing_traffic_margin,
+            proposal_step=args.routing_traffic_step,
+            minimum_eligibility=(
+                args.routing_traffic_minimum_eligibility
+            ),
+        ),
         device=args.device,
     )
 

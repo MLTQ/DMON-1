@@ -43,6 +43,7 @@ class SolConfig:
     eligibility_routed_output_credit: bool = False
     eligibility_routing_gain: float = 1.0
     reward_plastic_output_credit_routing: bool = False
+    exploratory_output_credit_routing: bool = False
     credit_routing_preference_decay: float = 0.995
     credit_routing_plasticity_gain: float = 1.0
     credit_routing_preference_limit: float = 0.25
@@ -116,13 +117,16 @@ class SolConfig:
             raise ValueError(
                 "credit_routing_preference_limit must be positive"
             )
-        if (
-            self.eligibility_routed_output_credit
-            and self.reward_plastic_output_credit_routing
-        ):
+        routing_policies = sum(
+            (
+                self.eligibility_routed_output_credit,
+                self.reward_plastic_output_credit_routing,
+                self.exploratory_output_credit_routing,
+            )
+        )
+        if routing_policies > 1:
             raise ValueError(
-                "instantaneous and reward-plastic output-credit routing "
-                "are mutually exclusive"
+                "output-credit routing policies are mutually exclusive"
             )
         if self.structural_probe_gain > 0 and self.dendrites >= self.cells:
             raise ValueError(
@@ -710,11 +714,14 @@ class SparseAxonField(nn.Module):
                 "(batch, cells, dendrites)"
             )
         if (
-            self.cfg.reward_plastic_output_credit_routing
+            (
+                self.cfg.reward_plastic_output_credit_routing
+                or self.cfg.exploratory_output_credit_routing
+            )
             and routing_preference is None
         ):
             raise ValueError(
-                "reward-plastic output credit requires routing preference"
+                "preference-routed output credit requires routing preference"
             )
 
         target_credit = credit.unsqueeze(2).expand(
@@ -734,7 +741,10 @@ class SparseAxonField(nn.Module):
             )
             routing = self._normalized_credit_routing(alignment)
             edge_sourceward = edge_sourceward * routing.unsqueeze(-1)
-        elif self.cfg.reward_plastic_output_credit_routing:
+        elif (
+            self.cfg.reward_plastic_output_credit_routing
+            or self.cfg.exploratory_output_credit_routing
+        ):
             routing = self._normalized_credit_routing(
                 routing_preference
             )
@@ -992,6 +1002,7 @@ class SparseAxonField(nn.Module):
         retain_credit: bool = False,
         allow_fast_plasticity: bool = True,
         structural_probe_mask: torch.Tensor | None = None,
+        credit_routing_preference_delta: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, FieldState, dict[str, torch.Tensor]]:
         """Consume one optional character and emit one next-character distribution.
 
@@ -1004,6 +1015,17 @@ class SparseAxonField(nn.Module):
         reward = state.reward if reward is None else reward
         if reward.shape != (batch,):
             raise ValueError(f"reward must have shape ({batch},)")
+        if credit_routing_preference_delta is not None:
+            if not cfg.exploratory_output_credit_routing:
+                raise ValueError(
+                    "routing preference delta requires exploratory routing"
+                )
+            expected_delta = (cfg.cells, cfg.dendrites)
+            if credit_routing_preference_delta.shape != expected_delta:
+                raise ValueError(
+                    "routing preference delta must have shape "
+                    "(cells, dendrites)"
+                )
 
         external = state.hidden.new_zeros(batch, cfg.cells, cfg.channels)
         external_stimulation = state.energy.new_zeros(batch, cfg.cells)
@@ -1079,12 +1101,23 @@ class SparseAxonField(nn.Module):
                     reward,
                 )
             )
-        else:
+        elif not cfg.exploratory_output_credit_routing:
             credit_routing_eligibility = torch.zeros_like(
                 credit_routing_eligibility
             )
             credit_routing_preference = torch.zeros_like(
                 credit_routing_preference
+            )
+        else:
+            active = self.active_edges.unsqueeze(0)
+            credit_routing_preference = (
+                credit_routing_preference * active
+            )
+        transport_routing_preference = credit_routing_preference
+        if credit_routing_preference_delta is not None:
+            transport_routing_preference = (
+                transport_routing_preference
+                + credit_routing_preference_delta.unsqueeze(0)
             )
         context = self._cell_context().unsqueeze(0).expand(batch, -1, -1)
         mean_flow = state.energy.new_zeros(cfg.cells, cfg.dendrites)
@@ -1132,10 +1165,13 @@ class SparseAxonField(nn.Module):
                 * edge_source_memory
             ).mean(dim=3) * math.sqrt(cfg.channels)
             edge_vector_tag = torch.tanh(edge_vector_alignment)
-            if cfg.reward_plastic_output_credit_routing:
+            if (
+                cfg.reward_plastic_output_credit_routing
+                or cfg.exploratory_output_credit_routing
+            ):
                 active = self.active_edges.unsqueeze(0)
                 routing = self._normalized_credit_routing(
-                    credit_routing_preference
+                    transport_routing_preference
                 )
                 routing_tag = (
                     torch.tanh(
@@ -1291,7 +1327,7 @@ class SparseAxonField(nn.Module):
                         output_error_credit,
                         coefficient,
                         eligibility,
-                        credit_routing_preference,
+                        transport_routing_preference,
                     )
                 )
                 output_error_credit = torch.tanh(
@@ -1388,6 +1424,7 @@ class SparseAxonField(nn.Module):
         targets: torch.Tensor | None = None,
         retain_credit: bool = False,
         structural_probe_mask: torch.Tensor | None = None,
+        credit_routing_preference_delta: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, FieldState, FieldTrace]:
         """Stream `(batch, time)` tokens through one uninterrupted organism state.
 
@@ -1419,6 +1456,9 @@ class SparseAxonField(nn.Module):
                 reward,
                 retain_credit=retain_credit,
                 structural_probe_mask=structural_probe_mask,
+                credit_routing_preference_delta=(
+                    credit_routing_preference_delta
+                ),
             )
             logits.append(current_logits)
             trace.hidden.append(state.hidden)

@@ -33,6 +33,11 @@ from .evaluate import (
 from .model import SolConfig, SparseAxonField
 from .promote import promote_best_checkpoint
 from .report import compare_runs, load_run, markdown_report
+from .routing import (
+    RoutingTrafficConfig,
+    RoutingTrafficTrial,
+    routing_traffic_due,
+)
 from .schedule import (
     cosine_decay_learning_rate,
     set_optimizer_learning_rate,
@@ -1050,12 +1055,261 @@ def test_reward_plastic_routing_closes_the_delayed_trace_loop() -> None:
     assert second["mean_credit_routing_preference"].item() > 0
 
 
+def test_exploratory_routing_preserves_committed_preference_and_tags() -> None:
+    model = _model(
+        reward_gain=0.0,
+        output_error_credit_gain=1.0,
+        output_error_credit_decay=0.0,
+        exploratory_output_credit_routing=True,
+        eligibility_routing_gain=100.0,
+        message_steps=1,
+    )
+    with torch.no_grad():
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    source = int(model.sources[target, 0])
+    state.credit_routing_preference[:, target, 0] = 0.1
+    state.credit_routing_preference[:, target, 1] = -0.1
+    state.output_error_credit[:, target, 0] = 1.0
+    state.eligibility[:, source, 0] = 1.0
+
+    _, updated, diagnostics = model.tick(
+        state,
+        token=None,
+        reward=torch.ones(1),
+    )
+
+    assert torch.equal(
+        updated.credit_routing_preference,
+        state.credit_routing_preference,
+    )
+    assert updated.credit_routing_eligibility.abs().sum().item() > 0
+    assert diagnostics["mean_credit_routing_eligibility"].item() > 0
+
+
+def test_exploratory_routing_proposal_is_local_zero_sum_traffic() -> None:
+    control = _model(output_error_credit_gain=1.0)
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    with torch.no_grad():
+        control.message_value.weight.copy_(torch.eye(control.cfg.channels))
+        model.message_value.weight.copy_(torch.eye(model.cfg.channels))
+    state = model.initial_state(1)
+    target = 4
+    state.credit_routing_eligibility[:, target, 0] = 1.0
+    state.credit_routing_eligibility[:, target, 1] = -1.0
+    trial = RoutingTrafficTrial()
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=4,
+        proposal_step=0.05,
+        minimum_eligibility=1e-6,
+    )
+
+    assert trial.begin(model, state, config, update=1)
+    assert trial.target == target
+    assert trial.slot == 0
+    assert trial.delta is not None
+    assert trial.delta[target].sum().item() == pytest.approx(
+        0.0, abs=1e-7
+    )
+    unrelated = trial.delta.clone()
+    unrelated[target] = 0
+    assert torch.count_nonzero(unrelated).item() == 0
+    assert torch.count_nonzero(
+        trial.delta[~model.active_edges]
+    ).item() == 0
+
+    credit = torch.zeros(1, model.cfg.cells, model.cfg.channels)
+    coefficient = torch.zeros(
+        1, model.cfg.cells, model.cfg.dendrites
+    )
+    credit[:, target] = 1.0
+    coefficient[:, target] = 0.5
+    preference = torch.zeros_like(coefficient)
+    baseline = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference,
+    )
+    candidate = model._transport_output_error_credit(
+        credit,
+        coefficient,
+        routing_preference=preference + trial.delta.unsqueeze(0),
+    )
+    chosen_source = int(model.sources[target, trial.slot])
+    assert candidate[0, chosen_source, 0] > baseline[
+        0, chosen_source, 0
+    ]
+    assert candidate.sum().item() == pytest.approx(
+        baseline.sum().item()
+    )
+    assert sum(p.numel() for p in model.parameters()) == sum(
+        p.numel() for p in control.parameters()
+    )
+
+
+def test_routing_traffic_abba_commits_positive_and_rejects_negative() -> None:
+    model = _model(
+        output_error_credit_gain=1.0,
+        exploratory_output_credit_routing=True,
+    )
+    state = model.initial_state(2)
+    state.credit_routing_eligibility[:, 4, 0] = 1.0
+    state.credit_routing_eligibility[:, 4, 1] = -1.0
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=1,
+        warmup_updates=0,
+        trial_updates=4,
+        proposal_step=0.05,
+        minimum_eligibility=1e-6,
+    )
+    trial = RoutingTrafficTrial()
+    before = state.credit_routing_preference.clone()
+
+    assert trial.begin(model, state, config, update=1)
+    arms = []
+    for reward in (0.4, 0.1, 0.2, 0.5):
+        arms.append(trial.candidate_exposed)
+        trial.observe(reward, trial.candidate_exposed)
+    assert arms == [True, False, False, True]
+    assert trial.resolve(model, state, config, update=5)
+    assert not torch.equal(state.credit_routing_preference, before)
+    assert torch.allclose(
+        state.credit_routing_preference[:, trial.last_target].sum(dim=1),
+        torch.zeros(2),
+        atol=1e-7,
+    )
+    assert (
+        state.credit_routing_preference.abs().max()
+        <= model.cfg.credit_routing_preference_limit
+    )
+    committed = state.credit_routing_preference.clone()
+
+    assert trial.begin(model, state, config, update=6)
+    for reward in (0.1, 0.5, 0.4, 0.2):
+        trial.observe(reward, trial.candidate_exposed)
+    assert not trial.resolve(model, state, config, update=10)
+    assert torch.equal(state.credit_routing_preference, committed)
+    assert trial.total_committed == 1
+    assert trial.total_rejected == 1
+    assert [event["outcome"] for event in trial.trial_history] == [
+        "committed",
+        "rejected",
+    ]
+
+
+def test_routing_traffic_keeps_body_learning_and_sequences_structure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            structural_probe_gain=0.03,
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        structural_config=StructuralConfig(
+            enabled=True,
+            interval=1,
+            warmup_updates=0,
+            min_edge_age=0,
+        ),
+        routing_traffic_config=RoutingTrafficConfig(
+            enabled=True,
+            interval=100,
+            warmup_updates=100,
+            trial_updates=4,
+            proposal_step=0.05,
+            minimum_eligibility=0.0,
+        ),
+    )
+    trainer.state.credit_routing_eligibility[:, 4, 0] = 1.0
+    assert trainer.routing_traffic_trial.begin(
+        trainer.model,
+        trainer.state,
+        trainer.routing_traffic_config,
+        update=0,
+    )
+    sources = trainer.model.sources.clone()
+    before = trainer.model.token_embedding.weight.detach().clone()
+
+    def forbidden_structural_phase(*args, **kwargs):
+        raise AssertionError("structure changed during routing trial")
+
+    monkeypatch.setattr(
+        "sol.train.apply_structural_phase",
+        forbidden_structural_phase,
+    )
+    candidate = trainer.step()
+    after_candidate = trainer.model.token_embedding.weight.detach().clone()
+    incumbent = trainer.step()
+    after_incumbent = trainer.model.token_embedding.weight.detach().clone()
+
+    assert candidate.routing_candidate_exposed
+    assert not incumbent.routing_candidate_exposed
+    assert not torch.equal(after_candidate, before)
+    assert not torch.equal(after_incumbent, after_candidate)
+    assert torch.equal(trainer.model.sources, sources)
+    assert trainer.routing_traffic_trial.active
+    assert trainer.routing_traffic_trial.candidate_observations == 1
+    assert trainer.routing_traffic_trial.incumbent_observations == 1
+
+
+def test_routing_and_structural_traffic_share_due_phases() -> None:
+    config = RoutingTrafficConfig(
+        enabled=True,
+        interval=10,
+        warmup_updates=10,
+        trial_updates=4,
+    )
+    shared = [
+        update
+        for update in range(10, 61, 10)
+        if routing_traffic_due(
+            config,
+            update,
+            share_with_structure=True,
+        )
+    ]
+    independent = [
+        update
+        for update in range(10, 61, 10)
+        if routing_traffic_due(
+            config,
+            update,
+            share_with_structure=False,
+        )
+    ]
+
+    assert shared == [10, 30, 50]
+    assert independent == [10, 20, 30, 40, 50, 60]
+
+
 def test_output_credit_routing_policies_are_mutually_exclusive() -> None:
     with pytest.raises(ValueError, match="mutually exclusive"):
         replace(
             _model().cfg,
             eligibility_routed_output_credit=True,
             reward_plastic_output_credit_routing=True,
+        )
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        replace(
+            _model().cfg,
+            reward_plastic_output_credit_routing=True,
+            exploratory_output_credit_routing=True,
         )
 
 
@@ -2441,6 +2695,82 @@ def test_checkpoint_resume_preserves_exploratory_traffic_arm(
     )
 
 
+def test_checkpoint_resume_preserves_routing_traffic_arm(
+    tmp_path: Path,
+) -> None:
+    torch.manual_seed(23)
+    text = "abcabcabcabcabcabcabcabc" * 4
+    vocabulary = CharacterVocabulary.from_text(text)
+    routing_config = RoutingTrafficConfig(
+        enabled=True,
+        interval=100,
+        warmup_updates=100,
+        trial_updates=4,
+        proposal_step=0.05,
+        minimum_eligibility=0.0,
+    )
+    trainer = ContinuousTrainer(
+        _model(
+            vocab_size=len(vocabulary),
+            output_error_credit_gain=1.0,
+            exploratory_output_credit_routing=True,
+        ),
+        text,
+        vocabulary,
+        batch_size=2,
+        chunk_length=4,
+        learning_rate=4e-3,
+        routing_traffic_config=routing_config,
+    )
+    trainer.state.credit_routing_eligibility[:, 4, 0] = 1.0
+    assert trainer.routing_traffic_trial.begin(
+        trainer.model,
+        trainer.state,
+        routing_config,
+        update=0,
+    )
+    first = trainer.step()
+    assert first.routing_candidate_exposed
+    checkpoint = save_checkpoint(
+        tmp_path / "routing-exploratory.pt",
+        trainer,
+        {"tag": "routing-exploratory"},
+    )
+
+    expected = [trainer.step() for _ in range(3)]
+    resumed, metadata = load_checkpoint(checkpoint, text)
+    actual = [resumed.step() for _ in range(3)]
+
+    assert metadata == {"tag": "routing-exploratory"}
+    assert [row.loss for row in actual] == [
+        row.loss for row in expected
+    ]
+    assert [row.routing_candidate_exposed for row in actual] == [
+        row.routing_candidate_exposed for row in expected
+    ]
+    assert [row.routing_trial_resolved for row in actual] == [
+        row.routing_trial_resolved for row in expected
+    ]
+    assert resumed.routing_traffic_config == trainer.routing_traffic_config
+    assert torch.equal(resumed.state.hidden, trainer.state.hidden)
+    assert torch.equal(
+        resumed.state.credit_routing_preference,
+        trainer.state.credit_routing_preference,
+    )
+    assert (
+        resumed.routing_traffic_trial.total_committed
+        == trainer.routing_traffic_trial.total_committed
+    )
+    assert (
+        resumed.routing_traffic_trial.total_rejected
+        == trainer.routing_traffic_trial.total_rejected
+    )
+    assert (
+        resumed.routing_traffic_trial.trial_history
+        == trainer.routing_traffic_trial.trial_history
+    )
+
+
 def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     text = "abcabcabcabcabcabcabcabc" * 4
     vocabulary = CharacterVocabulary.from_text(text)
@@ -2467,6 +2797,9 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
         "reward_plastic_output_credit_routing"
     ]
     del payload["trainer"]["model_config"][
+        "exploratory_output_credit_routing"
+    ]
+    del payload["trainer"]["model_config"][
         "credit_routing_preference_decay"
     ]
     del payload["trainer"]["model_config"][
@@ -2483,6 +2816,8 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     del payload["trainer"]["model_config"]["full_activity_energy"]
     del payload["trainer"]["structural_config"]
     del payload["trainer"]["structural_probation"]
+    del payload["trainer"]["routing_traffic_config"]
+    del payload["trainer"]["routing_traffic_trial"]
     del payload["trainer"]["prequential_advantage_ema"]
     for name in (
         "probe_sources",
@@ -2530,6 +2865,10 @@ def test_pre_plasticity_checkpoint_state_is_upgraded(tmp_path: Path) -> None:
     assert resumed.model.cfg.energy_maintenance_flow == pytest.approx(0.0)
     assert resumed.model.cfg.quiescence_energy == pytest.approx(0.01)
     assert resumed.model.cfg.full_activity_energy == pytest.approx(0.05)
+    assert not resumed.model.cfg.exploratory_output_credit_routing
+    assert not resumed.routing_traffic_config.enabled
+    assert not resumed.routing_traffic_trial.active
+    assert resumed.routing_traffic_trial.trial_history == []
     assert torch.allclose(
         resumed.state.reward_baseline,
         torch.full_like(

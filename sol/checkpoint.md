@@ -20,8 +20,9 @@ optimizer, corpus position, or random stream.
   schema-1 checkpoints; additive structural buffers and probe eligibility are likewise
   initialized deterministically rather than invalidating trained organisms.
   Channel-shaped output-error credit and its configuration use disabled/zero defaults
-  when absent. Reward-plastic routing configuration is disabled and its branch
-  eligibility/preference tensors initialize to zero when absent.
+  when absent. Reward-plastic and exploratory routing configuration is disabled, branch
+  eligibility/preference tensors initialize to zero, and routing-traffic policy/trial
+  state initializes inactive when absent.
 - **Compatibility**: Pre-growth checkpoints reconstruct every historical dendrite slot
   as active and initialize usage, vector-credit evidence, and spawn/prune counters to
   zero.
@@ -36,7 +37,7 @@ optimizer, corpus position, or random stream.
 
 | Dependent | Expects | Breaking changes |
 |---|---|---|
-| Benchmark and local UI backend | Checkpoint includes weights, live state, fast synapses, connectome/probe state, vocabulary, and metadata | Schema or state keys |
+| Benchmark and local UI backend | Checkpoint includes weights, live state, fast synapses, connectome/probe/routing-trial state, vocabulary, and metadata | Schema or state keys |
 | Long training runs | A resumed update consumes the exact next corpus window | Stream or RNG restoration |
 
 ## Notes

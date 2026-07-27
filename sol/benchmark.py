@@ -26,6 +26,7 @@ from .checkpoint import load_checkpoint, save_checkpoint
 from .convergence import summarize_convergence
 from .evaluate import evaluate_state_ablations
 from .model import SolConfig, SparseAxonField
+from .routing import RoutingTrafficConfig, routing_traffic_summary
 from .schedule import (
     cosine_decay_learning_rate,
     set_optimizer_learning_rate,
@@ -158,6 +159,9 @@ def _sol_config(args: argparse.Namespace, vocab_size: int) -> SolConfig:
         "reward_plastic_output_credit_routing": (
             args.reward_plastic_output_credit_routing
         ),
+        "exploratory_output_credit_routing": (
+            args.exploratory_output_credit_routing
+        ),
         "credit_routing_preference_decay": (
             args.credit_routing_preference_decay
         ),
@@ -265,6 +269,17 @@ def _run_sol(
                     args.structural_vector_credit_gain
                 ),
                 locality_gain=args.structural_locality_gain,
+            ),
+            routing_traffic_config=RoutingTrafficConfig(
+                enabled=args.exploratory_output_credit_routing,
+                interval=args.routing_traffic_interval,
+                warmup_updates=args.routing_traffic_warmup,
+                trial_updates=args.routing_traffic_updates,
+                margin=args.routing_traffic_margin,
+                proposal_step=args.routing_traffic_step,
+                minimum_eligibility=(
+                    args.routing_traffic_minimum_eligibility
+                ),
             ),
             device=device,
         )
@@ -406,6 +421,10 @@ def _run_sol(
             trainer.model,
             trainer.structural_config,
             trainer.structural_probation,
+        ),
+        "routing_traffic": routing_traffic_summary(
+            trainer.routing_traffic_config,
+            trainer.routing_traffic_trial,
         ),
         "stability": summarize_stability(
             evaluation_history, args.max_final_regression_bpc
@@ -740,6 +759,14 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--exploratory-output-credit-routing",
+        action="store_true",
+        help=(
+            "causally test bounded reverse-credit preference proposals "
+            "with live candidate/incumbent traffic"
+        ),
+    )
+    parser.add_argument(
         "--credit-routing-preference-decay",
         type=float,
         default=0.995,
@@ -753,6 +780,16 @@ def parse_args() -> argparse.Namespace:
         "--credit-routing-preference-limit",
         type=float,
         default=0.25,
+    )
+    parser.add_argument("--routing-traffic-interval", type=int, default=25)
+    parser.add_argument("--routing-traffic-warmup", type=int, default=75)
+    parser.add_argument("--routing-traffic-updates", type=int, default=20)
+    parser.add_argument("--routing-traffic-margin", type=float, default=0.0)
+    parser.add_argument("--routing-traffic-step", type=float, default=0.05)
+    parser.add_argument(
+        "--routing-traffic-minimum-eligibility",
+        type=float,
+        default=1e-6,
     )
     parser.add_argument("--fast-plasticity-gain", type=float, default=0.04)
     parser.add_argument("--reward-baseline-decay", type=float, default=0.99)
@@ -931,14 +968,52 @@ def parse_args() -> argparse.Namespace:
         parser.error(
             "--credit-routing-preference-limit must be positive"
         )
-    if (
-        args.eligibility_routed_output_credit
-        and args.reward_plastic_output_credit_routing
-    ):
-        parser.error(
-            "instantaneous and reward-plastic output-credit routing "
-            "are mutually exclusive"
+    if sum(
+        (
+            args.eligibility_routed_output_credit,
+            args.reward_plastic_output_credit_routing,
+            args.exploratory_output_credit_routing,
         )
+    ) > 1:
+        parser.error(
+            "output-credit routing policies are mutually exclusive"
+        )
+    if args.exploratory_output_credit_routing:
+        if args.output_error_credit_gain <= 0 or args.no_reward:
+            parser.error(
+                "--exploratory-output-credit-routing requires "
+                "--output-error-credit-gain > 0 and reward"
+            )
+        if args.routing_traffic_interval < 1:
+            parser.error("--routing-traffic-interval must be positive")
+        if args.routing_traffic_warmup < 0:
+            parser.error(
+                "--routing-traffic-warmup must be non-negative"
+            )
+        if (
+            args.routing_traffic_updates < 2
+            or args.routing_traffic_updates % 2 != 0
+        ):
+            parser.error(
+                "--routing-traffic-updates must be even and at least 2"
+            )
+        if args.routing_traffic_margin < 0:
+            parser.error(
+                "--routing-traffic-margin must be non-negative"
+            )
+        if (
+            args.routing_traffic_step <= 0
+            or args.routing_traffic_step
+            > args.credit_routing_preference_limit
+        ):
+            parser.error(
+                "--routing-traffic-step must be positive and no greater "
+                "than --credit-routing-preference-limit"
+            )
+        if args.routing_traffic_minimum_eligibility < 0:
+            parser.error(
+                "--routing-traffic-minimum-eligibility must be non-negative"
+            )
     if args.structural_probe_gain <= 0 and (
         args.structural_plasticity or args.structural_probes_only
     ):
