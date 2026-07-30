@@ -88,3 +88,95 @@ Arms (× seeds 7, 13, 21):
 bash fable/run_f2.sh
 python3 -m fable.adapt_report --root fable/runs/f2 --out fable/runs/f2/REPORT.md
 ```
+
+---
+
+# RESULTS (2026-07-30, 12 arms, 8000 updates, 3 seeds, zero skipped updates)
+
+## Savings, with the ongoing-learning control
+
+The A-only arms walk the same position blocks with no regime change, so their
+slope is general improvement. Regime-attributable savings is the difference.
+
+| Kind / stream | Visit 0 | Visit last | Slope/visit |
+|---|---:|---:|---:|
+| creature / A-only | +0.1314 | +0.0547 | −0.0767 |
+| creature / cycled | **+1.1613** | +0.9374 | **−0.2239** |
+| gru / A-only | +0.0807 | +0.0280 | −0.0526 |
+| gru / cycled | **+0.3444** | +0.2148 | **−0.1296** |
+
+**Regime-attributable savings**: creature **−0.1471/visit**, GRU
+**−0.0770/visit**. Consistent across all three seeds (creature −0.239/−0.216/
+−0.217; GRU −0.134/−0.130/−0.125), with between-seed spread ~0.02 against a
+between-arm difference of ~0.09.
+
+**The design worked**: both arms show large regime-attributable savings, so
+this is measuring cross-visit retention rather than in-context inference. The
+`dmon/exp` trap was avoided.
+
+## Interference
+
+| Kind | Cycled A steady | A-only steady | Gap |
+|---|---:|---:|---:|
+| creature | 2.4163 | 2.2172 | **+0.1991** |
+| gru | 2.2209 | 2.0469 | **+0.1739** |
+
+No creature advantage; the creature is slightly *worse*. (Both gaps bundle
+interference with halved A-exposure, so only the difference is comparable.)
+
+## Compression floor
+
+A-only steady state: creature **2.2172**, GRU **2.0469** — creature
+**+0.1702 BPC** behind, exceeding the preregistered 0.15 proviso.
+
+## Verdict: **FAIL**, by the clause written to catch exactly this
+
+The preregistration's fail condition included: *"or creature wins adaptability
+only by violating the compression floor."* That is precisely what happened.
+
+The creature's savings slope is genuinely ~2× the GRU's after the
+ongoing-learning control — but it **starts 3.4× worse** (+1.161 vs +0.344 per
+visit) and never catches up. In relative terms the ordering reverses: the GRU
+cuts its adaptation cost by 37.6% across visits, the creature by 19.3%. A
+steeper absolute decline from a much worse starting point is not evidence of
+better adaptability; it is largely the extra headroom of being worse at the
+task, which is the confound the compression proviso exists to detect. With
+interference also going (slightly) the GRU's way, there is no axis on which
+the creature is the more adaptable learner here.
+
+**Recorded as a negative result, not spun.**
+
+## The most important secondary finding
+
+**The creature's F0 parity depended on the annealed schedule.**
+
+- F0 (warmup + cosine to 3e-4): creature − GRU = **+0.009** (parity)
+- F2 (constant 1e-3 after warmup): creature − GRU = **+0.170**
+
+Same geometry, same corpus, same code. The GRU is far more robust to losing
+the schedule than the creature is. This is uncomfortable for the project's
+framing, because F2's constant LR was chosen on the argument that *an
+annealed learner is structurally committed to a stationary world* — and a
+creature meant to run continuously cannot rely on a decay schedule it will
+outlive. So the S0 parity result holds only in the regime the organism is
+least entitled to use.
+
+Caveats on the comparison, stated rather than buried: F2 also used batch 4 vs
+F0's batch 12, so schedule is not the only difference, and the two runs are
+not a controlled A/B. Isolating it needs one arm — F0 geometry, F0 batch,
+constant LR — which is cheap and should be run before this finding is leaned
+on.
+
+## What this does and does not license
+
+- It does **not** falsify the substrate. It falsifies "this substrate, as
+  currently configured, is a more adaptable learner than a matched GRU."
+- It sharpens the diagnosis already coming from F0: the field is functional
+  but **undifferentiated** (freeze ~0.5 BPC, shuffle ~0.05). A mean-field
+  reservoir has no obvious mechanism for regime-specific specialization —
+  which is exactly what savings would require. F2's negative is what one
+  should expect from an undifferentiated field, and it raises the value of
+  F5 (informed structure → differentiation) rather than lowering it.
+- Re-run F2 against any configuration that moves the shuffle delta. That is
+  the natural pairing: **differentiation is the hypothesis, adaptability is
+  the payoff test.**
