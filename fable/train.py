@@ -70,6 +70,51 @@ def build_optimizer(model: torch.nn.Module, cfg: FableConfig) -> torch.optim.Ada
          {"params": no_decay, "weight_decay": 0.0}], lr=cfg.lr)
 
 
+GUARD_NORM = 1e4  # clipping a gradient beyond this preserves only noise
+
+
+class GradGuard:
+    """Skip pathological updates and homeostatically back off the LR.
+
+    Both fable blowups were *finite* but astronomical gradients (1.5e19 at
+    F7 u8800) whose clipped direction was numerical garbage — the model was
+    destroyed before inf ever appeared, so isfinite() alone is not a guard.
+    This one skips any chunk whose raw norm exceeds GUARD_NORM, halves an LR
+    multiplier on every pathological chunk, and recovers it slowly (×1.02)
+    on clean ones. A homeostat rather than a schedule, because a
+    continually-running organism cannot rely on annealing to save it — F2
+    measured the schedule dependence, F7 measured what happens without it.
+    Inert for arms that never produce a pathological gradient (both
+    baselines), so the matched comparison is untouched.
+    """
+
+    def __init__(self, floor: float = 1 / 16):
+        self.scale = 1.0
+        self.floor = floor
+        self.skipped_total = 0
+        self.consecutive = 0
+
+    def step(self, model, opt, total_norm: torch.Tensor, clip: float) -> bool:
+        ok = bool(torch.isfinite(total_norm)) and float(total_norm) < GUARD_NORM
+        if ok:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+            opt.step()
+            self.consecutive = 0
+            self.scale = min(1.0, self.scale * 1.02)
+        else:
+            self.skipped_total += 1
+            self.consecutive += 1
+            self.scale = max(self.floor, self.scale * 0.5)
+        return ok
+
+    def apply(self, opt) -> None:
+        """Call after sched.step(): LambdaLR rewrites group lrs each update,
+        so scaling here never compounds across steps."""
+        if self.scale < 1.0:
+            for group in opt.param_groups:
+                group["lr"] *= self.scale
+
+
 def build_model(kind: str, cfg: FableConfig, device: str):
     if kind == "creature":
         torch.manual_seed(cfg.seed)
@@ -127,8 +172,8 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
     state = model.initial_state(b, device)
 
     history, evals = [], []
+    guard = GradGuard()
     skipped_total = 0
-    consecutive_skips = 0
     window_nll, window_tokens, t0 = 0.0, 0, time.time()
     health = None
 
@@ -145,22 +190,18 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
         loss.backward()
         grads = [p.grad for p in model.parameters() if p.grad is not None]
         total_norm = torch.norm(torch.stack([g.norm() for g in grads]))
-        if torch.isfinite(total_norm):
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
-            opt.step()
-            consecutive_skips = 0
-        else:
-            skipped_total += 1
-            consecutive_skips += 1
-            if consecutive_skips >= 200:
-                # Fail fast, loudly. The first F0 launch skipped 5900+ updates
-                # in a row — a zombie burning GPU hours while the log looked
-                # merely unhealthy. A run that cannot step is a dead run.
-                raise SystemExit(
-                    f"[{kind}] aborted at u{update}: {consecutive_skips} "
-                    f"consecutive non-finite gradient updates "
-                    f"(total skipped {skipped_total})")
+        guard.step(model, opt, total_norm, cfg.grad_clip)
+        skipped_total = guard.skipped_total
+        if guard.consecutive >= 200:
+            # Fail fast, loudly. The first F0 launch skipped 5900+ updates
+            # in a row — a zombie burning GPU hours while the log looked
+            # merely unhealthy. A run that cannot step is a dead run.
+            raise SystemExit(
+                f"[{kind}] aborted at u{update}: {guard.consecutive} "
+                f"consecutive pathological-gradient updates "
+                f"(total skipped {skipped_total})")
         sched.step()
+        guard.apply(opt)
 
         window_nll += float(loss.detach()) * tokens.numel()
         window_tokens += tokens.numel()
@@ -173,6 +214,7 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
                 "tokens_per_s": window_tokens / max(time.time() - t0, 1e-9),
                 "grad_norm": float(total_norm),
                 "skipped_total": skipped_total,
+                "lr_scale": guard.scale,
             }
             if health is not None:
                 entry.update(h_max=health.h_max, msg_rms=health.msg_rms,

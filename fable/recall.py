@@ -24,7 +24,7 @@ from .config import FableConfig
 from .evaluate import LN2
 from .model import Fable
 from .stream import load_corpus
-from .train import (add_config_args, build_model, build_optimizer,
+from .train import (GradGuard, add_config_args, build_model, build_optimizer,
                     build_schedule, config_from_args)
 
 KEY_SENT, QUERY_SENT = "{", "}"
@@ -156,7 +156,8 @@ def run_arm(kind: str, cfg: FableConfig, out_dir: Path, device: str,
 
     state = model.initial_state(lanes, device)
     rec_loss = torch.zeros(lanes, total)
-    skipped, consecutive = 0, 0
+    guard = GradGuard()
+    skipped = 0
     t0 = time.time()
     for update in range(1, cfg.updates + 1):
         s = (update - 1) * cfg.chunk_length
@@ -173,17 +174,13 @@ def run_arm(kind: str, cfg: FableConfig, out_dir: Path, device: str,
         loss.backward()
         grads = [p.grad for p in model.parameters() if p.grad is not None]
         norm = torch.norm(torch.stack([g.norm() for g in grads]))
-        if torch.isfinite(norm):
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
-            opt.step()
-            consecutive = 0
-        else:
-            skipped += 1
-            consecutive += 1
-            if consecutive >= 200:
-                raise SystemExit(f"[{kind}] aborted: {consecutive} consecutive "
-                                 f"non-finite updates at u{update}")
+        guard.step(model, opt, norm, cfg.grad_clip)
+        skipped = guard.skipped_total
+        if guard.consecutive >= 200:
+            raise SystemExit(f"[{kind}] aborted: {guard.consecutive} "
+                             f"consecutive pathological updates at u{update}")
         sched.step()
+        guard.apply(opt)
         rec_loss[:, s:e] = per_tok.detach().cpu()
         if update % cfg.log_every == 0:
             half = mask[:, :e] & (torch.arange(e)[None] >= e // 2)
