@@ -52,3 +52,31 @@ three seeds, stability machinery, and a schedule-matched baseline?
 bash fable/run_f0.sh
 python3 -m fable.summarize --root fable/runs/f0 --out fable/runs/f0/LADDER.md
 ```
+
+## Amendment 1 (2026-07-30): stability fix + relaunch
+
+The first launch was killed at ~u6800 (seed-7 creature). The "RMSNorm on
+messages" stabilizer was itself the destabilizer: raw message RMS is ~0.05, so
+full normalization amplified messages — and their gradients — ~20× per
+micro-step, compounding across the 128 micro-steps of a chunk's backward.
+Gradient norms grew 5 → 2.3e5 → 5.0e9 over 200 updates (~u800–1000), finite
+clipped updates degraded the model from 3.08 to 5.0 BPC, then gradients went
+permanently non-finite and the skip guard froze the run into a zombie.
+
+Controlled A/B on Aine (same seed/geometry): pre-fix code reproduces the
+blowup in the same window on the other GPU; fixed code passes the death point
+with zero skipped updates and h_max exactly 1.00.
+
+Protocol changes for the relaunch, before any creature result existed:
+1. `MessageClamp` (scale down to unit RMS only when above it; identity below)
+   replaces RMSNorm — a guard that only ever damps.
+2. Embeddings moved under weight decay (they are written raw into the mirror
+   ring; unbounded embedding growth is unbounded state growth — grok/sol both
+   decayed them; h_max had drifted to 1.35).
+3. Fail-fast: 200 consecutive non-finite-gradient updates abort the run.
+
+The already-completed schedule-matched GRU controls (2.051/…) and bypass are
+unaffected and retained. Notable before any creature verdict: giving the GRU
+the warmup+cosine schedule improved it ~0.2 BPC over chase-1's constant-LR
+GRU (2.051 vs 2.258 at seed 7) — the honest bar is much higher than the one
+chase-1's concat arm beat.

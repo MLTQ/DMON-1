@@ -37,8 +37,26 @@ class OrganismState:
 @dataclass
 class StepHealth:
     h_max: float
-    msg_rms: float
+    msg_rms: float        # PRE-clamp message RMS — the number that diagnoses scale drift
     logit_absmax: float
+
+
+class MessageClamp(nn.Module):
+    """Scale messages down to unit RMS when they exceed it; identity below.
+
+    Deliberately not RMSNorm: full normalization multiplies small signals —
+    and their gradients — by 1/rms, and that amplification compounds across
+    the T×spt (=128) sequential micro-steps of a chunk's backward pass. The
+    first F0 launch died exactly that way (gradients permanently inf from
+    ~u875 with RMSNorm in this slot). The clamp only ever damps.
+    """
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # eps inside the sqrt: at x == 0 (every message on the first
+        # micro-step) sqrt' is inf and clamp's zero-gradient branch turns
+        # 0 * inf into NaN for every upstream parameter
+        rms = x.pow(2).mean(dim=-1, keepdim=True).add(1e-12).sqrt()
+        return x / rms.clamp(min=1.0)
 
 
 class Fable(nn.Module):
@@ -70,7 +88,7 @@ class Fable(nn.Module):
                                    self.internal_idx, self.output_idx,
                                    seed=cfg.seed)
         self.rule = SharedRule(hid)
-        self.msg_norm = nn.RMSNorm(hid)
+        self.msg_clamp = MessageClamp()
 
         self.out_norm = nn.LayerNorm(cfg.n_output * hid)
         self.readout = nn.Linear(cfg.n_output * hid, cfg.vocab_size)
@@ -110,8 +128,10 @@ class Fable(nn.Module):
         drive_in = emb.unsqueeze(1) * self.in_gain + self.in_bias   # [B, I, H]
 
         msg = None
+        raw_msg = None
         for micro in range(cfg.steps_per_token):
-            msg = self.msg_norm(self.graph.aggregate(h, self.mutable_idx))
+            raw_msg = self.graph.aggregate(h, self.mutable_idx)
+            msg = self.msg_clamp(raw_msg)
             drive = torch.zeros_like(msg)
             if micro == 0:
                 drive = drive.index_copy(
@@ -132,7 +152,7 @@ class Fable(nn.Module):
             with torch.no_grad():
                 health = StepHealth(
                     h_max=float(h.abs().max()),
-                    msg_rms=float(msg.pow(2).mean().sqrt()),
+                    msg_rms=float(raw_msg.pow(2).mean().sqrt()),
                     logit_absmax=float(logits.abs().max()))
         return logits, OrganismState(h, state.mirror_cursor + 1), health
 

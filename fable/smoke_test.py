@@ -83,7 +83,7 @@ def test_gradient_flow() -> None:
     loss.backward()
     for name in ("graph.logit", "graph.query.weight", "graph.value.weight",
                  "rule.gru.weight_ih", "rule.gru.weight_hh", "embed.weight",
-                 "readout.weight", "in_gain", "msg_norm.weight"):
+                 "readout.weight", "in_gain"):
         p = dict(model.named_parameters())[name]
         check(f"grad reaches {name}",
               p.grad is not None and float(p.grad.abs().sum()) > 0)

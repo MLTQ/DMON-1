@@ -120,10 +120,25 @@ diverges, progressive growth is not just a capacity mechanism — it is the way 
 fields get trained at all. That would make S2 load-bearing for scale, not a parlor
 trick.
 
+### F2 — adaptability under regime cycling
+
+Compression is the stepping stone, not the destination: the organism is meant
+to be a *vessel for intelligence*, which means adaptability has to be measured
+directly, not inferred from BPC. F2 cycles the stream between Tiny Shakespeare
+and an entropy-matched vocabulary permutation of it, with lanes aligned so the
+switch is coherent, and scores **savings** (does re-adapting to a returning
+regime get cheaper with each visit?) and **interference** (does time in B
+damage steady-state A?) — lifetime properties that in-context inference cannot
+fake. That trap is documented: `dmon/exp` ran the block-switch version and the
+GRU won it by re-inferring the symbol map in ~10 characters. Full design and
+pass/fail: `experiments/f2-adaptability.md`.
+
 ### Ordering
 
 F0 first — it is the S0 gate and every F1 number is denominated in the F0
-configuration. F1 launches only after F0's verdict is recorded.
+configuration. F1 launches only after F0's verdict is recorded. F2 is
+orthogonal (different schedule regime, own controls) and runs on the second
+GPU alongside F0's creature queue.
 
 ## Run
 
@@ -156,9 +171,10 @@ bash fable/run_f1.sh
 | `evaluate.py` | Held-out BPC; reset / shuffle-internal / mirror-zero ablations |
 | `baselines.py` | Parameter-matched GRU (closed-form sizing, seeded init) |
 | `grow.py` | Runtime growth + recruitment probe (F1) + CLI |
+| `adapt.py` | Regime-cycling stream + savings/interference analysis (F2) + CLI |
 | `summarize.py` | LADDER.md writer |
 | `smoke_test.py` | Contract gate before any GPU time |
-| `run_f0.sh` / `run_f1.sh` | Aine launchers |
+| `run_f0.sh` / `run_f1.sh` / `run_f2.sh` | Aine launchers |
 | `experiments/` | Preregistrations + results |
 
 ## Relation to the other lines

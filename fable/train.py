@@ -48,9 +48,13 @@ def build_schedule(cfg: FableConfig):
 
 def build_optimizer(model: torch.nn.Module, cfg: FableConfig) -> torch.optim.AdamW:
     """Weight decay on genuine weight matrices only — not on biases, norms,
-    embeddings, per-edge logits, or the sensory affine (grok decayed all of
-    them, including double-decaying its duplicated edge logit, debt #9/#27)."""
-    no_decay_names = ("embed", "logit", "in_gain", "in_bias", "norm")
+    per-edge logits, or the sensory affine (grok decayed all of them,
+    including double-decaying its duplicated edge logit, debt #9/#27).
+    Embeddings DO decay: they are written raw into the mirror ring, so
+    unbounded embedding growth is unbounded state growth (h_max drifted past
+    1.3 in the first F0 launch with embeddings excluded — grok/sol both
+    decayed them and stayed bounded)."""
+    no_decay_names = ("logit", "in_gain", "in_bias", "norm")
     decay, no_decay = [], []
     for name, p in model.named_parameters():
         if not p.requires_grad:
@@ -106,6 +110,7 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
 
     history, evals = [], []
     skipped_total = 0
+    consecutive_skips = 0
     window_nll, window_tokens, t0 = 0.0, 0, time.time()
     health = None
 
@@ -125,8 +130,18 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
         if torch.isfinite(total_norm):
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
             opt.step()
+            consecutive_skips = 0
         else:
             skipped_total += 1
+            consecutive_skips += 1
+            if consecutive_skips >= 200:
+                # Fail fast, loudly. The first F0 launch skipped 5900+ updates
+                # in a row — a zombie burning GPU hours while the log looked
+                # merely unhealthy. A run that cannot step is a dead run.
+                raise SystemExit(
+                    f"[{kind}] aborted at u{update}: {consecutive_skips} "
+                    f"consecutive non-finite gradient updates "
+                    f"(total skipped {skipped_total})")
         sched.step()
 
         window_nll += float(loss.detach()) * tokens.numel()

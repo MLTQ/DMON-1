@@ -29,9 +29,12 @@ readout, chunked forward for BPTT.
 - **Sensory frontend is `emb * gain_i + bias_i` per input cell** (2·I·H
   params). grok's `input_proj` was a rank-≤H linear-on-linear frontend eating
   31–60% of the budget and distorting the matched comparison (debt #21).
-- **RMSNorm on messages** every micro-step: fixes per-step signal scale, which
-  is the substrate-side half of the chase-1 NaN fix (the optimizer-side half is
-  in train.py).
+- **MessageClamp on messages** every micro-step: scales messages down to unit
+  RMS only when they exceed it, identity below. Deliberately NOT RMSNorm —
+  raw message RMS is ~0.05, and full normalization amplified messages and
+  their gradients ~20× per micro-step, compounding across the 128 micro-steps
+  of a chunk's backward until gradients overflowed (F0 amendment 1). A guard
+  in this slot must only ever damp.
 - Sensory drive enters at micro-step 0 only (grok convention, kept).
 - Out-of-place `index_copy` everywhere state is written — in-place writes on
   graph tensors are an autograd hazard.
