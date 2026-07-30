@@ -1,6 +1,25 @@
 # F1: runtime growth on a substrate where capacity pays (preregistered 2026-07-30)
 
-*Launches only after the F0 verdict is recorded, on the F0-winning configuration.*
+> **STATUS: BLOCKED, not run (2026-07-30).** F0's verdict makes this
+> experiment unfalsifiable as designed. Its three arms differ only in
+> internal cell count, and F0 measured internal tissue as near-inert
+> (shuffle-internal delta +0.036 to +0.066 across three seeds, against a
+> preregistered bar of +1.0). All three arms would therefore land within
+> noise, and a null would be unattributable between "growth does not recruit"
+> and "there was nothing worth recruiting" — exactly `dmon/stream`'s S2
+> outcome, which its own commit recorded as *"unfalsifiable on this task
+> rather than failed."* Running it would spend ~6 GPU-hours reproducing a
+> known non-result.
+>
+> Superseded by **F5** (`f5-informed-growth.md`), which keeps this file's
+> growth machinery (`fable/grow.py`, validated by the smoke-test contracts)
+> and its recruitment-probe design, but changes the primary metric to
+> shuffle-internal delta — *does growth make tissue load-bearing* — and
+> replaces random proposals with informed ones. This experiment becomes
+> runnable again if F5, or any other change, first establishes that internal
+> tissue carries signal.
+
+*Original preregistration follows, unchanged.*
 
 ## Question
 

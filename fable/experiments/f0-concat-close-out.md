@@ -80,3 +80,81 @@ unaffected and retained. Notable before any creature verdict: giving the GRU
 the warmup+cosine schedule improved it ~0.2 BPC over chase-1's constant-LR
 GRU (2.051 vs 2.258 at seed 7) — the honest bar is much higher than the one
 chase-1's concat arm beat.
+
+---
+
+# RESULTS (2026-07-30, 8000 updates, 3 seeds, all arms 0 skipped updates)
+
+| Seed | Creature | Matched GRU | Gap | ResetΔ | **ShufΔ** | MirrorΔ |
+|-----:|---------:|------------:|----:|-------:|----------:|--------:|
+| 7 | 2.0082 | 2.0294 | **−0.0211** | +6.752 | **+0.066** | +0.172 |
+| 13 | 2.1154 | 2.0846 | +0.0308 | +3.913 | **+0.045** | +0.049 |
+| 21 | 2.0850 | 2.0688 | +0.0162 | +4.598 | **+0.036** | +0.022 |
+
+**Mean gap +0.0086 BPC.** Creature params 348,609 vs GRU 348,745 (0.04%).
+
+Bypass control (seed 7, frozen substrate, readout trained alone): **3.6925**
+— 1.68 BPC worse than the creature.
+
+## Verdict: SOFT PASS on compression, **FAIL on the ablation guard**
+
+Against the preregistered bars, item by item:
+
+| Bar | Result |
+|---|---|
+| Hard pass: mean gap ≤ 0.00 | **not met** (+0.0086) |
+| Soft pass: mean gap ≤ 0.05 | **met** |
+| No NaNs | **met** — 0 skipped updates in all six arms |
+| Reset Δ > +1.0 every seed | **met** (+3.9 to +6.8) |
+| Shuffle Δ > +1.0 every seed | **FAILED** (+0.036 to +0.066) |
+| Head-only ≥ 0.3 BPC worse | **met** by a wide margin (1.68) |
+
+The preregistered fail clause "or ablation deltas collapse" is triggered.
+Recording that plainly: **S0's literal bar is met and the milestone is not
+cleanly passed.**
+
+## What was learned
+
+1. **The concat readout + stability + schedule package closed the gap.**
+   grok's chase-1 mean-readout arms at the same budget: +0.129 mean gap.
+   Fable: +0.009. Both sides also improved in absolute terms (creature
+   2.39→2.01 at seed 7; GRU 2.26→2.03), so this is not an undertrained-GRU
+   artifact — the alternative reading the preregistration required us to
+   check. The creature is at parity with a parameter-matched, schedule-matched
+   GRU on a continuous stream with online updates.
+2. **The stability fix held at full budget**: zero non-finite gradients across
+   six arms and 48,000 updates, h_max pinned at 1.00. Amendment 1's diagnosis
+   was correct.
+3. **The substrate is at parity while barely using its internal tissue.**
+   Shuffling internal cell state every token costs 0.036–0.066 BPC —
+   reproducing on all three seeds. Reset costs +3.9 to +6.8, and zeroing the
+   mirror ring costs ≤0.17. So nearly all causal state lives in the **port
+   cells**; the internal field and the fixed-delay mirror ring are close to
+   decorative. This is `dmon/stream`'s "active and irrelevant" failure
+   (an 11×11 core doing all the work) reproduced on the connectome.
+4. **The hand-set mirror ring is not earning its 32 cells** (≤0.17 BPC),
+   which is weak evidence against hyperparameter timescales generally and for
+   learned delays (F3/F5).
+
+## Consequences
+
+- **F1 (growth) is blocked, not launched.** Its arms differ only in internal
+  cell count, and internal tissue is measurably near-inert — so all three arms
+  would land within noise and the result would be unattributable. That is
+  precisely `dmon/stream`'s S2 outcome ("unfalsifiable on this task rather
+  than failed"), and re-running it here would cost ~6 GPU-hours to reproduce a
+  known non-result. See amendment in `f1-growth.md`.
+- **F5 supersedes it**: growth judged on whether tissue becomes load-bearing
+  (shuffle-internal delta as the primary metric), with informed proposals.
+- **F2 is unaffected** and continues — it measures adaptability, and the port
+  cells carrying the state does not exempt the creature from the savings and
+  interference comparisons.
+
+## Process note
+
+The first ladder rendered by `summarize.py` put the **bypass** arm's ablation
+deltas in the creature's row (bypass was iterated last and overwrote them),
+which would have reported seed 7 as ShufΔ +0.001 / MirrorΔ +4.517. Caught and
+fixed before any verdict was recorded; ablation columns are now namespaced per
+arm and the bypass control gets its own table. Filed under the same discipline
+that produced "the log must not be able to lie."
