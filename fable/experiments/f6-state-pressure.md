@@ -100,3 +100,35 @@ what is evaluated, including the sentinels).
 bash fable/run_f6.sh      # waits for the 2070S to free, then runs all arms
 python3 -m fable.recall_report --root fable/runs/f6 --out fable/runs/f6/REPORT.md
 ```
+
+---
+
+# RESULTS, round 1 (2026-07-30, 9 arms, zero skipped updates): **task fails — re-dial**
+
+Every model, every delay bucket, at or above the 4.700-bit chance level — on
+the held-out tape **and on the training stream itself** (creature 4.76, GRU
+5.07, transformer 4.81 over ~9,000 scored training events). Even D ∈ [16,32),
+inside the creature's mirror ring and inside every model's context window, is
+at chance. The GRU sits *above* chance (5.03–5.10): it never even fully
+learned that value positions are lowercase letters.
+
+This is the third preregistered branch (task too hard at this dial), with a
+sharper reading: it is not a state-capacity failure, because nobody learned
+the retrieval pattern at *any* delay. Two dial errors, both self-inflicted:
+
+1. **Weak incentive**: recall positions are ~1.7% of the loss mass. A model
+   loses ~0.08 mean BPC by ignoring recall entirely — and all three did.
+2. **Underbudgeted**: B=4 lanes gave every arm a third of F0's tokens at the
+   same update count. Natural BPC 2.77–3.09 vs F0's 2.01–2.32 confirms the
+   whole round was undertrained (F7's lesson, replicated by accident).
+
+Also noted for round 2: round 1's "natural" positions include episode
+overhead (sentinel timing, key identity — irreducibly unpredictable), which
+inflates natural BPC by a small amount; round 2 excludes them.
+
+## Round 2 dial (preregistered before running)
+
+B=12 (F0's token rate), inject probability 0.02 → 0.06 (~3× recall density,
+~5% of loss mass), 12,000 updates, episode-overhead positions excluded from
+natural, everything else unchanged. Same pass/fail bars as round 1. Runs
+as `fable/runs/f6_1`.
