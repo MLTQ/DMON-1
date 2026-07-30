@@ -26,7 +26,9 @@ from pathlib import Path
 
 import torch
 
-from .baselines import MatchedGRU, gru_param_count, match_hidden
+from .baselines import (MatchedGRU, MatchedTransformer, gru_param_count,
+                        match_hidden, match_transformer_hidden,
+                        transformer_param_count)
 from .config import FableConfig
 from .evaluate import LN2, evaluate_model, evaluate_with_ablations
 from .model import Fable, count_parameters
@@ -79,12 +81,16 @@ def build_model(kind: str, cfg: FableConfig, device: str):
         for name, p in model.named_parameters():
             p.requires_grad = any(name.startswith(t) for t in trainable)
         return model
-    if kind == "gru":
+    if kind in ("gru", "transformer"):
         torch.manual_seed(cfg.seed + 1000)
         target = count_parameters(Fable(FableConfig(**dataclasses.asdict(cfg))))
-        hidden = match_hidden(cfg.vocab_size, target)
-        model = MatchedGRU(cfg.vocab_size, hidden).to(device)
-        return model
+        if kind == "gru":
+            return MatchedGRU(cfg.vocab_size,
+                              match_hidden(cfg.vocab_size, target)).to(device)
+        h = match_transformer_hidden(cfg.vocab_size, target,
+                                     max_len=cfg.transformer_seq_len)
+        return MatchedTransformer(cfg.vocab_size, h,
+                                  max_len=cfg.transformer_seq_len).to(device)
     raise ValueError(f"unknown kind {kind!r}")
 
 
@@ -105,8 +111,20 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
     opt = build_optimizer(model, cfg)
     schedule = build_schedule(cfg)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, schedule)
-    stream = LaneStream(corpus.train_ids, cfg.batch_size, cfg.seed, device)
-    state = model.initial_state(cfg.batch_size, device)
+
+    # The transformer is stateless: nothing carries across a chunk boundary,
+    # so its chunk IS its context. Training it on 32-token chunks while
+    # evaluating with a longer window would leave most position embeddings
+    # untrained — "the training distribution must contain what is evaluated",
+    # the error PROJECT.md records three times. It therefore trains at
+    # transformer_seq_len, with batch rescaled to hold tokens/update equal to
+    # the creature's, and is evaluated at that same length.
+    b, t = cfg.batch_size, cfg.chunk_length
+    if kind == "transformer":
+        t = cfg.transformer_seq_len
+        b = max(1, (cfg.batch_size * cfg.chunk_length) // t)
+    stream = LaneStream(corpus.train_ids, b, cfg.seed, device)
+    state = model.initial_state(b, device)
 
     history, evals = [], []
     skipped_total = 0
@@ -119,7 +137,7 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
             migrated = on_update(update, model, opt, state)
             if migrated is not None:
                 state = migrated
-        tokens, targets = stream.next_chunk(cfg.chunk_length)
+        tokens, targets = stream.next_chunk(t)
         loss, state, health = model.forward_chunk(tokens, targets, state)
         state = state.detach()
 
@@ -169,7 +187,7 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
 
         if update % cfg.eval_every == 0 or update == cfg.updates:
             model.eval()
-            if kind == "gru":
+            if kind in ("gru", "transformer"):
                 ev = {"normal": evaluate_model(
                     model, corpus.holdout_ids, cfg.eval_warmup_tokens,
                     cfg.eval_tokens, device)}
@@ -186,6 +204,7 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
 
     result = {
         "kind": kind, "params": params,
+        "train_batch": b, "train_seq_len": t,
         "config": dataclasses.asdict(cfg),
         "history": history, "evals": evals,
         "final_eval": evals[-1] if evals else None,
@@ -194,6 +213,10 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
     if kind == "gru":
         result["gru_hidden"] = model.hidden
         result["gru_params_closed_form"] = gru_param_count(cfg.vocab_size, model.hidden)
+    if kind == "transformer":
+        result["transformer_hidden"] = model.hidden
+        result["transformer_params_closed_form"] = transformer_param_count(
+            cfg.vocab_size, model.hidden)
     (out_dir / f"{kind}.json").write_text(json.dumps(result, indent=1))
     # checkpoint the model's own config, not the run's initial one — a grown
     # model's field is larger than the config this run started from
@@ -221,7 +244,8 @@ def config_from_args(args: argparse.Namespace) -> FableConfig:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Train one fable arm")
-    ap.add_argument("--model", choices=("creature", "gru", "bypass"),
+    ap.add_argument("--model",
+                    choices=("creature", "gru", "bypass", "transformer"),
                     default="creature")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out-dir", default="fable/runs/dev")

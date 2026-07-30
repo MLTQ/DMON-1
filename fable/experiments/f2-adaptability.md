@@ -129,6 +129,29 @@ interference with halved A-exposure, so only the difference is comparable.)
 A-only steady state: creature **2.2172**, GRU **2.0469** — creature
 **+0.1702 BPC** behind, exceeding the preregistered 0.15 proviso.
 
+## Amendment: zero-shot retention (the A→B→A test), added same day
+
+Savings measures the *transient* — how fast a regime is re-acquired. It does
+not measure what survived the absence. `fable/retention.py` measures that from
+the same raw records: loss in the first 16 chars after a regime boundary, when
+at most one optimizer step has landed inside the new block.
+
+| | Retention BPC (cycled) | A-only | **Penalty** | Slope/visit |
+|---|---:|---:|---:|---:|
+| creature | 7.5884 | 2.1905 | **+5.3979** | −1.146 |
+| gru | 3.7097 | 2.0596 | **+1.6502** | −0.416 |
+
+**The creature forgets catastrophically — 3.3× the GRU's retention penalty.**
+And 7.59 BPC is *above* the 6.02 chance level for this 65-symbol vocabulary:
+at a regime boundary the creature is not uncertain, it is confidently
+predicting under the wrong symbol map. The GRU degrades to 3.71, badly but
+below chance — it hedges.
+
+This **explains and invalidates** the savings result below. The creature's
+"steeper savings slope" is a mechanical consequence of having vastly more to
+recover: it recovers faster because it lost more. The favourable-looking
+number was measuring the damage, not the repair.
+
 ## Verdict: **FAIL**, by the clause written to catch exactly this
 
 The preregistration's fail condition included: *"or creature wins adaptability

@@ -178,6 +178,41 @@ scaling that F0 never tested).
   `f5-informed-growth.md`.
 - **F2 is unaffected** and continues.
 
+## Amendment 2 (2026-07-30): the transformer control, and a bug it exposed
+
+`PROJECT.md`'s S0 pass condition names a parameter-matched GRU **and
+transformer**; only the GRU had been run. Adding it exposed an error in the
+first attempt worth recording, because it is the error this project has
+logged three times.
+
+The transformer was trained on 32-token chunks (matching the creature's
+chunk) but evaluated with a growing context window up to `max_len=512`.
+Position embeddings past index 32 therefore never received a gradient, and it
+scored **4.7885** — near-useless. *The training distribution must contain what
+is evaluated.* Fixed by making the transformer's chunk **be** its context:
+trained and evaluated at `transformer_seq_len=128`, with batch rescaled
+(12×32 → 3×128) so tokens per update stay equal to the creature's.
+
+Corrected result, seed 7: **2.3206** (vs 4.7885 broken).
+
+| Arm (seed 7) | Params | Held-out BPC |
+|---|---:|---:|
+| creature | 348,609 | **2.0082** |
+| matched GRU | 348,745 | 2.0294 |
+| matched transformer | 352,145 | 2.3206 |
+
+The creature beats the transformer by **0.31 BPC** and matches the GRU. This
+reproduces sol's S0 ordering (transformer 2.600 > GRU 2.255 at matched budget)
+and confirms the GRU was the right primary baseline: it is the harder one, and
+beating only the transformer would have been the weaker claim. Seeds 13 and 21
+are running.
+
+The architectural caveat travels with the number: the transformer has no
+persistent state, so its context is its window, while the creature and GRU
+carry state indefinitely. This is matched *parameters and stream*, not matched
+memory — which is the comparison S0 asks for, but it is not a claim that the
+creature would win at long-context modelling.
+
 ## Process note
 
 The first ladder rendered by `summarize.py` put the **bypass** arm's ablation

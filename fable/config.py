@@ -38,6 +38,12 @@ class FableConfig:
     weight_decay: float = 0.01
     grad_clip: float = 1.0
 
+    # Transformer control only. It has no persistent state, so its context is
+    # whatever sits in the window. Trained and evaluated at exactly this
+    # length; batch is rescaled so tokens/update matches the creature's
+    # batch_size × chunk_length.
+    transformer_seq_len: int = 128
+
     # Evaluation
     eval_every: int = 500
     log_every: int = 100
