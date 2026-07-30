@@ -1,6 +1,6 @@
 # F1: runtime growth on a substrate where capacity pays (preregistered 2026-07-30)
 
-> **STATUS: RUNNING (2026-07-30).** Briefly blocked earlier the same day on
+> **STATUS: COMPLETE (2026-07-30) — results at end of file.** Briefly blocked earlier the same day on
 > a misreading of F0's shuffle result, then unblocked by measurement.
 >
 > The block claimed internal tissue was near-inert, citing shuffle-internal
@@ -27,7 +27,7 @@
 > differentiate). For `grown`, the existing recruitment probe additionally
 > freezes *only the added cells*, at the graft and at the end.
 
-*Original preregistration follows, unchanged.*
+*Original preregistration follows, unchanged. Results at the end of the file.*
 
 ## Question
 
@@ -94,3 +94,63 @@ Measured:
 bash fable/run_f1.sh
 python3 -m fable.summarize --root fable/runs/f1 --out fable/runs/f1/LADDER.md
 ```
+
+---
+
+# RESULTS (2026-07-30, 6 run arms + 3 copied born arms, zero skipped updates)
+
+Final held-out BPC:
+
+| Seed | small (80c) | grown (80→128) | born (128c) |
+|-----:|------------:|---------------:|------------:|
+| 7 | 2.0331 | 2.0007 | 2.0082 |
+| 13 | 2.0854 | 2.0826 | 2.1154 |
+| 21 | 2.1328 | 2.1240 | 2.0850 |
+| **mean** | **2.0838** | **2.0691** | **2.0695** |
+
+Graft mechanics (grown, u2000→u2500, small as shared-trend control):
+transition excess −0.003 / +0.055 / +0.007 — mean **+0.020**, well under the
++0.05 bar. Recruitment probe (freeze the 48 added cells): final Δ +0.047 /
++0.040 / +0.017 (mean **+0.035**); just-after-graft Δ +0.039 / +0.035 /
+−0.002.
+
+Tissue probes, every arm: freeze-internal +0.14…+0.41 (the tissue works, at
+every size); shuffle-internal +0.015…+0.030 (undifferentiated, at every
+size).
+
+## Verdict against the preregistered bars
+
+| Bar | Result |
+|---|---|
+| Pass: grown beats small by ≥ 0.05 mean | **not met** (−0.015) |
+| Strong pass: grown within 0.03 of born | met (−0.0004 — grown ≈ born) |
+| Transition cost ≤ +0.05 | **met** (+0.020 mean) |
+| Recruitment: final ≥ 0.05, early < half of final | **not met** (+0.035 final; early ≈ final) |
+| Fail: graft destabilizes | did not occur |
+
+**S2's capability claim: FAIL. S2's mechanism claim: PASS.** And the amended
+prediction — sublinear scaling — confirmed about as decisively as it can be:
+
+1. **Growth is mechanically safe and complete.** Transition cost ≈ 0; the
+   grown organism is statistically indistinguishable from born-large by the
+   end (mean gap −0.0004). Grafting mid-stream costs nothing and forfeits
+   nothing. The machinery works.
+2. **The capacity it adds is nearly worthless at this task and budget.** 4×
+   the internal tissue buys 0.014 BPC however it is acquired (born−small =
+   −0.014, grown−small = −0.015). The added cells' contribution is small and
+   *flat from the moment of the graft* (+0.035 ≈ +0.024 early) — extra
+   interchangeable mean-field capacity, absorbed instantly, never
+   differentiated. Shuffle stays at ~0.02 in every arm at every size.
+3. This is the connectome's version of `dmon/stream`'s S2 result, now
+   properly attributable: there, growth was safe but the tissue did no work
+   (freeze would have shown ~0); here the tissue works (freeze +0.14…+0.41)
+   but does not *specialize*, so more of it averages instead of adding. The
+   binding constraint is **differentiation, not capacity** — the F5 thesis,
+   now with its quantitative motivation, and consistent with F0's flat
+   utilization trajectory and Max's diagnosis that the task never forces
+   information into the bulk (F6, running).
+
+Caveat that travels with all of this: F7 has since shown every 8k-update
+number is budget-bound (curves still falling at the horizon). If F7's
+long-horizon run surfaces late differentiation, point 2's "never" softens to
+"not within 8k updates."
