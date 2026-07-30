@@ -92,10 +92,25 @@ class SwitchStream:
 
 
 def adaptation_curve(since, loss, block, bins=32):
-    """Mean bpc per bin of characters-since-switch."""
-    edges = torch.linspace(0, block, bins + 1).long()
+    """Mean bpc per bin of characters-since-switch, on LOG-SPACED edges.
+
+    Linear bins cannot see fast adaptation. With 32 linear bins over a 4000-character
+    block the first bin covers characters 0-125, so a model that infers the new symbol
+    mapping in-context within a few dozen characters is already adapted for almost all
+    of that bin, and the curve reads flat for precisely the opposite of the real reason.
+    Since the whole experiment is "how fast does it recover", the resolution has to be
+    where the recovery happens.
+    """
+    edges = torch.unique(torch.cat([
+        torch.tensor([0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256,
+                      384, 512, 768, 1024, 1536, 2048, 3072]),
+        torch.tensor([block]),
+    ]))
+    edges = edges[edges <= block]
+    if edges[-1] < block:
+        edges = torch.cat([edges, torch.tensor([block])])
     out = []
-    for i in range(bins):
+    for i in range(len(edges) - 1):
         m = (since >= edges[i]) & (since < edges[i + 1])
         if m.any():
             out.append((int(edges[i]), (loss[m].mean() * LOG2E).item()))
@@ -139,12 +154,19 @@ def run_arm(model, name, tokens, vocab, block, ticks, window, batch, lr, device,
     since = torch.cat(sinces)
     loss = torch.cat(losses)
     curve = adaptation_curve(since, loss, block)
-    early = torch.tensor([b for a, b in curve[: len(curve) // 4]]).mean().item()
-    late = torch.tensor([b for a, b in curve[-len(curve) // 4:]]).mean().item()
+    # First 16 characters vs the last quarter of the block. "Just after a switch" has to
+    # mean genuinely just after, not "in the first 3% of the block".
+    early = (loss[since < 16].mean() * LOG2E).item()
+    late = (loss[since >= block * 3 // 4].mean() * LOG2E).item()
+    # Keep a raw sample so any later question about binning is answerable without
+    # re-running. Discarding it cost this experiment one arm already.
+    keep = torch.randperm(len(since))[:200_000]
     return {
         "arm": name,
         "params": model.param_count(),
         "curve": curve,
+        "raw_since": since[keep].tolist(),
+        "raw_loss": loss[keep].tolist(),
         "bpc_just_after_switch": early,
         "bpc_well_after_switch": late,
         "adaptation_gain": early - late,

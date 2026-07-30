@@ -1,19 +1,16 @@
 # train.py
 
 ## Purpose
-Continuous multi-stream online trainer. Truncated BPTT: sum CE over `truncate_every`, one backward, detach state (never reset). Optional parameter-budget-matched GRU baseline on identical protocol.
+Multi-lane continuous chunk trainer with held-out ablations and optional GRU control.
 
 ## Components
 
-### `_train_online`
-- **Does**: Shared loop for creature and GRU so comparison is fair
+### `train_creature`
+- **Does**: Stream windows of `chunk_length`, AdamW, detach state, periodic eval with reset/shuffle Δ
 
-### `eval_window`
-- **Does**: Single-stream eval from a mid-corpus start (fresh state — eval only)
-
-### `match_hidden_for_budget` (via baselines)
-- **Does**: Size the GRU so param count ≈ creature
+### `train_gru_control`
+- **Does**: Parameter-budget-matched GRU on identical stream protocol
 
 ## Notes
-- Detach ≠ reset.
-- Prefer `--device cuda` on Aine; `CUDA_VISIBLE_DEVICES=0` selects the 4090 (CUDA fastest-first).
+- Prefer `--updates` over legacy `--steps`.
+- `--structural` enables probe rewiring (default off).

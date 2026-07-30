@@ -1,27 +1,33 @@
 # model.py
 
 ## Purpose
-S0 creature: streaming char-level field with input ports, mirror memory, dendritic attention, continuous state.
+Streaming character organism: sparse directed field, mirror memory, eligibility, reverse vector credit, fast edge efficacy.
 
 ## Components
 
 ### `CreatureState`
-- **Does**: Carries `h` and mirror ring cursor; `detach` for truncated BPTT
+- **Does**: Carries h, eligibility, edge eligibility, fast weights, reverse credit, reward baseline, mirror cursor across BPTT cuts
+- **Rationale**: Detach ≠ reset (SOL / ARCHITECTURE)
 
 ### `StreamingCreature`
-- **Does**: Embed → mirror write → recurrent dendrite microsteps → mean-pool readout
-- **Interacts with**: `DendriteGraph`, `SharedGRURule`, `TrainConfig`
+- **Does**: Embed → mirror write → dendrite microsteps with credit drive → readout; `observe_prediction` for delayed reward + decoder correction
+- **Interacts with**: `DendriteGraph`, `SharedGRURule`, `train.py`, `evaluate.py`, `structure.py`
 
-### Mirror contract
-- Stream writes detached embeddings into rotating mirror slot
-- `mutable_mask` blocks rule overwrite; dendrites may still read mirrors
+### Credit path
+1. Eligibility tags participation each microstep
+2. Surprise vs EMA baseline → signed reward for next tick
+3. Decoder residual maps through readout transpose into output cells
+4. Credit transports sourceward via `message_value` transpose × dendrite coefficients
+5. Fast weights update when reward meets edge eligibility
 
-### Readout
-- Mean-pool over output cells + LayerNorm + linear (scales with `n_output` better than concat)
+### Readout (`TrainConfig.readout_mode`)
+- `mean` — pool output cells then `Linear(H→V)` (default)
+- `concat` — flatten outputs then `Linear(O·H→V)`
+- `attn` — learnable query over output cells then project
 
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 |-----------|---------|------------------|
-| `train.py` | `step(ids[B], state) → logits[B,V], state`; no hidden reset | Signature / reset semantics |
-| Port buffers | indices move with `.to(device)` via register_buffer | Manual CPU-only indices |
+| Trainer | `forward_chunk(tokens, targets, state) → logits, state, loss` | Signature |
+| Eval | `step` + `observe_prediction` + `initial_state` | State fields |

@@ -1,4 +1,4 @@
-"""Shared local cell rule. Parameters are global; state is per-cell."""
+"""Shared local cell rule with credit-conditioned drive."""
 
 from __future__ import annotations
 
@@ -7,18 +7,17 @@ from torch import nn
 
 
 class SharedGRURule(nn.Module):
-    """One GRU applied at every mutable cell.
+    """One GRU at every mutable cell.
 
-    Input to the GRU is the concatenation of dendritic message and external
-    drive (zeros for non-input cells). Hidden state is private per cell and
-    persists across tokens — that persistence is the creature's working memory.
+    Inputs: dendritic message, external drive, and eligibility-gated credit drive.
+    Private hidden state is the working memory of the organism.
     """
 
     def __init__(self, hidden: int) -> None:
         super().__init__()
         self.hidden = hidden
-        # message + drive → 2H input features
-        self.gru = nn.GRUCell(hidden * 2, hidden)
+        # message + drive + credit_drive → 3H
+        self.gru = nn.GRUCell(hidden * 3, hidden)
         nn.init.zeros_(self.gru.bias_ih)
         nn.init.zeros_(self.gru.bias_hh)
 
@@ -27,10 +26,9 @@ class SharedGRURule(nn.Module):
         h: torch.Tensor,
         messages: torch.Tensor,
         drive: torch.Tensor,
+        credit_drive: torch.Tensor,
     ) -> torch.Tensor:
-        """h, messages, drive: [B, N, H] → updated h [B, N, H]."""
-
         b, n, hid = h.shape
-        inp = torch.cat([messages, drive], dim=-1)  # [B, N, 2H]
-        out = self.gru(inp.reshape(b * n, 2 * hid), h.reshape(b * n, hid))
+        inp = torch.cat([messages, drive, credit_drive], dim=-1)
+        out = self.gru(inp.reshape(b * n, 3 * hid), h.reshape(b * n, hid))
         return out.reshape(b, n, hid)

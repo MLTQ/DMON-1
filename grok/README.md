@@ -1,83 +1,64 @@
-# grok/ — S0 streaming creature substrate
+# grok/ — lean S0 organism (SOL-informed)
 
-Dominion of a clean-slate implementation toward DMON-1's S0 goal:
+A clean experimental line for the **character organ**: continuous stream, sparse
+directed dendrites, persistent state, event eligibility, reverse vector credit, and
+honest matched-budget comparison against a GRU.
 
-> An asynchronously stimulated NCA-like network that learns **character-level
-> language modeling on a continuous stream**, competitive with a parameter-matched
-> GRU (and later a small transformer) — without episodic resets.
+Not a port of `sol/` — a **thin reimplementation of findings** that earned status there.
+See `findings.md`.
 
-This package **does not** use the bookmarked `dmon/` morphology code. It is a
-fresh line informed by `PROJECT.md`, `ARCHITECTURE.md`, and petridish insights.
+## What is on by default
 
-## Design commitments (from petridish + architecture)
+| Mechanism | Source | Role |
+|-----------|--------|------|
+| Directed dendrites + local attention | petridish / prior grok | No Moore neighborhood |
+| Mirror ring (stream-written only) | DMON architecture | Explicit event memory slots |
+| Eligibility + delayed reward | SOL | Cross-window credit |
+| Decoder-shaped reverse credit | SOL S15/S18 | Channel credit along real axons |
+| Fast edge efficacy | SOL | Reward × edge eligibility |
+| Multi-lane chunk BPTT | SOL stream | Continuous, GPU-efficient |
+| Reset / shuffle ablations | SOL eval | Prove state is causal |
 
-1. **No Moore/Neumann neighborhood CA.** Cells communicate over **directed
-   dendrites** (fixed slots of specific sources). Connectivity is a graph, not a
-   convolution. Growth/pruning can come later; the abstraction is axons/dendrites
-   from day one.
-2. **Continuous input ⇒ continuous credit.** The stream never pauses for a
-   "training phase." Forward messages and reverse-mode gradients both flow through
-   the same retained state every token.
-3. **Reward needs a memory of the event.** Dedicated **mirror cells** hold a
-   stream-written ring of recent stimulus (write-only from the stream; the rule
-   cannot overwrite them). Dendrites can read them, so credit can reach cells that
-   stored the past when the future loss arrives.
-4. **Capability before economy.** S0 has no energy ledger. Bits-per-character
-   first; metabolism is S1.
+**Default off:** metabolism, structural rewiring (enable with `--structural`).
+
+## Run
+
+```bash
+# Contracts + learning smoke
+.venv/bin/python -m grok.smoke_test
+
+# Train on Tiny Shakespeare (90/10 split, held-out eval + ablations)
+.venv/bin/python -m grok.train --updates 2000 --device cpu --baseline
+
+# Matched S0 benchmark writeup
+.venv/bin/python -m grok.benchmark --updates 2000 --device cuda --out-dir grok/runs/s0-bench
+
+# Optional morphology organ (S17-style global fitness when available)
+.venv/bin/python -m grok.train --updates 2000 --structural --baseline
+```
+
+## Pass bar (S0)
+
+- Held-out BPC competitive with parameter-matched GRU on the same stream.
+- `reset_delta_bpc` and `shuffle_delta_bpc` substantially positive.
+- Gradients reach dendrites, rule, and message value (reverse path).
 
 ## Layout
 
-| Module | Role |
-|--------|------|
-| `config.py` | Hyperparameters for model + stream trainer |
-| `corpus.py` | Character stream (Tiny Shakespeare cache) |
-| `graph.py` | Directed dendrite connectome |
-| `cell.py` | Shared local rule (GRU) |
-| `model.py` | Streaming creature: ports, mirrors, readout |
-| `baselines.py` | Parameter-matched GRU null model |
-| `train.py` | Continuous online training loop |
-| `smoke_test.py` | Fast correctness + learning smoke |
+| File | Role |
+|------|------|
+| `findings.md` | Hard constraints from SOL |
+| `model.py` | Organism tick + credit |
+| `graph.py` | Dendrites + reverse transport |
+| `stream.py` | Multi-lane continuous corpus |
+| `train.py` | Chunk trainer + baseline |
+| `evaluate.py` | Held-out + ablations |
+| `structure.py` | Optional probe rewiring |
+| `benchmark.py` | Comparison report |
+| `smoke_test.py` | Gate |
 
-## Quick start
+## Relation to sol/
 
-From the repo root (after `uv venv .venv && uv pip install torch numpy`):
-
-```bash
-# Smoke: contracts + loss drops
-.venv/bin/python -m grok.smoke_test
-
-# Train (defaults: 128 cells, h=128, dendritic attention, batch 16)
-.venv/bin/python -m grok.train --steps 5000 --device cpu
-
-# Creature vs parameter-matched GRU (S0 comparison)
-.venv/bin/python -m grok.train --steps 10000 --baseline --device cuda \
-  --out-dir grok/runs/s0_compare
-
-# Larger field
-.venv/bin/python -m grok.train --n-cells 256 --hidden 192 --batch-size 32 \
-  --steps 20000 --baseline --device cuda
-```
-
-## Pass / fail (S0)
-
-- **Pass**: online next-char learning; bits/char improves vs chance; competitive
-  with the matched GRU on the same stream; state is **not** reset between tokens.
-- **Fail**: only learns when the stream is paused / batched into independent
-  episodes; or cannot beat a dead baseline while looking good on a broken metric.
-
-## GPU notes (Aine)
-
-- `CUDA_VISIBLE_DEVICES=1` (or torch order with 2070S alone) for the free card when the 4090 is busy.
-- BPTT memory ≈ `B × N × H × K × steps_per_token × truncate_every`. On 8GB: prefer
-  `--truncate-every 32 --steps-per-token 3 --batch-size 16` at 128/128; T=64 OOM'd.
-- Probe with `python -m grok.mem_probe` before long jobs.
-
-## What is deliberately deferred
-
-- Energy / satiety (S1)
-- Runtime lattice growth (S2)
-- Multimodal ports (S3)
-- Display organ / morphology (S4)
-- Lifecycle birth/death (petridish full stack)
-
-Those belong later. S0 is the machine that must work first.
+`sol/` remains the full scientific stack (routing trials, randomized structural
+inference, energy, UI). `grok/` is for **fast iteration toward the GRU gap** with a
+smaller surface area. Promote ideas into SOL-level rigor only after they move BPC here.

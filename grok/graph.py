@@ -1,6 +1,8 @@
-"""Directed dendrite connectome — not a convolutional neighborhood."""
+"""Directed dendrite connectome with local attention and fast efficacy."""
 
 from __future__ import annotations
+
+import math
 
 import torch
 from torch import nn
@@ -8,15 +10,11 @@ from torch.nn import functional as F
 
 
 class DendriteGraph(nn.Module):
-    """Each cell owns `n_dendrites` source slots with learnable signed weights.
+    """Per-cell source slots — axons to specific partners, not a 3×3 neighborhood.
 
-    Topology is discrete and frozen during a differentiable stream (petridish
-    trial discipline). Sources are specific cell indices — axons to chosen
-    partners, not "everyone in a 3×3 window."
-
-    Aggregation is *local attention over real dendrites only*: each cell forms a
-    query from its state, attends over its K sources' keys/values, and scales by
-    signed synaptic weights. No all-pairs field attention.
+    Aggregation is local attention over real dendrites only. Signed slow weights plus
+    optional stream-local fast efficacy (SOL-style) modulate branch coefficients.
+    Coefficients are returned for reverse credit transport through the same graph.
     """
 
     def __init__(
@@ -49,22 +47,17 @@ class DendriteGraph(nn.Module):
             internal_idx=internal_idx,
             seed=seed,
         )
-        # Discrete endpoints — no gradient into indices.
         self.register_buffer("sources", sources, persistent=True)
-        # Signed, zero-centered init (petridish lesson against saturation).
-        weights = torch.empty(n_cells, n_dendrites).uniform_(-0.05, 0.05)
-        self.weights = nn.Parameter(weights)
+        self.weights = nn.Parameter(
+            torch.empty(n_cells, n_dendrites).uniform_(-0.05, 0.05)
+        )
+        self.bias = nn.Parameter(torch.zeros(n_cells, n_dendrites))
 
-        if use_attention:
-            self.query = nn.Linear(hidden, hidden, bias=False)
-            self.key = nn.Linear(hidden, hidden, bias=False)
-            self.value = nn.Linear(hidden, hidden, bias=False)
-            self.scale = hidden**-0.5
-        else:
-            self.query = None
-            self.key = None
-            self.value = None
-            self.scale = 1.0
+        self.query = nn.Linear(hidden, hidden, bias=False) if use_attention else None
+        self.key = nn.Linear(hidden, hidden, bias=False) if use_attention else None
+        self.value = nn.Linear(hidden, hidden, bias=False)
+        self.scale = hidden**-0.5
+        nn.init.orthogonal_(self.value.weight)
 
     @staticmethod
     def _wire(
@@ -83,51 +76,70 @@ class DendriteGraph(nn.Module):
         outputs = output_idx.tolist()
         mirrors = mirror_idx.tolist()
         internals = internal_idx.tolist()
-        all_src_pool = list(range(n_cells))
+        all_src = list(range(n_cells))
 
         for cell in range(n_cells):
             if cell in outputs:
                 pool = internals + inputs + mirrors
             elif cell in mirrors:
-                # Mirrors are stream-written; rule ignores inbound messages.
                 pool = mirrors + inputs
             elif cell in inputs:
                 pool = inputs + internals
             else:
                 pool = inputs + mirrors + internals
-
-            pool = [p for p in pool if p != cell] or all_src_pool
-            choices = []
-            for _ in range(n_dendrites):
-                j = int(torch.randint(0, len(pool), (1,), generator=g).item())
-                choices.append(pool[j])
-            # Prefer unique sources when the pool is large enough.
+            pool = [p for p in pool if p != cell] or all_src
             if len(pool) >= n_dendrites:
                 perm = torch.randperm(len(pool), generator=g)[:n_dendrites]
                 choices = [pool[int(i)] for i in perm.tolist()]
+            else:
+                choices = [
+                    pool[int(torch.randint(0, len(pool), (1,), generator=g))]
+                    for _ in range(n_dendrites)
+                ]
+            # Organ plumbing: each output keeps one sensory axon (strength trainable).
+            if cell in outputs and inputs:
+                choices[0] = inputs[cell % len(inputs)]
             sources[cell] = torch.tensor(choices, dtype=torch.long)
         return sources
 
-    def aggregate(self, h: torch.Tensor) -> torch.Tensor:
-        """Messages for every cell from its real dendrites only.
+    def aggregate(
+        self,
+        h: torch.Tensor,
+        fast_weight: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return (messages [B,N,H], coefficients [B,N,K])."""
 
-        h: [B, N, H] → messages [B, N, H]
-        """
-
-        src = self.sources  # [N, K]
-        gathered = h[:, src, :]  # [B, N, K, H]
-        syn = self.weights.unsqueeze(0).unsqueeze(-1)  # [1, N, K, 1]
+        gathered = h[:, self.sources, :]  # [B, N, K, H]
+        slow = self.weights.unsqueeze(0) + self.bias.unsqueeze(0)
+        if fast_weight is not None:
+            slow = slow + fast_weight
+        v = self.value(gathered)
 
         if not self.use_attention:
-            return (gathered * syn).sum(dim=2)
+            coeff = torch.softmax(slow.expand(h.shape[0], -1, -1), dim=-1)
+            messages = (v * coeff.unsqueeze(-1)).sum(dim=2)
+            return messages, coeff
 
-        assert self.query is not None and self.key is not None and self.value is not None
-        # Query from self; keys/values from sources.
-        q = self.query(h).unsqueeze(2)  # [B, N, 1, H]
-        k = self.key(gathered)  # [B, N, K, H]
-        v = self.value(gathered)  # [B, N, K, H]
-        scores = (q * k).sum(dim=-1) * self.scale  # [B, N, K]
-        # Signed synapse gate on attention logits (excitatory/inhibitory).
-        scores = scores + self.weights.unsqueeze(0)
-        attn = F.softmax(scores, dim=-1).unsqueeze(-1)  # [B, N, K, 1]
-        return (attn * v).sum(dim=2)
+        assert self.query is not None and self.key is not None
+        q = self.query(h).unsqueeze(2)
+        k = self.key(gathered)
+        scores = (q * k).sum(dim=-1) * self.scale + slow
+        coeff = F.softmax(scores, dim=-1)
+        messages = (coeff.unsqueeze(-1) * v).sum(dim=2)
+        return messages, coeff
+
+    def transport_vector_credit(
+        self,
+        credit: torch.Tensor,
+        coefficient: torch.Tensor,
+    ) -> torch.Tensor:
+        """Scatter channel credit sourceward through the transpose of message_value."""
+
+        b, _, h = credit.shape
+        sourceward = F.linear(credit, self.value.weight.t())
+        edge = coefficient.unsqueeze(-1) * sourceward.unsqueeze(2)
+        contribution = edge.flatten(1, 2)
+        src = self.sources.flatten().view(1, -1, 1).expand(b, -1, h)
+        out = torch.zeros_like(credit)
+        out.scatter_add_(1, src, contribution)
+        return out / math.sqrt(self.n_dendrites)

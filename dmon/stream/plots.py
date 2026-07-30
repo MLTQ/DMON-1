@@ -154,3 +154,24 @@ def scaling_curve(series: dict[str, list[tuple[int, float]]], claim: str,
     ax.set_xlabel("parameters")
     ax.set_ylabel("held-out bits per character")
     return _finish(fig, ax, claim, verdict, out)
+
+
+def adaptation_curves(series: dict[str, list[tuple[int, float]]], claim: str,
+                      verdict: str, out: str | Path, block: int | None = None):
+    """bpc against characters-since-regime-switch.
+
+    A model that adapts shows a spike that decays. One that cannot shows a flat
+    elevated line — and crucially, both produce the SAME mean bpc, which is why this
+    experiment cannot be reported as a single number.
+    """
+    fig, ax = plt.subplots(figsize=(8.5, 5))
+    for i, (name, pts) in enumerate(series.items()):
+        xs, ys = zip(*pts)
+        ax.plot(xs, ys, color=PALETTE[i % len(PALETTE)], lw=1.8, marker="o", ms=4,
+                label=name)
+    ax.set_xlabel("characters since regime switch (log scale)")
+    ax.set_ylabel("bits per character")
+    ax.set_xscale("symlog", linthresh=1)
+    if block:
+        ax.set_xlim(0, block)
+    return _finish(fig, ax, claim, verdict, out)
