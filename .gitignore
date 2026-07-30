@@ -6,6 +6,7 @@ venv/
 # run outputs: checkpoints, gifs, probe json. Regenerable, and large.
 runs/
 grok/runs/
+fable/runs/
 
 # corpora (regenerable / copied from cache)
 data/
