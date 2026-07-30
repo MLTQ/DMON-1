@@ -68,18 +68,32 @@ used alignment to reweight *existing* branches' reverse-credit amplitude.
 F5 uses these signals only to *propose new edges*, with commit decisions made
 by measured outcome.
 
-## Primary metric changes: shuffle-internal delta, not BPC
+## Primary metric: shuffle-internal delta (differentiation), with freeze as
+## the work check
 
-F0 established that BPC is dominated by port-cell state — the creature
-reached GRU parity while internal tissue was inert. BPC is therefore a poor
-instrument for a mechanism whose job is to make tissue load-bearing.
+*Corrected 2026-07-30 after the freeze probe. An earlier draft of this
+section said internal tissue was "inert" and that shuffle measured
+"load-bearing". Both were wrong: freezing internal tissue costs ~0.5 BPC
+(it works), while shuffling it costs ~0.05 (it is undifferentiated).*
 
-- **Primary**: shuffle-internal delta. Growth that moves it from ~0.05
-  toward ~1.0 has built a functioning field.
+- **Primary: shuffle-internal delta** — does structural growth make the field
+  *differentiated*? F0's tissue is a mean field: interchangeable cells whose
+  identities carry ~0.05 BPC. The thesis of F5 is that informed structure
+  creates specialization, which is precisely what shuffle detects and what
+  BPC hides.
+- **Work check: freeze-internal delta** — must not fall. A field that becomes
+  more differentiated while doing less work has traded one failure for
+  another.
 - **Secondary**: held-out BPC, reset/mirror deltas, commit counts, and the
-  fraction of commits that survive to the end of the run.
+  fraction of commits surviving to the end of the run.
 - Growth that improves BPC while shuffle-delta stays flat has improved the
   ports and **must not be credited to structure**.
+
+Why differentiation is the right target rather than a proxy: an
+undifferentiated population scales sublinearly (averaging), a differentiated
+one can specialize. If F1 confirms sublinear returns on tissue count, then
+differentiation — not more cells — is the binding constraint on the capacity
+axis that justifies this whole substrate.
 
 ## Arms (3 seeds, F0 substrate/geometry where parity is established)
 

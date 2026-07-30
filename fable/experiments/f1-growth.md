@@ -1,23 +1,31 @@
 # F1: runtime growth on a substrate where capacity pays (preregistered 2026-07-30)
 
-> **STATUS: BLOCKED, not run (2026-07-30).** F0's verdict makes this
-> experiment unfalsifiable as designed. Its three arms differ only in
-> internal cell count, and F0 measured internal tissue as near-inert
-> (shuffle-internal delta +0.036 to +0.066 across three seeds, against a
-> preregistered bar of +1.0). All three arms would therefore land within
-> noise, and a null would be unattributable between "growth does not recruit"
-> and "there was nothing worth recruiting" — exactly `dmon/stream`'s S2
-> outcome, which its own commit recorded as *"unfalsifiable on this task
-> rather than failed."* Running it would spend ~6 GPU-hours reproducing a
-> known non-result.
+> **STATUS: RUNNING (2026-07-30).** Briefly blocked earlier the same day on
+> a misreading of F0's shuffle result, then unblocked by measurement.
 >
-> Superseded by **F5** (`f5-informed-growth.md`), which keeps this file's
-> growth machinery (`fable/grow.py`, validated by the smoke-test contracts)
-> and its recruitment-probe design, but changes the primary metric to
-> shuffle-internal delta — *does growth make tissue load-bearing* — and
-> replaces random proposals with informed ones. This experiment becomes
-> runnable again if F5, or any other change, first establishes that internal
-> tissue carries signal.
+> The block claimed internal tissue was near-inert, citing shuffle-internal
+> deltas of +0.036..+0.066. The freeze probe (`fable/probe.py`) on the same
+> checkpoints then measured **+0.280 / +0.831 / +0.409** — internal tissue is
+> worth ~0.5 BPC and is merely *permutation-invariant*. Shuffle measures
+> differentiation, freeze measures work; the block conflated them. F1's arms
+> differ by 16 vs 64 internal cells — a 4× difference in a population worth
+> half a bit, well above F0's ~0.107 BPC seed spread — so the experiment is
+> falsifiable and proceeds.
+>
+> **Added hypothesis (from the same finding).** An undifferentiated
+> population should scale **sublinearly**: more interchangeable cells average
+> rather than specialize. The preregistered prediction is therefore
+> *diminishing returns* — `born` should beat `small` by clearly less than 4×
+> the per-cell contribution implies. A strongly sublinear result is the
+> quantitative argument for differentiation machinery (cell types, informed
+> structure — F5) over simply adding tissue, and would be the most useful
+> outcome this experiment can produce. `dmon/stream` could not run this test
+> because its tissue did no work in the first place.
+>
+> **Added measurement.** Every arm is probed with `fable.probe` at the end:
+> freeze-internal (did the tissue do work) and shuffle-internal (did it
+> differentiate). For `grown`, the existing recruitment probe additionally
+> freezes *only the added cells*, at the graft and at the end.
 
 *Original preregistration follows, unchanged.*
 

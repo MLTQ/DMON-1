@@ -125,30 +125,58 @@ cleanly passed.**
 2. **The stability fix held at full budget**: zero non-finite gradients across
    six arms and 48,000 updates, h_max pinned at 1.00. Amendment 1's diagnosis
    was correct.
-3. **The substrate is at parity while barely using its internal tissue.**
-   Shuffling internal cell state every token costs 0.036–0.066 BPC —
-   reproducing on all three seeds. Reset costs +3.9 to +6.8, and zeroing the
-   mirror ring costs ≤0.17. So nearly all causal state lives in the **port
-   cells**; the internal field and the fixed-delay mirror ring are close to
-   decorative. This is `dmon/stream`'s "active and irrelevant" failure
-   (an 11×11 core doing all the work) reproduced on the connectome.
-4. **The hand-set mirror ring is not earning its 32 cells** (≤0.17 BPC),
-   which is weak evidence against hyperparameter timescales generally and for
-   learned delays (F3/F5).
+3. **The internal tissue is functional but undifferentiated** — see the
+   correction below, which supersedes this section's first reading.
+4. **The hand-set mirror ring is not earning its 32 cells** (≤0.17 BPC by
+   both the zero-ablation and the freeze probe), which is weak evidence
+   against hyperparameter timescales generally and for learned delays
+   (F3/F5).
+
+## Correction (same day): shuffle ≠ inert
+
+The shuffle result was initially read as "internal tissue is near-inert" and
+used to block F1. That inference was wrong, and the freeze probe
+(`fable/probe.py`, run on these same checkpoints) shows why:
+
+| Seed | Normal | Freeze internals | **Δ** | Freeze mirror | Δ | Shuffle internals | Δ |
+|-----:|-------:|-----------------:|------:|--------------:|--:|------------------:|--:|
+| 7 | 2.0082 | 2.2877 | **+0.280** | 2.1813 | +0.173 | — | +0.066 |
+| 13 | 2.1154 | 2.9467 | **+0.831** | 2.1645 | +0.049 | — | +0.045 |
+| 21 | 2.0850 | 2.4937 | **+0.409** | 2.1084 | +0.023 | — | +0.036 |
+
+Internal tissue is worth **~0.5 BPC on average**. It does substantial work;
+it is merely **permutation-invariant** — a mean-field population where *which*
+cell holds which state carries almost nothing. Shuffle measures
+differentiation, freeze measures work, and a single ablation cannot separate
+them. Both now ship together in `fable/probe.py`, and the rule is recorded
+there: "population P matters" cites freeze; "population P is
+specialized" cites shuffle.
+
+This does **not** rescue the preregistered guard — the shuffle bar was
++1.0 and the result is +0.05, so F0 still fails it. What changes is the
+*interpretation*: the failure means undifferentiated tissue, not dead tissue,
+and it is **not** a reproduction of `dmon/stream`'s inert-capacity failure
+(which was specifically that *added* cells bought nothing — a claim about
+scaling that F0 never tested).
 
 ## Consequences
 
-- **F1 (growth) is blocked, not launched.** Its arms differ only in internal
-  cell count, and internal tissue is measurably near-inert — so all three arms
-  would land within noise and the result would be unattributable. That is
-  precisely `dmon/stream`'s S2 outcome ("unfalsifiable on this task rather
-  than failed"), and re-running it here would cost ~6 GPU-hours to reproduce a
-  known non-result. See amendment in `f1-growth.md`.
-- **F5 supersedes it**: growth judged on whether tissue becomes load-bearing
-  (shuffle-internal delta as the primary metric), with informed proposals.
-- **F2 is unaffected** and continues — it measures adaptability, and the port
-  cells carrying the state does not exempt the creature from the savings and
-  interference comparisons.
+- **F1 (growth) proceeds.** Its arms differ by 16 vs 64 internal cells, a 4×
+  difference in a population worth ~0.5 BPC, so the effect is well above the
+  ~0.107 BPC seed spread. F1 was briefly blocked on the wrong reading; the
+  block is withdrawn. It also now carries the freeze probe, so "were the added
+  cells recruited" is measured directly rather than inferred.
+- **F1 gains a sharper hypothesis.** An undifferentiated population should
+  scale **sublinearly** — adding more interchangeable cells averages rather
+  than specializes. So F1's likely outcome is diminishing returns, and *that*
+  is the argument for differentiation machinery (cell types, informed
+  structure) rather than more tissue. F1 now tests the capacity axis on
+  tissue known to be functional, which is exactly the test `dmon/stream`
+  could not run.
+- **F5's metric language is corrected**: its primary claim is about
+  *differentiation* (shuffle), with freeze as the work check. See
+  `f5-informed-growth.md`.
+- **F2 is unaffected** and continues.
 
 ## Process note
 

@@ -31,22 +31,14 @@ for seed in 7 13 21; do
   fi
 done
 
-# 4090: grown arms (the experiment). 2070S: small fixed-size controls.
-(
-  run_arm grown cuda:0 7
-  run_arm grown cuda:0 13
-  run_arm grown cuda:0 21
-) &
-GROWN=$!
-(
-  run_arm small cuda:1 7
-  run_arm small cuda:1 13
-  run_arm small cuda:1 21
-) &
-SMALL=$!
-
-wait "$GROWN"
-wait "$SMALL"
+# All arms sequential on the 4090: the 2070S is occupied by F2's queue, and
+# mixed-device arms would confound the comparison anyway (sol S13 lost its
+# causal attribution exactly that way).
+DEV="${DEV:-cuda:0}"
+for seed in 7 13 21; do
+  run_arm grown "$DEV" "$seed"
+  run_arm small "$DEV" "$seed"
+done
 
 python3 -m fable.summarize --root fable/runs/f1 --out fable/runs/f1/LADDER.md
 echo "[$(date -Is)] F1 COMPLETE"

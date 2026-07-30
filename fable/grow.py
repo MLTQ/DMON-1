@@ -167,16 +167,23 @@ def main() -> None:
 
     run("creature", cfg, out_dir, args.device, on_update=on_update)
 
+    # Tissue probe for every arm: freeze (does the tissue work) alongside
+    # shuffle (is it differentiated). Reporting only one of these produced a
+    # wrong F1 decision earlier today — see fable/probe.md.
+    from .probe import probe as tissue_probe
+    growth_record["tissue"] = tissue_probe(out_dir / "creature.pt", args.device)
+    print(json.dumps(growth_record["tissue"], indent=1), flush=True)
+
     if args.arm == "grown":
         growth_record["probe_final"] = recruitment_probe(
             out_dir / "creature.pt", added_cells, args.device)
         if (out_dir / "post_graft.pt").exists():
             growth_record["probe_post_graft"] = recruitment_probe(
                 out_dir / "post_graft.pt", added_cells, args.device)
-        (out_dir / "growth.json").write_text(json.dumps(growth_record, indent=1))
         print(json.dumps({k: growth_record[k] for k in
                           ("probe_final", "probe_post_graft")
                           if k in growth_record}, indent=1))
+    (out_dir / "growth.json").write_text(json.dumps(growth_record, indent=1))
 
 
 if __name__ == "__main__":
