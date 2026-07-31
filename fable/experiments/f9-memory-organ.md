@@ -62,3 +62,30 @@ reads re-instate tissue modes rather than injecting content. Testbed: F2's
 regime cycling, against the +5.05 retention penalty — snapshot the regime-A
 configuration instead of protecting weights. Preregistered fully only after
 F9a establishes the read/write plumbing works at all.
+
+---
+
+# RESULTS, round 1 (2026-07-31): **organ unused — the gate never opened**
+
+Seed 7 (seeds 13/21 lost to a transient disk-full on Aine; rerunning):
+recall at chance in every bucket (4.694–4.739 vs 4.700), train-half also at
+chance, natural BPC healthy (2.200) — and **gate = −0.011 after 12,000
+updates**. The preregistered "organ unused" branch, cleanly.
+
+Diagnosis: a bootstrap trap. At init the organ's projections are random →
+reads are noise → opening the gate adds noise → gradient pins the gate at
+zero → the projections never receive gradient. The zero-gate silent-graft
+discipline (right for stability grafts all week) is wrong for an organ that
+must be used to be learned. NTM itself has no gate — its memory path is
+live from step one. The gate was our deviation from the reference design,
+and it reproduced a known pathology of gated-module bootstrapping.
+
+## Round 2 (preregistered): NTM-faithful liveness + bounded path
+
+1. Gate initialized at 0.1 (live from the start; still learnable).
+2. The read drive gets a tanh bound before entering the field — with a live
+   gate it is otherwise an unbounded learned-scale path into the recurrence,
+   this week's four-times-documented detonation pattern.
+3. All three seeds rerun at the same dial. Bars unchanged. The identity
+   contract in smoke is replaced by a bounded-drive contract (behavioral
+   identity at init is deliberately given up — that was the trap).

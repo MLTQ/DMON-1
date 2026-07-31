@@ -38,8 +38,12 @@ class MemoryOrgan(nn.Module):
         self.query_proj = nn.Linear(hidden, width)
         self.read_out = nn.Linear(width, hidden)
         self.sharpen = nn.Parameter(torch.tensor(5.0))
-        # zero-init: the organ is silent until gradient opens it
-        self.gate = nn.Parameter(torch.tensor(0.0))
+        # Round 2: live at init (0.1). The zero-gate version was a bootstrap
+        # trap — random projections make reads noise, so the gradient pinned
+        # the gate at zero and the projections never learned (round-1 gate
+        # after 12k updates: −0.011). NTM's memory path is ungated and live
+        # from step one; deviating from that strangled the organ.
+        self.gate = nn.Parameter(torch.tensor(0.1))
 
     def empty(self, batch: int, device) -> tuple[torch.Tensor, torch.Tensor]:
         z = torch.zeros(batch, self.n_slots, self.width, device=device)
@@ -61,4 +65,6 @@ class MemoryOrgan(nn.Module):
         scores = torch.einsum("bw,bsw->bs", q, k) * self.sharpen
         w = F.softmax(scores, dim=-1)
         read = torch.einsum("bs,bsw->bw", w, vals)
-        return self.gate * self.read_out(read)
+        # tanh bound: with a live gate this is otherwise an unbounded learned
+        # scale path into the recurrence (the week's detonation pattern)
+        return self.gate * torch.tanh(self.read_out(read))

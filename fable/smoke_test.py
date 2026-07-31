@@ -252,8 +252,15 @@ def test_memory_organ() -> None:
     for t in range(6):
         lb, sb, _ = base.step(toks[:, t], sb)
         lm, sm, _ = mem.step(toks[:, t], sm)
-    check("gate-zero organ is behaviorally identical",
-          torch.allclose(lb, lm, atol=1e-6))
+    # Round 2: the organ is LIVE at init (the zero-gate identity design was
+    # a bootstrap trap — see f9-memory-organ.md). Contract is now bounded
+    # influence, not silence.
+    drive = mem.memory.read(sm.mem_keys, sm.mem_vals,
+                            sm.h[:, mem.output_idx].mean(1).detach())
+    check("read drive is gate-bounded",
+          float(drive.abs().max()) <= abs(float(mem.memory.gate.detach())) + 1e-6)
+    check("live organ perturbs behavior",
+          not torch.allclose(lb, lm, atol=1e-6))
     check("ring writes advance",
           sm.mem_cursor == 6 and float(sm.mem_keys.abs().sum()) > 0)
     check("memory persists through detach",
@@ -265,16 +272,7 @@ def test_memory_organ() -> None:
     check("grad reaches memory gate",
           mem.memory.gate.grad is not None
           and float(mem.memory.gate.grad.abs()) > 0)
-    # With gate=0 the read path is zero-scaled, so write-path gradients are
-    # exactly zero UNTIL the gate opens — by design. Bump the gate and check
-    # the full path wakes up.
-    mem.zero_grad()
-    with torch.no_grad():
-        mem.memory.gate += 0.1
-    loss, _, _ = mem.forward_chunk(toks, torch.randint(0, 11, (3, 6)),
-                                   mem.initial_state(3, "cpu"))
-    loss.backward()
-    check("open gate wakes the write path (key_proj)",
+    check("grad reaches write path (key_proj) with live gate",
           mem.memory.key_proj.weight.grad is not None
           and float(mem.memory.key_proj.weight.grad.abs().sum()) > 0)
 
