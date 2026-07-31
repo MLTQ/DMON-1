@@ -56,3 +56,43 @@ identical protocol and are reused, not rerun)
 ```bash
 bash fable/run_f3.sh   # waits for E1b to drain the 4090, then 6 arms parallel + L-H
 ```
+
+---
+
+# RESULTS (2026-07-31, overnight): **REJECTED — on both preregistered axes**
+
+| Arm | Regime | Outcome |
+|---|---|---|
+| la_s7/s13/s21 | annealed 8k | 2.1279 / 2.1879 / 2.2316 — all stable, 0 skips |
+| lc_s7 | constant 3e-3 | **died u6058** |
+| lc_s13 | constant 3e-3 | **died u5753** |
+| lc_s21 | constant 3e-3 | "survived" with 2,245 skips (28%), bpc 3.51 — degenerate |
+| lh_s7 | annealed 24k | **died u19040** (66% cumulative skips) |
+
+- **Capability: FAIL.** L-A mean 2.1825 vs incumbent 2.0695 → **+0.113**,
+  beyond the +0.05 rejection bar. Elegance does not vote.
+- **Stability: FAIL.** The regimes that killed the GRU rule killed the
+  liquid rule too — at essentially the same place under constant 3e-3
+  (u5.8–6.1k vs u6.6–7.9k). L-H lasted 2× the incumbent's horizon before
+  dying, but degenerately (LR floored, majority chunks skipped).
+- **Timescale read: the mechanism went unused.** Mean α stayed ~0.07
+  (τ ≈ 14) with almost no spread on every arm — cells did not differentiate
+  temporally. Consistent with the F8 diagnosis: τ is computed by *shared*
+  weights, so pre-expression cells had nothing to differentiate with.
+  (L-A's shuffle deltas, 0.069–0.102, are mildly above the incumbent band —
+  a whisper of what F8's expression made loud.)
+
+## What the rejection bought
+
+The **cliff is rule-independent.** Two different cell rules — one
+contractive by construction — die in the same regimes at similar locations.
+The instability's source is therefore in the *shared machinery* (attention
+q/k/v growth, embedding, readout — the unbounded-scale paths into the
+recurrence, which is also what every implementation-level blowup tonight
+was). This exonerates the recurrence and gives the stability hunt a much
+smaller haystack. Bounded state slows the pathology (L-H's 2× horizon) but
+cannot stop what enters through the weights.
+
+F3 is closed as a rejection with one carried question: whether liquid τ
+*plus* per-cell expression (F8's mechanism, which is what τ lacked) behaves
+differently — parked pending F8b, not assumed.
