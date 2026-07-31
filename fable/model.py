@@ -153,7 +153,11 @@ class Fable(nn.Module):
             # died at u2273 in the annealed regime — where the incumbent has
             # never died (F8 amendment 1).
             if self.expr_gain is not None:
-                raw_msg = raw_msg * (1.0 + self.expr_gain[self.mutable_idx]) \
+                # v2: tanh-bounded gain in (0,2). The unbounded variant let
+                # per-cell gains reach ~6.7x and killed 2 of 3 seeds in the
+                # annealed regime (F8 amendment 2); tanh keeps zero-init
+                # identity while capping the multiplicative path.
+                raw_msg = raw_msg * (1.0 + torch.tanh(self.expr_gain[self.mutable_idx])) \
                           + self.expr_bias[self.mutable_idx]
             msg = self.msg_clamp(raw_msg)
             drive = torch.zeros_like(msg)

@@ -96,3 +96,31 @@ itself keeps being exonerated.
 It is the cheapest possible test of the load-bearing question behind the
 whole substrate thesis — *can these cells differentiate at all* — and it was
 never tested, because until now the architecture made it impossible.
+
+---
+
+# RESULTS, round 1 (2026-07-31 overnight) + Amendment 2
+
+| Seed | Outcome | BPC | ShufΔ | expr ‖γ‖ mean/max |
+|---|---|---:|---:|---|
+| 7 | **completed, 0 skips** | 2.0066 | **+0.1823** | 2.9 / 5.7 |
+| 13 | died u2658 (annealed) | — | — | — |
+| 21 | died u3156 (annealed) | — | — | — |
+
+The surviving seed carries the **first differentiation signal in the
+project's history**: shuffle-internal 3–5× the incumbent band at unchanged
+capability, with per-cell expression norms spanning 0.0–5.7 — gradient took
+the parametric-identity offer emphatically. But 2 of 3 seeds died in the
+regime the incumbent survives always: unbounded γ reached multiplicative
+gains ~6.7×, and the spiky landscape killed the fragile seeds. Against the
+preregistered bars: no 3-seed mean exists → **round 1 fails on stability
+while validating the mechanism's direction.**
+
+## Amendment 2: expression v2 = tanh-bounded gain (preregistered re-dial)
+
+`msg → msg·(1+tanh(γ)) + β`: gain bounded in (0,2), zero-init identity
+preserved, β still handled by the clamp. All three seeds rerun as F8b
+(`fable/runs/f8b`); the queued F2-expr round inherits v2. Bars unchanged:
+shuffle mean ≥ 0.30 to pass differentiation, ≥ 0.10 with all seeds surviving
+would still be the strongest differentiation result to date; capability
+within +0.05.
