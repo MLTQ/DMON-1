@@ -213,11 +213,39 @@ def test_liquid_rule() -> None:
           0.01 < a <= 1.0, f"alpha_mean={a:.4f}")
 
 
+def test_expression() -> None:
+    torch.manual_seed(7)
+    base = Fable(SMALL)
+    torch.manual_seed(7)
+    expr_cfg = dataclasses.replace(SMALL, expression=True)
+    expr = Fable(expr_cfg)
+    check("expression param delta = 2*N*H",
+          count_parameters(expr) - count_parameters(base)
+          == 2 * SMALL.n_cells * SMALL.hidden)
+    toks = torch.randint(0, 11, (3, 6))
+    sb = base.initial_state(3, "cpu")
+    se = expr.initial_state(3, "cpu")
+    for t in range(6):
+        lb, sb, _ = base.step(toks[:, t], sb)
+        le, se, _ = expr.step(toks[:, t], se)
+    check("zero-init expression is behaviorally identical",
+          torch.allclose(lb, le, atol=1e-6),
+          "every cell starts as the same animal")
+    loss, _, _ = expr.forward_chunk(toks, torch.randint(0, 11, (3, 6)),
+                                    expr.initial_state(3, "cpu"))
+    loss.backward()
+    check("grad reaches expr_gain",
+          expr.expr_gain.grad is not None
+          and float(expr.expr_gain.grad.abs().sum()) > 0)
+    check("mirror rows of expression get no gradient",
+          float(expr.expr_gain.grad[expr.mirror_idx].abs().sum()) == 0)
+
+
 def main() -> None:
     print("fable smoke test")
     for fn in (test_shapes_and_reachability, test_mirror_write_only,
                test_gradient_flow, test_overfit_tiny_corpus, test_growth,
-               test_matched_gru, test_liquid_rule):
+               test_matched_gru, test_liquid_rule, test_expression):
         print(f"- {fn.__name__}")
         fn()
     print("all contracts hold")

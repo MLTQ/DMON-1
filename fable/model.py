@@ -95,6 +95,17 @@ class Fable(nn.Module):
             self.rule = SharedRule(hid)
         self.msg_clamp = MessageClamp()
 
+        # F8: per-cell expression — the only parameters (besides 12 edge
+        # logits) a cell privately owns. Zero-init: every cell starts as the
+        # same animal and earns its identity by gradient. Indexed over ALL
+        # cells so growth can append rows; only mutable rows are ever read.
+        if cfg.expression:
+            self.expr_gain = nn.Parameter(torch.zeros(n, hid))
+            self.expr_bias = nn.Parameter(torch.zeros(n, hid))
+        else:
+            self.expr_gain = None
+            self.expr_bias = None
+
         self.out_norm = nn.LayerNorm(cfg.n_output * hid)
         self.readout = nn.Linear(cfg.n_output * hid, cfg.vocab_size)
 
@@ -137,6 +148,9 @@ class Fable(nn.Module):
         for micro in range(cfg.steps_per_token):
             raw_msg = self.graph.aggregate(h, self.mutable_idx)
             msg = self.msg_clamp(raw_msg)
+            if self.expr_gain is not None:
+                msg = msg * (1.0 + self.expr_gain[self.mutable_idx]) \
+                      + self.expr_bias[self.mutable_idx]
             drive = torch.zeros_like(msg)
             if micro == 0:
                 drive = drive.index_copy(

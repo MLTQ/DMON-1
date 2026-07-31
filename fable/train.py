@@ -56,7 +56,7 @@ def build_optimizer(model: torch.nn.Module, cfg: FableConfig) -> torch.optim.Ada
     unbounded embedding growth is unbounded state growth (h_max drifted past
     1.3 in the first F0 launch with embeddings excluded — grok/sol both
     decayed them and stayed bounded)."""
-    no_decay_names = ("logit", "in_gain", "in_bias", "norm")
+    no_decay_names = ("logit", "in_gain", "in_bias", "norm", "expr_")
     decay, no_decay = [], []
     for name, p in model.named_parameters():
         if not p.requires_grad:

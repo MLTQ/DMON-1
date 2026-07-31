@@ -47,6 +47,10 @@ def grow_field(model: Fable, opt: torch.optim.AdamW, n_new: int):
 
     Returns (new_cell_ids, state_migrator).
     """
+    if model.expr_gain is not None:
+        raise NotImplementedError(
+            "growth with expression vectors needs expr row-append + optimizer "
+            "surgery (mirror the logit treatment) — add before any F8+growth run")
     device = model.mutable_idx.device
     old_n = model.n_cells
     k = model.graph.k

@@ -26,6 +26,13 @@ class FableConfig:
     # "gru" (incumbent) or "liquid" (CfC-style bounded input-dependent tau).
     # This field exists WITH a preregistration, per config.md's rule.
     cell_rule: str = "gru"
+    # Per-cell expression vectors on trial via F8
+    # (fable/experiments/f8-expression.md): zero-init per-cell affine on the
+    # shared rule's message input — parametric cell identity ("gene
+    # expression" over a shared genome). False = today's 12-scalars-per-cell
+    # organism, whose measured shuffle delta is ~0.02 because cells are
+    # interchangeable by construction.
+    expression: bool = False
 
     # Stream
     vocab_size: int = 0            # filled from corpus
