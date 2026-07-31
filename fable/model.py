@@ -39,6 +39,7 @@ class StepHealth:
     h_max: float
     msg_rms: float        # PRE-clamp message RMS — the number that diagnoses scale drift
     logit_absmax: float
+    alpha_mean: float | None = None   # liquid rule only: mean 1/tau this step
 
 
 class MessageClamp(nn.Module):
@@ -87,7 +88,11 @@ class Fable(nn.Module):
                                    self.input_idx, self.mirror_idx,
                                    self.internal_idx, self.output_idx,
                                    seed=cfg.seed)
-        self.rule = SharedRule(hid)
+        if cfg.cell_rule == "liquid":
+            from .liquid import LiquidRule
+            self.rule = LiquidRule(hid)
+        else:
+            self.rule = SharedRule(hid)
         self.msg_clamp = MessageClamp()
 
         self.out_norm = nn.LayerNorm(cfg.n_output * hid)
@@ -153,7 +158,8 @@ class Fable(nn.Module):
                 health = StepHealth(
                     h_max=float(h.abs().max()),
                     msg_rms=float(raw_msg.pow(2).mean().sqrt()),
-                    logit_absmax=float(logits.abs().max()))
+                    logit_absmax=float(logits.abs().max()),
+                    alpha_mean=getattr(self.rule, "last_alpha_mean", None))
         return logits, OrganismState(h, state.mirror_cursor + 1), health
 
     def forward_chunk(self, tokens: torch.Tensor, targets: torch.Tensor,

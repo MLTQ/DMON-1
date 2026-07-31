@@ -180,11 +180,44 @@ def test_matched_gru() -> None:
     check("gru init is reproducible", same)
 
 
+def test_liquid_rule() -> None:
+    from .liquid import backbone_width, gru_rule_param_count
+    torch.manual_seed(7)
+    liquid_cfg = dataclasses.replace(SMALL, cell_rule="liquid")
+    inc = count_parameters(Fable(SMALL))
+    liq = count_parameters(Fable(liquid_cfg))
+    check("liquid param match within 1%", abs(liq - inc) / inc < 0.01,
+          f"gru-rule {inc} vs liquid {liq} (B={backbone_width(SMALL.hidden)})")
+    model = Fable(liquid_cfg)
+    state = model.initial_state(2, "cpu")
+    for t in range(30):
+        _, state, _ = model.step(torch.randint(0, 11, (2,)), state)
+    state.h.data += 5.0  # abuse every cell
+    for t in range(40):
+        _, state, _ = model.step(torch.randint(0, 11, (2,)), state)
+    peak = float(state.h[:, model.mutable_idx].detach().abs().max())
+    check("liquid contracts away state abuse", peak < 1.0,
+          f"mutable h_max {peak:.3f} 40 tokens after +5 abuse")
+    tokens = torch.randint(0, 11, (4, 8))
+    targets = torch.randint(0, 11, (4, 8))
+    loss, _, _ = model.forward_chunk(tokens, targets,
+                                     model.initial_state(4, "cpu"))
+    loss.backward()
+    for name in ("rule.backbone.weight", "rule.target.weight",
+                 "rule.tau_gate.weight"):
+        p = dict(model.named_parameters())[name]
+        check(f"grad reaches {name}",
+              p.grad is not None and float(p.grad.abs().sum()) > 0)
+    a = model.rule.last_alpha_mean
+    check("alpha within (1/tau_max, 1/tau_min]",
+          0.01 < a <= 1.0, f"alpha_mean={a:.4f}")
+
+
 def main() -> None:
     print("fable smoke test")
     for fn in (test_shapes_and_reachability, test_mirror_write_only,
                test_gradient_flow, test_overfit_tiny_corpus, test_growth,
-               test_matched_gru):
+               test_matched_gru, test_liquid_rule):
         print(f"- {fn.__name__}")
         fn()
     print("all contracts hold")

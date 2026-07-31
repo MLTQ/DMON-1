@@ -22,6 +22,10 @@ class FableConfig:
     n_output: int = 16             # readout cells
     n_mirror: int = 32             # mirror ring: recent stimulus, write-only, stop-grad
     steps_per_token: int = 4       # substrate ticks per character
+    # Cell rule on trial via F3 (fable/experiments/f3-liquid-cell.md):
+    # "gru" (incumbent) or "liquid" (CfC-style bounded input-dependent tau).
+    # This field exists WITH a preregistration, per config.md's rule.
+    cell_rule: str = "gru"
 
     # Stream
     vocab_size: int = 0            # filled from corpus

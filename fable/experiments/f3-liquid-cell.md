@@ -1,55 +1,58 @@
-# F3 (DRAFT): liquid cell rule head-to-head
+# F3: liquid cell rule head-to-head (preregistered 2026-07-30, finalized same night)
 
-*Draft until the F0 and F2 verdicts are recorded; geometry and bars inherit
-from F0's outcome. Filed 2026-07-30 after discussing Liquid Neural Network
-lessons (Max's steer: stability, timescales, and the composability
-precondition).*
+*Drafted after the LNN discussion; finalized and launched after F7/E1
+promoted stability-by-construction from interesting to necessary: the GRU
+rule died in five out of five attempts at sustained high LR (E1 3/3 at
+constant 3e-3, F7 2/2 at 24k-horizon cosine), and GradGuard proved a
+pathological parameter region cannot be crossed by refusing to step.*
 
 ## Question
 
-Does replacing the shared GRUCell with a CfC-style liquid cell — leaky
-integration toward an input-defined target with a **learned, bounded,
-input-dependent time constant** — improve the organism on any of the three
-axes it is currently weakest on?
+Does replacing the shared GRUCell with a **liquid cell** — leaky integration
+toward a bounded target with learned, bounded, input-dependent time
+constants (`fable/liquid.py`) — buy the organism the stability the guard
+stack cannot, without paying more than 0.05 BPC of capability?
 
-1. **Stability**: the liquid update is contractive by construction (per-step
-   factor |1 − Δt/τ| < 1 with τ bounded), so state boundedness and tame
-   through-time Jacobians are properties of the operator, not of guards.
-   Fable's current stack is clamp + clip + skip-counter around a GRU whose
-   128-step backward overflowed twice this week ("check the operators, not
-   the masks", applied to dynamics).
-2. **Timescales**: per-cell input-dependent τ lets tissue self-organize into
-   fast and slow populations, replacing two hand-set timescales
-   (steps_per_token; the fixed-delay mirror ring's dominance of ResetΔ).
-3. **Adaptability**: the LNN literature's headline result is robustness under
-   distribution shift — exactly F2's savings/interference axis. F3 therefore
-   reports F2 metrics for the liquid arm, not only BPC.
+The cell: `h' = (1−a)h + a·tanh(target)`, `a = 1/τ`, τ input-dependent and
+bounded in [1, 100]. State is bounded by construction and the recurrent
+backbone is contractive — verified in smoke: rule cells recover from |h|=5
+abuse to <1.0 within 40 tokens. (Honesty: the W-paths through target and τ
+can still grow, so gradient stability is *tested*, not proven — the arms
+below include every regime that killed the incumbent.)
 
-## Design sketch (to be finalized)
+Parameter match: backbone width solved so the rule matches the GRU rule's
+count — whole-organism 348,712 vs 348,609 (0.03%). Everything else
+(graph, ports, mirror, readout, guard, schedule) identical.
 
-- `LiquidRule` drop-in for `SharedRule`: h ← h + (Δt/τ(x,h))·(g(x,h) − h),
-  τ = τ_min + (τ_max−τ_min)·σ(·), closed-form (no ODE solver), Δt=1 for now
-  (Δt-awareness is the composability precondition and gets its own test).
-- Arms at F0-winning geometry, 3 seeds: gru-rule (incumbent) vs liquid-rule,
-  identical stream/schedule/params-matched (τ/g networks sized so totals
-  match within 1%). Matched external GRU baseline rides along as always.
-- Report: BPC gap, skipped-update counts + gradient-norm trajectories
-  (stability margin), reset/shuffle/mirror deltas, and an F2 cycled run for
-  both rules.
+## Arms (all liquid-creature; incumbents and baselines already exist at
+identical protocol and are reused, not rerun)
 
-## Priors, stated before running
+| Arm | Regime | Seeds | Compares against |
+|-----|--------|-------|------------------|
+| L-A | F0 protocol (annealed 8k) | 7/13/21 | F0 creature 2.008/2.115/2.085; F0 GRU 2.029/2.085/2.069 |
+| L-C | constant 3e-3, 8k | 7/13/21 | incumbent creature: died 3/3 (u6.6–7.9k); E1 GRU 2.25/2.41/2.43 |
+| L-H | annealed 24k horizon | 7 | incumbent creature: died 2/2 (u8.8–9.6k); GRU 1.924; transformer 2.041 |
 
-- sol's history: biologically-motivated mechanisms usually arrive
-  capability-neutral. The liquid cell must *earn* its place on stability or
-  adaptability even if BPC is a wash; BPC regression > 0.05 at matched
-  budget rejects it regardless of elegance.
-- LNN evidence is strongest in control/time-series at small scale; char-LM
-  evidence is thin. This is a hypothesis test, not an adoption.
+## Pass / fail (committed before launch)
 
-## Why this is on the roadmap at all
+- **Stability pass**: all three L-C arms and L-H run to completion with
+  < 1% skipped updates. This is the claim the incumbent failed five times.
+- **Capability pass**: L-A mean within +0.05 BPC of the incumbent creature
+  (2.069 mean) — i.e. the stability is not bought with the task.
+- **Full pass** = both. **Rejection** = L-A regression > 0.05 at matched
+  budget (elegance does not vote), or L-C/L-H deaths at incumbent-like
+  locations (no stability gain — the instability lives outside the cell
+  rule, which would be its own important result).
+- **Timescale read** (descriptive, reported either way): the trajectory of
+  `alpha_mean` and the end-state spread of per-cell τ — did cells
+  differentiate in time, where F0/F1 showed they never differentiate in
+  space? A τ spread collapsing to one value means the mechanism was not
+  used; a wide spread is the first differentiation of any kind observed in
+  this substrate.
+- Ablations (reset/shuffle/mirror) recorded as always.
 
-The composability goal (grafting a second organism; organs as grown index
-sets) requires per-tissue rules and Δt-aware cells for clock-mismatched
-composition. The liquid cell is the smallest step that de-risks the Δt
-half; the per-tissue-rule refactor is the other half and is tracked
-separately.
+## Launch
+
+```bash
+bash fable/run_f3.sh   # waits for E1b to drain the 4090, then 6 arms parallel + L-H
+```

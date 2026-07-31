@@ -219,6 +219,8 @@ def run(kind: str, cfg: FableConfig, out_dir: Path, device: str,
             if health is not None:
                 entry.update(h_max=health.h_max, msg_rms=health.msg_rms,
                              logit_absmax=health.logit_absmax)
+                if health.alpha_mean is not None:
+                    entry["alpha_mean"] = health.alpha_mean
             history.append(entry)
             print(f"[{kind}] u{update} bpc={entry['bpc']:.4f} "
                   f"lr={entry['lr']:.2e} tok/s={entry['tokens_per_s']:.0f} "
