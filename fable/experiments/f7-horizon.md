@@ -38,3 +38,52 @@ identical stream discipline. Evals every 1,000.
 ```bash
 bash fable/run_f7.sh   # waits for the 4090 to free (F1), then runs 3 arms
 ```
+
+---
+
+# RESULTS (2026-07-30, seed 7, 24,000 updates)
+
+| Arm | 8k BPC (F0) | 24k BPC | Δ |
+|---|---:|---:|---:|
+| matched GRU | 2.0294 | **1.9241** | −0.105 |
+| matched transformer | 2.3206 | **2.0411** | −0.280 |
+| creature | 2.0082 | **did not finish** — twice | — |
+
+Creature attempt 1 (pre-guard): gradient norms reached 1.5e19 *while finite*
+at u8800 (lr ≈ 2.2e-3); clipped-garbage steps degraded the model from ~2.3
+to chance before non-finite gradients triggered the abort at u9622.
+Creature attempt 2 (GradGuard): fail-fast at u8942 after 200 consecutive
+pathological chunks. The instructive detail: during a skip streak the
+weights are frozen, and every fresh data chunk from those frozen weights
+still produced >1e4 gradients — the *parameter region itself* was
+pathological, and no-stepping cannot leave it. Homeostatic backoff only
+matters if a step is ever taken.
+
+## Verdict
+
+1. **The budget was binding for everyone, and unevenly.** The GRU banked
+   another 0.105; the transformer banked 0.280 and nearly caught the GRU's
+   8k number — the attention-wins-with-budget crossover is approaching
+   exactly as predicted.
+2. **The creature cannot currently consume 3× budget at all.** Under this
+   schedule shape it exits its stable envelope at u≈8.8–9.6k, robustly
+   (two mechanisms, same location; chase-1 s13 died at u5.2k under constant
+   3e-3 in grok's code). F0's 8k survival was annealing outrunning the
+   cliff, not the absence of one.
+3. Consequence for the scale question: the competitors convert budget into
+   capability and the creature converts it into a crash. Until the substrate
+   is stable at sustained LR, every scaling argument for the creature is
+   moot. This promotes **F3 (liquid cell — contractive dynamics by
+   construction)** from interesting to primary-path candidate, alongside a
+   harness-level alternative: **rollback-on-streak** (periodic last-good
+   snapshots, restore on pathological streaks — sol S5's reversible
+   probation applied to optimization). GradGuard remains as the fail-fast
+   backstop it proved to be.
+4. Shuffle-delta trajectory up to the crash: still flat (no late
+   differentiation before u8.8k). The F0-era conclusion stands as far as it
+   could be tested.
+
+E1 (running) doubles as the constant-3e-3 envelope test at 8k horizon:
+grok's code died at u5.2k in that regime; if fable's creatures cross 8k,
+the clamp+decay+guard stack widened the envelope even though it cannot
+cross the ~9k cliff.
