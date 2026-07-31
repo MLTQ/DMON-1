@@ -37,3 +37,40 @@ disclosed and harmless — same-device within every compared pair).
 - Any creature blowup the guard cannot hold to completion is itself a
   result: constant 3e-3 is outside the substrate's stable envelope even with
   homeostatic backoff.
+
+---
+
+# RESULTS (2026-07-30, overnight)
+
+**All three creature arms died before completing 8,000 updates**: fail-fast
+at u6564 (s7), u7428 (s13), u7923 (s21) — 200 consecutive pathological
+chunks each, the same frozen-weights-still-produce-huge-gradients signature
+as F7. Preregistered read #3 applies: **constant 3e-3 is outside the
+substrate's stable envelope even with homeostatic backoff.** The envelope
+did widen versus grok's stack (grok died at u5.2k in this regime; fable
+reached 6.6–7.9k — the clamp/decay-structure/guard changes bought ~1.5–2.7k
+updates), but the cliff is not crossable by guarding alone.
+
+The GRUs completed untroubled (0 skips) but degraded: 2.2471 / 2.4053 /
+2.4348 vs 2.03–2.08 annealed. So constant 3e-3 is a bad regime for
+*everyone* — the GRU pays ~0.2–0.35 BPC, the creature pays its life.
+
+E1's primary question (does F0's parity survive without annealing?) is
+therefore **unanswerable at 3e-3** — there is no creature number to compare.
+What was answered instead is stronger on the stability axis: the creature
+does not merely *lean* on annealing, at peak LR it **requires annealing to
+survive**.
+
+## E1b addendum (preregistered before launch, same night)
+
+The isolation question moves to the survivable LR: **constant 1e-3** — the
+regime F2 used (where the creature trained fine at B=4) — now at F0's B=12,
+8,000 updates, creature + matched GRU, seeds 7/13/21. Reads, committed in
+advance:
+
+- Gap ≈ +0.17 reproduces → F2's schedule-dependence finding stands,
+  unconfounded; the S0 qualification becomes permanent.
+- Gap ≤ 0.05 → F2's gap was mostly its B=4 token budget; the F2 write-up
+  gets corrected and "parity depends on annealing" is withdrawn to its
+  stability-only form (which E1 proper just proved on its own).
+- In between → both effects real; report the split.
