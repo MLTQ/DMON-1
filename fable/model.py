@@ -29,9 +29,16 @@ from .graph import DendriteGraph
 class OrganismState:
     h: torch.Tensor      # [B, N, H]
     mirror_cursor: int
+    mem_keys: torch.Tensor | None = None   # [B, S, W] when the organ exists
+    mem_vals: torch.Tensor | None = None
+    mem_cursor: int = 0
 
     def detach(self) -> "OrganismState":
-        return OrganismState(self.h.detach(), self.mirror_cursor)
+        return OrganismState(
+            self.h.detach(), self.mirror_cursor,
+            self.mem_keys.detach() if self.mem_keys is not None else None,
+            self.mem_vals.detach() if self.mem_vals is not None else None,
+            self.mem_cursor)
 
 
 @dataclass
@@ -106,8 +113,25 @@ class Fable(nn.Module):
             self.expr_gain = None
             self.expr_bias = None
 
+
         self.out_norm = nn.LayerNorm(cfg.n_output * hid)
         self.readout = nn.Linear(cfg.n_output * hid, cfg.vocab_size)
+
+        # F9a: associative memory organ. Reads drive the LAST 8 internal
+        # cells (the memory port). mem_port_pos indexes into mutable-space
+        # (drive tensors are laid out [inputs, internals, outputs]).
+        # Constructed LAST: its Linear inits consume global RNG, and building
+        # it earlier shifted the readout's init — breaking the with/without
+        # behavioral-identity contract via a different model, not the organ.
+        if cfg.memory:
+            from .memory import MemoryOrgan
+            assert len(self.internal_idx) >= 8, "memory port needs 8 internal cells"
+            self.memory = MemoryOrgan(hid)
+            pos0 = cfg.n_input + len(self.internal_idx) - 8
+            self.register_buffer("mem_port_pos",
+                                 torch.arange(pos0, pos0 + 8))
+        else:
+            self.memory = None
 
     def _rebuild_mutable(self) -> None:
         mutable = torch.cat([self.input_idx, self.internal_idx, self.output_idx])
@@ -121,9 +145,12 @@ class Fable(nn.Module):
         return len(self.input_idx) + len(self.mirror_idx) + len(self.internal_idx) + len(self.output_idx)
 
     def initial_state(self, batch: int, device: str | torch.device) -> OrganismState:
-        return OrganismState(
+        state = OrganismState(
             h=torch.zeros(batch, self.n_cells, self.cfg.hidden, device=device),
             mirror_cursor=0)
+        if self.memory is not None:
+            state.mem_keys, state.mem_vals = self.memory.empty(batch, device)
+        return state
 
     def step(self, tokens: torch.Tensor, state: OrganismState,
              frozen_idx: torch.Tensor | None = None,
@@ -142,6 +169,19 @@ class Fable(nn.Module):
 
         n_in = len(self.input_idx)
         drive_in = emb.unsqueeze(1) * self.in_gain + self.in_bias   # [B, I, H]
+
+        mem_keys, mem_vals, mem_cursor = (state.mem_keys, state.mem_vals,
+                                          state.mem_cursor)
+        mem_drive = None
+        if self.memory is not None:
+            # read with the PREVIOUS token's output state, then write this
+            # token's context — a query can never match its own write
+            query_state = h[:, self.output_idx].mean(dim=1)
+            mem_drive = self.memory.read(mem_keys, mem_vals, query_state)
+            context = torch.cat([emb, h[:, self.input_idx].mean(dim=1)], dim=-1)
+            mem_keys, mem_vals = self.memory.write(
+                mem_keys, mem_vals, mem_cursor, context)
+            mem_cursor += 1
 
         msg = None
         raw_msg = None
@@ -164,6 +204,10 @@ class Fable(nn.Module):
             if micro == 0:
                 drive = drive.index_copy(
                     1, torch.arange(n_in, device=drive.device), drive_in)
+                if mem_drive is not None:
+                    drive = drive.index_copy(
+                        1, self.mem_port_pos,
+                        mem_drive.unsqueeze(1).expand(-1, 8, -1))
             h_mut = h[:, self.mutable_idx]
             h_new = self.rule(h_mut, msg, drive)
             h = h.index_copy(1, self.mutable_idx, h_new)
@@ -183,7 +227,8 @@ class Fable(nn.Module):
                     msg_rms=float(raw_msg.pow(2).mean().sqrt()),
                     logit_absmax=float(logits.abs().max()),
                     alpha_mean=getattr(self.rule, "last_alpha_mean", None))
-        return logits, OrganismState(h, state.mirror_cursor + 1), health
+        return logits, OrganismState(h, state.mirror_cursor + 1,
+                                     mem_keys, mem_vals, mem_cursor), health
 
     def forward_chunk(self, tokens: torch.Tensor, targets: torch.Tensor,
                       state: OrganismState,

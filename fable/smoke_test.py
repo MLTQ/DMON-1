@@ -241,11 +241,50 @@ def test_expression() -> None:
           float(expr.expr_gain.grad[expr.mirror_idx].abs().sum()) == 0)
 
 
+def test_memory_organ() -> None:
+    torch.manual_seed(7)
+    base = Fable(SMALL)
+    torch.manual_seed(7)
+    mem_cfg = dataclasses.replace(SMALL, memory=True)
+    mem = Fable(mem_cfg)
+    toks = torch.randint(0, 11, (3, 6))
+    sb, sm = base.initial_state(3, "cpu"), mem.initial_state(3, "cpu")
+    for t in range(6):
+        lb, sb, _ = base.step(toks[:, t], sb)
+        lm, sm, _ = mem.step(toks[:, t], sm)
+    check("gate-zero organ is behaviorally identical",
+          torch.allclose(lb, lm, atol=1e-6))
+    check("ring writes advance",
+          sm.mem_cursor == 6 and float(sm.mem_keys.abs().sum()) > 0)
+    check("memory persists through detach",
+          float(sm.detach().mem_vals.abs().sum())
+          == float(sm.mem_vals.detach().abs().sum()))
+    loss, _, _ = mem.forward_chunk(toks, torch.randint(0, 11, (3, 6)),
+                                   mem.initial_state(3, "cpu"))
+    loss.backward()
+    check("grad reaches memory gate",
+          mem.memory.gate.grad is not None
+          and float(mem.memory.gate.grad.abs()) > 0)
+    # With gate=0 the read path is zero-scaled, so write-path gradients are
+    # exactly zero UNTIL the gate opens — by design. Bump the gate and check
+    # the full path wakes up.
+    mem.zero_grad()
+    with torch.no_grad():
+        mem.memory.gate += 0.1
+    loss, _, _ = mem.forward_chunk(toks, torch.randint(0, 11, (3, 6)),
+                                   mem.initial_state(3, "cpu"))
+    loss.backward()
+    check("open gate wakes the write path (key_proj)",
+          mem.memory.key_proj.weight.grad is not None
+          and float(mem.memory.key_proj.weight.grad.abs().sum()) > 0)
+
+
 def main() -> None:
     print("fable smoke test")
     for fn in (test_shapes_and_reachability, test_mirror_write_only,
                test_gradient_flow, test_overfit_tiny_corpus, test_growth,
-               test_matched_gru, test_liquid_rule, test_expression):
+               test_matched_gru, test_liquid_rule, test_expression,
+               test_memory_organ):
         print(f"- {fn.__name__}")
         fn()
     print("all contracts hold")
