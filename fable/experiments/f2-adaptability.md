@@ -203,3 +203,23 @@ on.
 - Re-run F2 against any configuration that moves the shuffle delta. That is
   the natural pairing: **differentiation is the hypothesis, adaptability is
   the payoff test.**
+
+---
+
+## Round 2 on the expression config (preregistered 2026-07-31, overnight)
+
+The original verdict committed to this: "re-run F2 against any configuration
+that moves the shuffle delta." F8 seed 7 moved it: shuffle-internal +0.182
+(vs 0.036–0.066 incumbent) at unchanged BPC, with per-cell expression norms
+spanning 0.0–5.7. Differentiation is the hypothesis, adaptability is the
+payoff test — so: cycled + A-only expression-creature arms, seeds 7/13/21,
+identical F2 protocol (constant 1e-3, B=4, block 24,576, 8k updates). GRU
+arms are reused from round 1 (identical protocol). Same metrics including
+zero-shot retention; same fail clauses. The question: does parametric cell
+identity reduce the catastrophic-forgetting penalty (+5.40 vs GRU +1.65)
+that a mean field could not protect against?
+
+Caveat carried in: expression is unstable on seed 13 in the annealed regime
+(F8 amendment 1 fix was insufficient there); F2's regime is constant 1e-3,
+which every configuration has survived so far. Skips are reported per arm as
+always.
