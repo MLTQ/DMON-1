@@ -63,6 +63,18 @@ disclosed and matched, not smuggled).
   Then per-cell capacity is not the binding constraint and the mean-field
   behaviour is caused by the task or the objective, not the architecture.
 
+## Addendum (2026-07-31, before results): the constraint was never intended
+
+Max, on reading the audit: the shared-rule/interchangeable-cells design was
+a **misunderstanding**, not a commitment — likely "kernel update laws" read
+somewhere in the project's history as "one shared rule for every cell."
+PROJECT.md's "params in the rule / capacity in the lattice" framing inherited
+it. Consequence: full per-cell parameterization is sanctioned design space,
+not a rule-bend. F8's expression vectors are the *minimal* step into that
+space; richer per-edge transforms, per-cell rules, and heterogeneous tissue
+(F5/DMON-1-w4m) no longer need special justification. PROJECT.md's framing
+should be revised with Max once F8's result is in.
+
 ## Why this is worth running before any pivot
 
 It is the cheapest possible test of the load-bearing question behind the
