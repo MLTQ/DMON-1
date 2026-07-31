@@ -124,3 +124,29 @@ preserved, β still handled by the clamp. All three seeds rerun as F8b
 shuffle mean ≥ 0.30 to pass differentiation, ≥ 0.10 with all seeds surviving
 would still be the strongest differentiation result to date; capability
 within +0.05.
+
+---
+
+# RESULTS, round 2 / F8b (2026-07-31 morning): **FAIL on bars; direction validated; mechanism is a stability lottery**
+
+| Seed | v1 (unbounded) | v2 (tanh-bounded) |
+|---|---|---|
+| 7 | completed — 2.0066, shufD **+0.182** | **died u2340** |
+| 13 | died u2658 | completed — 2.1029 (133 skips), shufD +0.079 |
+| 21 | died u3156 | completed — 2.0855 (0 skips), shufD +0.118; beat its GRU (2.0920) |
+
+Bounding the gain changed *which* seed dies, not *whether* one dies — and
+halved the differentiation signal (0.079/0.118 vs 0.182). Across both
+rounds: 3 deaths in 6 annealed expression arms, against 0 deaths in every
+incumbent annealed arm ever run. Expression interacts with the same
+shared-machinery scale pathology F3 isolated (it adds another learned scale
+path feeding the recurrence).
+
+**Verdict against bars: FAIL** (no configuration achieved shuffle ≥ 0.30, or
+≥ 0.10 with all seeds surviving). **What stands:** cells differentiate when
+given parameters — every surviving expression arm sits 1.5–3× above the
+incumbent shuffle band with capability at parity. The mechanism's direction
+is right; its current form is not stable enough to build on. Next step when
+work resumes: per-module gradient-norm logging at skip time to pin the
+shared-machinery source (the suspect list after F3: attention logits/qkv,
+embedding, readout), then re-dial expression on a stabilized base.

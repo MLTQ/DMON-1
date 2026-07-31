@@ -223,3 +223,22 @@ Caveat carried in: expression is unstable on seed 13 in the annealed regime
 (F8 amendment 1 fix was insufficient there); F2's regime is constant 1e-3,
 which every configuration has survived so far. Skips are reported per arm as
 always.
+
+---
+
+# RESULTS, round 2 — expression config (2026-07-31 morning)
+
+| Metric | Mean-field creature (r1) | Expression creature (r2) | GRU |
+|---|---:|---:|---:|
+| A-only steady BPC | 2.2172 | **2.1291** | 2.0469 |
+| Regime-attributable savings /visit | −0.1471 | −0.1121 | −0.0770 |
+| Zero-shot retention (cycled) | 7.5884 | 7.1814 | 3.7097 |
+| **Retention penalty** | **+5.3979** | **+5.0523** | **+1.6502** |
+
+Expression improved constant-LR compression by ~0.09 BPC and trimmed the
+retention penalty by ~0.35 — but the creature still forgets catastrophically
+(7.18 at a regime boundary remains *above* the 6.02 chance level; the
+penalty is still 3.1× the GRU's). **Verdict: the original FAIL stands.**
+Differentiation at the +0.08–0.18 shuffle level does not protect memory.
+Either much stronger differentiation, explicit consolidation machinery, or
+both. All r2 arms completed (constant 1e-3 remains the survivable regime).
