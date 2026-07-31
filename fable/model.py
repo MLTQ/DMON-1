@@ -147,10 +147,15 @@ class Fable(nn.Module):
         raw_msg = None
         for micro in range(cfg.steps_per_token):
             raw_msg = self.graph.aggregate(h, self.mutable_idx)
-            msg = self.msg_clamp(raw_msg)
+            # Expression BEFORE the clamp: the clamp must be the last thing
+            # between the graph and the rule, or the per-cell gain feeds the
+            # rule unbounded. The first F8 launch had the order reversed and
+            # died at u2273 in the annealed regime — where the incumbent has
+            # never died (F8 amendment 1).
             if self.expr_gain is not None:
-                msg = msg * (1.0 + self.expr_gain[self.mutable_idx]) \
-                      + self.expr_bias[self.mutable_idx]
+                raw_msg = raw_msg * (1.0 + self.expr_gain[self.mutable_idx]) \
+                          + self.expr_bias[self.mutable_idx]
+            msg = self.msg_clamp(raw_msg)
             drive = torch.zeros_like(msg)
             if micro == 0:
                 drive = drive.index_copy(

@@ -75,6 +75,22 @@ space; richer per-edge transforms, per-cell rules, and heterogeneous tissue
 (F5/DMON-1-w4m) no longer need special justification. PROJECT.md's framing
 should be revised with Max once F8's result is in.
 
+## Amendment 1 (2026-07-31, overnight): clamp-order bug, relaunch
+
+First launch died at u2273 *in the annealed regime* — where the incumbent
+has never died across F0/F1 (nine arms, zero skips). Cause: the expression
+affine was applied **after** the message clamp, so the per-cell gain (1+γ)
+fed the rule unbounded — the clamp guarded the wrong side. Unbounded scale
+into 128-step BPTT is this project's four-times-documented detonation
+pattern, now reproduced in miniature by a two-line ordering mistake.
+
+Fix: expression applied to the raw messages, clamp last. The zero-init
+behavioral-identity contract is unaffected (γ=0 → affine is identity).
+Seed-7 results discarded; all seeds relaunched fresh. Also noted for the
+stability thread: every blowup so far — RMSNorm amplification, GRU-rule
+cliffs, and this — is an unbounded-scale path into the recurrence; the rule
+itself keeps being exonerated.
+
 ## Why this is worth running before any pivot
 
 It is the cheapest possible test of the load-bearing question behind the
