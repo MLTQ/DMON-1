@@ -132,3 +132,46 @@ B=12 (F0's token rate), inject probability 0.02 → 0.06 (~3× recall density,
 ~5% of loss mass), 12,000 updates, episode-overhead positions excluded from
 natural, everything else unchanged. Same pass/fail bars as round 1. Runs
 as `fable/runs/f6_1`.
+
+---
+
+# RESULTS, round 2 (2026-07-31, 9 arms, zero skips): **still chance — the finding hardens**
+
+Round 2 removed round 1's excuses: B=12 (F0's token rate), 12,000 updates,
+recall at ~5% of loss mass, natural BPC back at healthy levels (creature
+2.20–2.23, GRU 2.25–2.27, transformer 2.30–2.34 — properly trained models),
+444–467 scored eval events per arm. Result: recall BPC 4.70–4.89 against a
+4.700 chance level, **every model, every delay bucket** — including
+d ∈ [16,32), inside the creature's mirror ring and every context window.
+
+The most diagnostic cell: the **transformer at chance within its own
+window**. Two-hop induction over an explicit `{kv … }k→v` pattern is
+precisely what tiny transformers learn when trained *densely* on recall.
+At ~230k training examples embedded sparsely in natural text, the circuit
+never bootstrapped in any of the three architectures.
+
+## Verdict
+
+Not a state-capacity result — a **capability-emergence result**. At 350k
+params and ~4.6M chars, sparse-embedded cued recall does not bootstrap in a
+creature, a GRU, or a transformer. This is Max's scale hypothesis measured
+from below: the capability F6 was built to exercise appears to require
+either dense-task training (curriculum) or capacity/budget this protocol
+does not have. The instrument is validated (task well-formed, generator
+contract-checked, chance level exact); what is falsified is the assumption
+that the skill emerges at this scale from sparse exposure.
+
+Secondary finding worth keeping: the creature's freeze-internal delta on
+natural positions **tripled** vs F0 (2.6–3.0 vs 0.2–0.8) — the harder,
+sentinel-laden stream recruited substantially more tissue *function* (though
+recall Δ 0.22–0.64 < natural Δ: there were no pairs to store). Task
+pressure does move work into the bulk; it just cannot conjure a circuit the
+optimization never finds.
+
+## Round 3 options (filed, not launched — GPUs committed to E1b/F3)
+
+1. **Dense curriculum**: recall-only (or recall-heavy) stream for the first
+   ~2k updates, then anneal to sparse-embedded — the standard way small
+   models acquire the circuit before it must survive sparsity.
+2. Higher density (20–30%) throughout.
+3. Accept as a scale boundary and retest at the next capacity tier.
