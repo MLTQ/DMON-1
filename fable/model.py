@@ -128,6 +128,8 @@ class Fable(nn.Module):
         # behavioral-identity contract via a different model, not the organ.
         if cfg.memory:
             from .memory import MemoryOrgan
+            if cfg.memory_target == "expression":
+                assert cfg.expression, "F9b mode memory modulates expression"
             assert len(self.internal_idx) >= 8, "memory port needs 8 internal cells"
             self.memory = MemoryOrgan(hid)
             pos0 = cfg.n_input + len(self.internal_idx) - 8
@@ -216,14 +218,19 @@ class Fable(nn.Module):
                 # per-cell gains reach ~6.7x and killed 2 of 3 seeds in the
                 # annealed regime (F8 amendment 2); tanh keeps zero-init
                 # identity while capping the multiplicative path.
-                raw_msg = raw_msg * (1.0 + torch.tanh(self.expr_gain[self.mutable_idx])) \
+                gain_logit = self.expr_gain[self.mutable_idx].unsqueeze(0)
+                if mem_drive is not None and self.cfg.memory_target == "expression":
+                    # F9b: the memory read is a per-lane MODE — a remembered
+                    # configuration added inside every cell's expression gain
+                    gain_logit = gain_logit + mem_drive.unsqueeze(1)
+                raw_msg = raw_msg * (1.0 + torch.tanh(gain_logit)) \
                           + self.expr_bias[self.mutable_idx]
             msg = self.msg_clamp(raw_msg)
             drive = torch.zeros_like(msg)
             if micro == 0:
                 drive = drive.index_copy(
                     1, torch.arange(n_in, device=drive.device), drive_in)
-                if mem_drive is not None:
+                if mem_drive is not None and self.cfg.memory_target == "port":
                     drive = drive.index_copy(
                         1, self.mem_port_pos,
                         mem_drive.unsqueeze(1).expand(-1, 8, -1))

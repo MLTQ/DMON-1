@@ -33,11 +33,15 @@ class FableConfig:
     # organism, whose measured shuffle delta is ~0.02 because cells are
     # interchangeable by construction.
     expression: bool = False
-    # Associative memory organ on trial via F9a
-    # (fable/experiments/f9-memory-organ.md): ring-write/content-read memory
-    # whose reads drive a dedicated memory-port cell group; output-gated to
-    # zero at init.
+    # Associative memory organ on trial via F9a/F9b
+    # (fable/experiments/f9-memory-organ.md): surprise-gated ring writes,
+    # content-based reads. memory_target chooses where reads land:
+    # "port" (F9a) — drive on a dedicated memory-port cell group;
+    # "expression" (F9b) — a per-lane mode vector added inside the
+    # expression gain (requires expression=True): memory stores
+    # configurations, not content.
     memory: bool = False
+    memory_target: str = "port"
 
     # Stream
     vocab_size: int = 0            # filled from corpus

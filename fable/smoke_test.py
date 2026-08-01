@@ -291,12 +291,40 @@ def test_memory_organ() -> None:
           and float(mem.memory.key_proj.weight.grad.abs().sum()) > 0)
 
 
+def test_mode_memory() -> None:
+    torch.manual_seed(7)
+    cfg = dataclasses.replace(SMALL, memory=True, expression=True,
+                              memory_target="expression")
+    m = Fable(cfg)
+    st = m.initial_state(2, "cpu")
+    toks = torch.randint(0, 11, (2, 8))
+    loss, st, _ = m.forward_chunk(toks, torch.randint(0, 11, (2, 8)), st)
+    loss.backward()
+    check("mode path reaches write projections",
+          m.memory.val_proj.weight.grad is not None)
+    check("expression still gets gradient under mode memory",
+          m.expr_gain.grad is not None
+          and float(m.expr_gain.grad.abs().sum()) > 0)
+    # mode must modulate: zero the ema so a write+read cycle happens, then
+    # check a forced large mode read changes behavior
+    with torch.no_grad():
+        m.memory.gate.fill_(1.0)
+        st2 = m.initial_state(2, "cpu")
+        st2.surprise_ema.fill_(0.0)
+    la, _, _ = m.step(toks[:, 0], st2.detach())
+    with torch.no_grad():
+        m.memory.gate.fill_(0.0)
+    lb, _, _ = m.step(toks[:, 0], st2.detach())
+    check("mode read modulates output",
+          not torch.allclose(la, lb, atol=1e-6))
+
+
 def main() -> None:
     print("fable smoke test")
     for fn in (test_shapes_and_reachability, test_mirror_write_only,
                test_gradient_flow, test_overfit_tiny_corpus, test_growth,
                test_matched_gru, test_liquid_rule, test_expression,
-               test_memory_organ):
+               test_memory_organ, test_mode_memory):
         print(f"- {fn.__name__}")
         fn()
     print("all contracts hold")

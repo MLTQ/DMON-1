@@ -118,3 +118,44 @@ Bars unchanged. **Final round for F9a**: the failure ladder has been
 live, bounded, surprise-fed organ still sits at chance, F9a banks as three
 clean negatives and the retrieval question moves to the dense-curriculum
 option (F6 round 3).
+
+---
+
+# RESULTS, round 3 (2026-08-01): chance again — F9a CLOSED, three clean negatives
+
+All seeds, zero skips: recall 4.71–4.76 vs 4.700 in every bucket. The
+forensic pass is what gives the negative its teeth: write rate 34%, and
+**92/103 injected episodes were captured into memory** — the pairs were
+demonstrably present when queried — yet the gate ended at 0.0073. The
+gradient had the answer in storage and priced the lookup channel at zero.
+
+**Final diagnosis: read-side alignment is the wall.** Query and key
+projections must independently converge to matching representations before
+recall pays; before alignment, reads are noise; noise gets gated off; the
+gated channel gives the aligner no gradient. This is the same wall that
+held the F6 transformer at chance inside its own window (attention IS
+content lookup). Sparse-embedded retrieval does not bootstrap at this
+scale in any architecture tried, organ included; the alignment circuit
+needs dense signal (curriculum) to form. F9a banks as: plumbing validated
+(survival ✓ liveness ✓ episode capture ✓), capability negative, cause
+localized.
+
+## F9b (preregistered 2026-08-01): memory whose payload is *modes*
+
+Max's thesis — remember ways of thinking, not facts — implemented with the
+debugged organ: same surprise-gated writes (regime boundaries are the most
+surprising events in F2's stream, 7+ bits measured, so snapshots happen
+exactly when configuration matters), same bounded content reads — but the
+read is routed into the **expression gain** (F8's mechanism) as a per-lane
+mode vector, not into port drive: `gain_i = 1 + tanh(γ_i + mode)`. The
+organ stops storing content and starts storing *configurations*.
+
+Testbed: F2 protocol exactly (cycled + A-only, constant 1e-3 — the regime
+every expression arm survives — seeds 7/13/21) vs the F2-expr round-2
+numbers. Primary metric: **zero-shot retention penalty** (expression
+baseline +5.05, GRU +1.65). Pass: penalty ≤ 3.5 (closing ≥ 40% of the gap
+to the GRU) with the compression floor respected. Read-side bootstrap risk
+is acknowledged but structurally milder: a mode read need only be *better
+than no modulation* to pay (dense gradient every token), unlike exact
+recall which pays only on rare query positions. Gate init 0.1 (live), the
+round-1 lesson.
