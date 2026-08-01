@@ -49,13 +49,25 @@ class MemoryOrgan(nn.Module):
         z = torch.zeros(batch, self.n_slots, self.width, device=device)
         return z, z.clone()
 
-    def write(self, keys: torch.Tensor, vals: torch.Tensor, cursor: int,
-              context: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Ring write at cursor % n_slots. context: [B, 2H]."""
-        slot = torch.tensor([cursor % self.n_slots], device=keys.device)
-        k = self.key_proj(context).unsqueeze(1)
-        v = self.val_proj(context).unsqueeze(1)
-        return keys.index_copy(1, slot, k), vals.index_copy(1, slot, v)
+    def write(self, keys: torch.Tensor, vals: torch.Tensor,
+              cursor: torch.Tensor, context: torch.Tensor,
+              write_mask: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Round 3: surprise-gated per-lane ring write.
+
+        cursor: [B] long (per-lane — lanes write at different times).
+        write_mask: [B] bool. Returns (keys, vals, advanced cursor).
+        """
+        if not bool(write_mask.any()):
+            return keys, vals, cursor
+        k = self.key_proj(context)
+        v = self.val_proj(context)
+        lanes = torch.nonzero(write_mask, as_tuple=True)[0]
+        slots = cursor[lanes] % self.n_slots
+        keys = keys.clone()
+        vals = vals.clone()
+        keys[lanes, slots] = k[lanes]
+        vals[lanes, slots] = v[lanes]
+        return keys, vals, cursor + write_mask.long()
 
     def read(self, keys: torch.Tensor, vals: torch.Tensor,
              query_state: torch.Tensor) -> torch.Tensor:

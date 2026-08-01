@@ -89,3 +89,32 @@ and it reproduced a known pathology of gated-module bootstrapping.
 3. All three seeds rerun at the same dial. Bars unchanged. The identity
    contract in smoke is replaced by a bounded-drive contract (behavioral
    identity at init is deliberately given up — that was the trap).
+
+---
+
+# RESULTS, round 2 (2026-07-31): still chance — but the organ was uninformative by construction
+
+All seeds completed, zero skips. Recall 4.699–4.763 vs 4.700 chance; gates
+*shrank* from 0.1 to 0.029–0.056 (sharpen grew slightly). The organ was
+live, trained end-to-end, consulted — and rationally turned down, because
+the design could not work: **the ring writes every token**, so 48 slots
+span the last 48 tokens, not 48 episodes. Pairs are evicted ~48 tokens
+after injection while queries arrive at delays up to 1024. As built, the
+organ is a slightly wider mirror ring, and the gradient priced it as one.
+The round-1 prereg's "48 slots cover ~48 recent episodes" was wrong at the
+write-cadence level — an unexamined assumption, caught by the result.
+
+## Round 3 (preregistered): surprise-gated writes
+
+Write only when the incoming token's own prediction loss exceeds a per-lane
+running EMA plus a fixed margin (0.7 nats). Task-general (no sentinel
+knowledge: episodes self-select because random letters are maximally
+surprising against text), biologically honest (surprise-gated episodic
+encoding), and it fixes coverage: at ~10–15% write rate, 48 slots span
+~350–500 tokens. Mechanics: state carries previous logits (surprise
+computed inside the organism, no caller changes), per-lane ring cursors.
+Bars unchanged. **Final round for F9a**: the failure ladder has been
+"can't survive" → "won't engage" → "engaged but starved of coverage"; if a
+live, bounded, surprise-fed organ still sits at chance, F9a banks as three
+clean negatives and the retrieval question moves to the dense-curriculum
+option (F6 round 3).

@@ -14,6 +14,7 @@ cells, so contiguity of blocks is not an invariant):
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import torch
@@ -31,14 +32,16 @@ class OrganismState:
     mirror_cursor: int
     mem_keys: torch.Tensor | None = None   # [B, S, W] when the organ exists
     mem_vals: torch.Tensor | None = None
-    mem_cursor: int = 0
+    mem_cursor: torch.Tensor | None = None   # [B] long, per-lane ring position
+    prev_logits: torch.Tensor | None = None  # [B, V] for internal surprise
+    surprise_ema: torch.Tensor | None = None # [B] running baseline (nats)
 
     def detach(self) -> "OrganismState":
+        d = lambda t: t.detach() if t is not None else None
         return OrganismState(
             self.h.detach(), self.mirror_cursor,
-            self.mem_keys.detach() if self.mem_keys is not None else None,
-            self.mem_vals.detach() if self.mem_vals is not None else None,
-            self.mem_cursor)
+            d(self.mem_keys), d(self.mem_vals), d(self.mem_cursor),
+            d(self.prev_logits), d(self.surprise_ema))
 
 
 @dataclass
@@ -150,6 +153,9 @@ class Fable(nn.Module):
             mirror_cursor=0)
         if self.memory is not None:
             state.mem_keys, state.mem_vals = self.memory.empty(batch, device)
+            state.mem_cursor = torch.zeros(batch, dtype=torch.long, device=device)
+            state.surprise_ema = torch.full(
+                (batch,), math.log(self.cfg.vocab_size), device=device)
         return state
 
     def step(self, tokens: torch.Tensor, state: OrganismState,
@@ -172,16 +178,29 @@ class Fable(nn.Module):
 
         mem_keys, mem_vals, mem_cursor = (state.mem_keys, state.mem_vals,
                                           state.mem_cursor)
+        prev_logits, surprise_ema = state.prev_logits, state.surprise_ema
         mem_drive = None
         if self.memory is not None:
             # read with the PREVIOUS token's output state, then write this
             # token's context — a query can never match its own write
             query_state = h[:, self.output_idx].mean(dim=1)
             mem_drive = self.memory.read(mem_keys, mem_vals, query_state)
+            # Surprise-gated write (round 3): the organism scores the
+            # incoming token against its own previous prediction and stores
+            # only what surprises it — episodes self-select, and 48 slots
+            # span hundreds of tokens instead of 48.
+            with torch.no_grad():
+                if prev_logits is not None:
+                    surprise = F.cross_entropy(prev_logits, tokens,
+                                               reduction="none")
+                    write_mask = surprise > surprise_ema + 0.7
+                    surprise_ema = 0.99 * surprise_ema + 0.01 * surprise
+                else:
+                    write_mask = torch.zeros(h.shape[0], dtype=torch.bool,
+                                             device=h.device)
             context = torch.cat([emb, h[:, self.input_idx].mean(dim=1)], dim=-1)
-            mem_keys, mem_vals = self.memory.write(
-                mem_keys, mem_vals, mem_cursor, context)
-            mem_cursor += 1
+            mem_keys, mem_vals, mem_cursor = self.memory.write(
+                mem_keys, mem_vals, mem_cursor, context, write_mask)
 
         msg = None
         raw_msg = None
@@ -227,8 +246,10 @@ class Fable(nn.Module):
                     msg_rms=float(raw_msg.pow(2).mean().sqrt()),
                     logit_absmax=float(logits.abs().max()),
                     alpha_mean=getattr(self.rule, "last_alpha_mean", None))
+        new_prev = logits.detach() if self.memory is not None else None
         return logits, OrganismState(h, state.mirror_cursor + 1,
-                                     mem_keys, mem_vals, mem_cursor), health
+                                     mem_keys, mem_vals, mem_cursor,
+                                     new_prev, surprise_ema), health
 
     def forward_chunk(self, tokens: torch.Tensor, targets: torch.Tensor,
                       state: OrganismState,

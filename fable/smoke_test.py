@@ -261,8 +261,22 @@ def test_memory_organ() -> None:
           float(drive.abs().max()) <= abs(float(mem.memory.gate.detach())) + 1e-6)
     check("live organ perturbs behavior",
           not torch.allclose(lb, lm, atol=1e-6))
-    check("ring writes advance",
-          sm.mem_cursor == 6 and float(sm.mem_keys.abs().sum()) > 0)
+    # Surprise gating: an untrained model's uniform-ish predictions make few
+    # tokens clear the EMA+margin bar; force a surprising token and check
+    # the write fires for exactly that lane.
+    with torch.no_grad():
+        sm.surprise_ema.fill_(0.0)   # everything now counts as surprising
+    before = sm.mem_cursor.clone()
+    _, sm, _ = mem.step(toks[:, 0], sm)
+    check("surprise-gated writes fire per lane",
+          bool((sm.mem_cursor > before).all())
+          and float(sm.mem_keys.abs().sum()) > 0)
+    with torch.no_grad():
+        sm.surprise_ema.fill_(1e9)   # nothing is surprising
+    before = sm.mem_cursor.clone()
+    _, sm, _ = mem.step(toks[:, 1], sm)
+    check("unsurprising tokens are not written",
+          bool((sm.mem_cursor == before).all()))
     check("memory persists through detach",
           float(sm.detach().mem_vals.abs().sum())
           == float(sm.mem_vals.detach().abs().sum()))
