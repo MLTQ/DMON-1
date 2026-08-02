@@ -159,3 +159,40 @@ is acknowledged but structurally milder: a mode read need only be *better
 than no modulation* to pay (dense gradient every token), unlike exact
 recall which pays only on rare query positions. Gate init 0.1 (live), the
 round-1 lesson.
+
+---
+
+# RESULTS, F9b (2026-08-01): **FAIL — the forgetting penalty survives its third mechanism**
+
+| Config | Retention penalty |
+|---|---:|
+| mean-field creature (F2 r1) | +5.40 |
+| expression creature (F2 r2) | +5.05 |
+| **expression + mode memory (F9b)** | **+5.51** |
+| GRU | +1.65 |
+
+All six arms completed, zero skips. Savings profile essentially unchanged
+(−0.128/visit regime-attributable). The mode memory did not move the number
+it existed to move; if anything it cost a hair.
+
+Instrumentation caveat, recorded rather than hidden: the F2-protocol runner
+does not checkpoint models, so the mode gate's final value is unknown —
+"used and useless" vs "turned off" is not distinguishable post-hoc for this
+round. The behavioral verdict is unambiguous regardless. Likely mechanism
+either way: the mode read is content-addressed by the same query/key
+machinery as F9a, and the same alignment wall applies — dense downstream
+gradient does not create the *upstream* key/query correspondence any better
+than sparse gradient did.
+
+## The memory line, closed at this scale
+
+Content memory: three rounds, cause localized (read-side alignment cannot
+bootstrap from sparse signal). Mode memory: one round, no effect on
+retention. The catastrophic-forgetting penalty has now survived three
+mechanisms (mean field, parametric identity, configuration memory) and sits
+at ~3× the GRU's across every attempt. Conclusion carried forward: at 350k
+params with online SGD, protecting knowledge across regime change needs
+either curriculum-formed retrieval circuits, consolidation machinery of a
+kind not yet tried (e.g., surprise-gated *plasticity* rather than
+surprise-gated storage), or scale. The organ plumbing itself is validated
+and shelved, not discarded.
