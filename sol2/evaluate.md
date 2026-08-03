@@ -9,8 +9,9 @@ tissue work, private specialization, and sensory-memory contribution.
 
 - `prequential` — one uninterrupted held-out walk with no label-feedback pathway.
 - `evaluate_model` — ordinary control evaluation.
-- `evaluate_with_ablations` — reset, freeze, within-tissue shuffle, and memory-zero
-  interventions, including separate compute/relay freeze costs.
+- `evaluate_with_ablations` — reset, freeze, within-tissue state shuffle, private
+  expression shuffle, degree-preserving topology rewire, and memory-zero interventions,
+  including separate compute/relay freeze costs.
 
 ## Decisions
 
@@ -18,6 +19,8 @@ tissue work, private specialization, and sensory-memory contribution.
 - Shuffle is restricted within each tissue type, so breaking a declared type contract
   cannot masquerade as private cell differentiation.
 - Memory-zero is reported separately from total-state reset.
+- Private-expression shuffle tests differentiation; degree-preserving rewiring tests
+  whether installed source assignments matter beyond cell and edge counts.
 
 ## Contracts
 

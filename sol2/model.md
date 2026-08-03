@@ -3,22 +3,25 @@
 ## Purpose
 
 Assembles typed tissues, the directed connectome, stream-written sensory memory,
-private cell identity, and the fixed text-output organ into one persistent organism.
+private cell identity, and the attentive text-output organ into one persistent organism.
 
 ## Components
 
 ### `StepHealth`
 
-Records hidden/message/logit scale, tissue update rates, and the largest effective
-operator norm beside behavioral loss.
+Records hidden/message/logit scale, tissue update rates, organ-attention allocation,
+and the largest effective operator norm beside behavioral loss.
 
 ### `Sol2`
 
 - Builds explicit input, memory, compute, relay, and output index buffers.
 - Writes bounded token embeddings into a detached FIFO sensory-memory tissue.
 - Applies one rule per mutable tissue type.
-- Optionally gives every cell bounded private gain/bias expression.
-- Reads a fixed output organ through a concat head; internal growth never resizes it.
+- Optionally gives every mutable cell bounded private target/time-constant expression.
+- Clears output tissue at each token boundary, preventing it from becoming an
+  autonomous recurrent shortcut.
+- Reads dedicated output tissue through learned organ queries; the organ never sees
+  input, memory, compute, or relay tensors directly.
 - Supports zero-and-freeze tissue interventions without changing the training path.
 
 ### `count_parameters`
@@ -32,15 +35,20 @@ Counts only trainable parameters for matched controls.
 - Cell identity is bounded and zero-initialized, so its enabled arm starts behaviorally
   identical to its disabled counterpart when seeded identically.
 - Token embeddings are bounded before entering persistent state in every arm.
-- The output organ is fixed and position-specific; growth extends internal tissue only.
+- The output organ has fixed query slots but is not tied to concatenated cell positions.
+  Growth extends internal tissue only in this first kernel.
 - Relay tissue is physically last in the index layout, so relay growth is append-only
   and reconstructible from configuration plus checkpoint buffers.
+- Private-expression rows map only to mutable cells. Stream-written memory contributes
+  no dead parameters to the identity treatment or matched-control budget.
 
 ## Contracts
 
 - Mutable state remains in `[-1,1]` from a zero initial state.
 - Only the external stream writes memory cells.
 - Output cells are sinks in the connectome.
+- Output cells receive only from compute/relay tissue and retain state only within a
+  token's microsteps.
 - `weight_version` is preserved through ticks.
 - All tissue access uses index buffers; growth may append cells after the original
   output block without relying on contiguity.

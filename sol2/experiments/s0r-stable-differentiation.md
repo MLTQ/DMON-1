@@ -1,6 +1,6 @@
 # S0-R: stable differentiated kernel
 
-Status: preregistered before GPU allocation, 2026-08-03.
+Status: amended before GPU allocation or results, 2026-08-03.
 
 ## Question
 
@@ -24,9 +24,17 @@ Four creature arms per seed:
 | identity-bounded | spectrally rescaled, unit-ball attention, bounded values | bounded per-cell expression |
 
 Parameter-matched GRU and transformer controls are trained separately for the anonymous
-and identity-sized budgets. Bounded/unbounded pairs have identical raw parameters.
+and identity-sized budgets. They are closed-world capability/opportunity-cost references,
+not arbiters of whether an evolvable substrate succeeds. Bounded/unbounded pairs have
+identical raw parameters.
 
 ## Protocol
+
+Before the full factorial, run a 2,000-update seed-7 creature-only preflight. It is a
+plumbing and resource diagnostic: inspect learning, rejects, utilization distribution,
+organ attention, freeze costs, and topology rewiring. A weak single-seed causal metric
+does not reject an approach; only a mechanical bypass, numerical failure, or wholly
+unused internal substrate blocks the replicated run.
 
 - Tiny Shakespeare, contiguous 90/10 split.
 - Three seeds: 7, 13, 21.
@@ -34,11 +42,15 @@ and identity-sized budgets. Bounded/unbounded pairs have identical raw parameter
 - Constant AdamW learning rate `1e-3` after 200-update warmup.
 - 8 input, 16 stream-memory, 64 compute, 16 relay, and 8 output cells.
 - Hidden width 96, 12 dendrite slots with 8 active, 3 microsteps per character.
+- Four learned character-organ queries attend only to eight per-token output cells;
+  output dendrites read compute/relay tissue only.
 - Held-out evaluation every 500 updates; complete curves retained.
 - Health: total and per-module gradient norms, effective operator norm, hidden/message/
-  logit scale, rejected updates, and tissue update rates.
+  logit scale, rejected updates, tissue update rates, organ-attention allocation, and
+  material/effective/reserve private-gradient fractions.
 - Causal reads: reset, freeze internal, freeze compute, freeze relay, within-compute and
-  within-relay state shuffle, and memory-zero.
+  within-relay state shuffle, private-expression shuffle, degree-preserving topology
+  rewire, and memory-zero.
 
 ## Primary decisions
 
@@ -51,21 +63,31 @@ or has materially worse late gradient health without better held-out BPC.
 
 ### Differentiation
 
-Private identity passes if its within-tissue shuffle penalty exceeds the corresponding
-anonymous arm by at least `0.10 BPC` on the three-seed mean, while internal freeze cost
-remains positive. Freeze establishes work; shuffle establishes private specialization.
+Substrate use requires positive internal freeze cost in every seed and at least `0.10
+BPC` on the three-seed mean. Structure requires a positive degree-preserving rewiring
+cost in every seed and at least `0.05 BPC` on the mean. Private identity earns a
+specialization claim only if expression shuffle and within-tissue state shuffle are
+both more damaging in the identity arm without a material normal-BPC regression.
 
-### Capability guard
+Internal effective participation must exceed 10% on the three-seed mean. There is no
+upper occupancy target: low-gradient reserve cells are permitted and are not penalized.
 
-The identity-bounded organism must remain within `0.10 BPC` of its parameter-matched GRU
-at the 24k endpoint and must beat its headless/null interpretation through positive
-internal freeze cost. The transformer is a secondary matched-stream baseline.
+### Capability report
+
+Normal held-out BPC must improve materially from initialization and remain finite. GRU
+distance is reported as the cost of choosing the evolvable substrate on this closed
+character task, not used as a hard pass/fail boundary. The tiny transformer is a
+descriptive secondary reference; no claim about transformer scaling follows from it.
 
 ## Interpretation constraints
 
 - A surviving single seed is not a stability pass.
 - A freeze cost without shuffle sensitivity means useful but interchangeable tissue.
 - A shuffle cost without positive freeze cost is not credited as useful differentiation.
+- A freeze cost alone is partly enforced by the no-bypass anatomy; topology rewiring is
+  required before claiming that learned structure matters.
+- Uniform activity is not a goal. Some unused tissue is interpreted as reserve capacity,
+  provided a nontrivial internal subset is causally useful.
 - Failure at constant `1e-3` does not reject typed tissue; it rejects this stability
   contract and sends operator/gradient telemetry back to design.
 - Success is not the full asynchronous-learning milestone. It licenses the versioned
@@ -77,6 +99,13 @@ Prepare the immutable manifest without allocating a GPU:
 
 ```bash
 .venv/bin/python -m sol2.benchmark --root sol2/runs/s0r
+```
+
+GPU preflight:
+
+```bash
+.venv/bin/python -m sol2.benchmark --root sol2/runs/s0r-preflight \
+  --updates 2000 --seeds 7 --creature-only --device cuda:0 --execute
 ```
 
 After GPU allocation:

@@ -17,9 +17,11 @@ from .baselines import (
 )
 from .checkpoint import load_checkpoint, save_checkpoint, unpack_state
 from .config import Sol2Config
+from .evaluate import evaluate_with_ablations
 from .growth import grow_relay_tissue
+from .interventions import degree_preserving_rewire, shuffled_private_expression
 from .model import Sol2, count_parameters
-from .optim import build_optimizer
+from .optim import build_optimizer, cell_gradient_utilization
 from .runtime import AsyncOrganismRuntime
 from .stream import LaneStream
 
@@ -55,10 +57,38 @@ def test_shapes_bounds_and_topology() -> None:
     assert logits.shape == (3, SMALL.vocab_size)
     assert state.hidden.shape == (3, SMALL.n_cells, SMALL.hidden)
     assert health.hidden_absmax <= 1.0 + 1e-6
-    assert health.message_absmax <= SMALL.value_gain + SMALL.identity_bias + 1e-5
+    assert health.message_absmax <= SMALL.value_gain + 1e-5
+    assert 1.0 <= health.organ_effective_cells <= SMALL.n_output + 1e-5
     assert model.graph.reachable(model.input_idx, model.output_idx)
+    assert model.graph.reachable(model.input_idx, model.internal_idx)
     assert model.graph.output_cells_are_sinks(model.output_idx)
+    assert model.graph.targets_read_only_from(model.output_idx, model.internal_idx)
     assert bool((model.graph.active.sum(dim=1) == SMALL.initial_active_dendrites).all())
+
+
+def test_internal_tissue_is_a_required_output_path() -> None:
+    torch.manual_seed(SMALL.seed)
+    model = Sol2(SMALL).eval()
+    active_sources = model.graph.sources[model.output_idx][
+        model.graph.active[model.output_idx]
+    ]
+    forbidden = torch.cat([model.input_idx, model.memory_idx])
+    assert not bool(torch.isin(active_sources, forbidden).any())
+
+    state = model.initial_state(2, "cpu")
+    state.hidden[:, model.output_idx] = torch.randn_like(
+        state.hidden[:, model.output_idx]
+    )
+    frozen_logits, _, _ = model.step(
+        torch.tensor([1, 5]), state, frozen_idx=model.internal_idx
+    )
+    assert torch.allclose(frozen_logits[0], frozen_logits[1], atol=1e-6)
+
+    cleared = state.clone_detached()
+    cleared.hidden[:, model.output_idx] = 0
+    logits_from_loaded, _, _ = model.step(torch.tensor([2, 2]), state)
+    logits_from_clear, _, _ = model.step(torch.tensor([2, 2]), cleared)
+    assert torch.allclose(logits_from_loaded, logits_from_clear, atol=1e-6)
 
 
 def test_memory_is_stream_written_only() -> None:
@@ -76,7 +106,9 @@ def test_memory_is_stream_written_only() -> None:
     loss, _, _ = model.forward_chunk(inputs, targets, model.initial_state(2, "cpu"))
     loss.backward()
     assert model.cell_gain is not None
-    assert float(model.cell_gain.grad[model.memory_idx].abs().sum()) == 0.0
+    assert len(model.cell_gain) == SMALL.n_mutable
+    assert bool((model.expression_pos[model.memory_idx] == -1).all())
+    assert float(model.cell_gain.grad.abs().sum()) > 0.0
 
 
 def test_bounded_treatment_is_parameter_neutral_and_effective() -> None:
@@ -112,7 +144,7 @@ def test_zero_identity_is_behaviorally_silent() -> None:
         li, si, _ = identified.step(inputs[:, position], si)
     assert torch.allclose(la, li, atol=1e-6)
     assert count_parameters(identified) - count_parameters(anonymous) == (
-        2 * SMALL.n_cells * SMALL.hidden
+        2 * SMALL.n_mutable * SMALL.hidden
     )
 
 
@@ -135,11 +167,17 @@ def test_gradient_reaches_every_adaptive_layer() -> None:
         "tissues.rules.output.target.weight",
         "cell_gain",
         "cell_bias",
-        "readout.weight",
+        "output_organ.queries",
+        "output_organ.key.weight",
+        "output_organ.value.weight",
+        "output_organ.decoder.weight",
     )
     for name in expected:
         gradient = parameters[name].grad
         assert gradient is not None and float(gradient.abs().sum()) > 0, name
+    utilization = cell_gradient_utilization(model)
+    assert utilization["internal_nonzero_fraction"] > 0.20
+    assert utilization["internal_material_fraction"] > 0.20
 
 
 def test_tiny_repeated_stream_can_be_learned() -> None:
@@ -164,6 +202,10 @@ def test_tiny_repeated_stream_can_be_learned() -> None:
         final = value
     assert final is not None and first is not None
     assert final < 0.35, (first, final)
+    model.eval()
+    causal = evaluate_with_ablations(model, ids, 16, 48, "cpu")
+    assert causal["freeze_internal_delta_bpc"] > 1.0
+    assert causal["topology_rewire_delta_bpc"] > 0.01
 
 
 def test_growth_preserves_anatomy_state_and_optimizer() -> None:
@@ -193,10 +235,11 @@ def test_growth_preserves_anatomy_state_and_optimizer() -> None:
     assert torch.equal(model.graph.sources[:old_n][active_before], sources_before[active_before])
     assert bool((model.graph.active[:old_n] | ~active_before).all())
     assert torch.equal(model.graph.edge_logit[:old_n][active_before], edge_before[active_before])
-    assert torch.equal(model.cell_gain[:old_n], gain_before)
+    assert torch.equal(model.cell_gain[: len(gain_before)], gain_before)
     assert {graft["source"] for graft in grafts} == set(added)
     assert model.graph.reachable(model.input_idx, torch.tensor(added))
     assert model.graph.output_cells_are_sinks(model.output_idx)
+    assert model.graph.targets_read_only_from(model.output_idx, model.internal_idx)
 
     migrated = migrate(state.detach())
     assert migrated.hidden.shape[1] == old_n + n_new
@@ -211,10 +254,34 @@ def test_growth_preserves_anatomy_state_and_optimizer() -> None:
     assert torch.equal(rebuilt.relay_idx, model.relay_idx)
 
 
+def test_causal_interventions_preserve_counts_and_restore() -> None:
+    torch.manual_seed(SMALL.seed)
+    model = Sol2(SMALL)
+    sources = model.graph.sources.clone()
+    active_sources = sources[model.graph.active]
+    degree = torch.bincount(active_sources, minlength=model.n_cells)
+    with degree_preserving_rewire(model):
+        rewired = model.graph.sources[model.graph.active]
+        assert not torch.equal(rewired, active_sources)
+        assert torch.equal(torch.bincount(rewired, minlength=model.n_cells), degree)
+        assert model.graph.targets_read_only_from(model.output_idx, model.internal_idx)
+    assert torch.equal(model.graph.sources, sources)
+
+    with torch.no_grad():
+        marker = torch.arange(len(model.internal_idx), dtype=torch.float32)
+        positions = model.expression_pos[model.internal_idx]
+        model.cell_gain[positions, 0] = marker
+    gain = model.cell_gain.detach().clone()
+    with shuffled_private_expression(model):
+        assert not torch.equal(model.cell_gain, gain)
+    assert torch.equal(model.cell_gain, gain)
+
+
 def test_matched_gru_budget() -> None:
-    target = count_parameters(Sol2(SMALL))
-    hidden = match_gru_hidden(SMALL.vocab_size, target)
-    matched = gru_param_count(SMALL.vocab_size, hidden)
+    cfg = Sol2Config(vocab_size=65, seed=SMALL.seed)
+    target = count_parameters(Sol2(cfg))
+    hidden = match_gru_hidden(cfg.vocab_size, target)
+    matched = gru_param_count(cfg.vocab_size, hidden)
     assert abs(matched - target) / target < 0.02
 
 
@@ -323,12 +390,14 @@ def test_background_learning_does_not_reset_ticks() -> None:
 def main() -> None:
     tests = [
         test_shapes_bounds_and_topology,
+        test_internal_tissue_is_a_required_output_path,
         test_memory_is_stream_written_only,
         test_bounded_treatment_is_parameter_neutral_and_effective,
         test_zero_identity_is_behaviorally_silent,
         test_gradient_reaches_every_adaptive_layer,
         test_tiny_repeated_stream_can_be_learned,
         test_growth_preserves_anatomy_state_and_optimizer,
+        test_causal_interventions_preserve_counts_and_restore,
         test_matched_gru_budget,
         test_matched_transformer_budget,
         test_checkpoint_restores_process,

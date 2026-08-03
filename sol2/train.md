@@ -18,7 +18,8 @@ and matched transformer.
   a disclosed control but is not the primary indefinite-plasticity regime.
 - Transformer chunk length equals its context length and batch is rescaled to preserve
   tokens per update.
-- Module gradient norms and effective operator norms are logged alongside BPC.
+- Module gradient norms, per-cell material/reserve gradient fractions, organ attention,
+  and effective operator norms are logged alongside BPC.
 - A rejected update advances lived state and stream position but cannot poison weights.
 
 ## Contracts
@@ -29,3 +30,5 @@ and matched transformer.
 - Baselines receive identical token, optimizer, and schedule budgets.
 - Two hundred consecutive rejected gradients abort loudly instead of producing a zombie
   run.
+- Reserve cells are reported rather than penalized; the gate requires nontrivial
+  internal participation, not universal utilization.

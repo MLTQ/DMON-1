@@ -17,6 +17,7 @@ class DirectedConnectome(nn.Module):
         initial_active: int,
         source_pool: torch.Tensor,
         input_idx: torch.Tensor,
+        internal_idx: torch.Tensor,
         output_idx: torch.Tensor,
         *,
         seed: int,
@@ -38,8 +39,10 @@ class DirectedConnectome(nn.Module):
 
         generator = torch.Generator().manual_seed(seed)
         sources = torch.empty(n_cells, n_dendrites, dtype=torch.long)
+        outputs = set(output_idx.tolist())
         for target in range(n_cells):
-            pool = source_pool[source_pool != target]
+            target_pool = internal_idx if target in outputs else source_pool
+            pool = target_pool[target_pool != target]
             if len(pool) >= n_dendrites:
                 picks = pool[torch.randperm(len(pool), generator=generator)[:n_dendrites]]
             else:
@@ -48,8 +51,15 @@ class DirectedConnectome(nn.Module):
                 ]
                 picks = torch.cat([pool, extra])
             sources[target] = picks
-        for offset, target in enumerate(output_idx.tolist()):
+        for offset, target in enumerate(internal_idx.tolist()):
             forced = input_idx[offset % len(input_idx)]
+            row = sources[target]
+            duplicate = torch.nonzero(row == forced, as_tuple=True)[0]
+            if len(duplicate) and int(duplicate[0]) != 0:
+                row[int(duplicate[0])] = row[0]
+            row[0] = forced
+        for offset, target in enumerate(output_idx.tolist()):
+            forced = internal_idx[offset % len(internal_idx)]
             row = sources[target]
             duplicate = torch.nonzero(row == forced, as_tuple=True)[0]
             if len(duplicate) and int(duplicate[0]) != 0:
@@ -125,6 +135,15 @@ class DirectedConnectome(nn.Module):
         outputs = set(output_idx.tolist())
         active_sources = self.sources[self.active]
         return not any(int(source) in outputs for source in active_sources.tolist())
+
+    @torch.no_grad()
+    def targets_read_only_from(
+        self, targets: torch.Tensor, allowed_sources: torch.Tensor
+    ) -> bool:
+        allowed = set(allowed_sources.tolist())
+        sources = self.sources[targets]
+        active = self.active[targets]
+        return all(int(source) in allowed for source in sources[active].tolist())
 
     @torch.no_grad()
     def operator_norms(self) -> dict[str, float]:

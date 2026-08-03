@@ -17,10 +17,14 @@ anatomy from dormant capacity reserved for future growth.
 - Bounded mode projects query/key vectors into the unit ball without amplifying vectors
   already below unit norm, then uses bounded temperature, edge bias, and values.
 - Reachability and output-sink checks are executable contracts.
+- Output targets draw exclusively from compute/relay cells; direct sensory and memory
+  shortcuts are absent even in dormant slots.
 
 ## Contracts
 
 - Output cells are never sources, preventing decoder state from recirculating.
+- Output cells read only internal tissue, while every initial internal cell has a
+  sensory-reachable installed path.
 - Every target begins with at least one active dendrite.
 - Dormant slots receive exactly zero softmax mass.
 - Growth activates dormant slots; it never needs to delete a working edge.

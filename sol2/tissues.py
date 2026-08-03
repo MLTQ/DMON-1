@@ -45,11 +45,19 @@ class TissueRule(nn.Module):
         hidden: torch.Tensor,
         message: torch.Tensor,
         drive: torch.Tensor,
+        target_shift: torch.Tensor | None = None,
+        alpha_shift: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         x = torch.cat([hidden, message, drive], dim=-1)
-        target = torch.tanh(self.target(x))
+        target_logits = self.target(x)
+        alpha_logits = self.alpha(x)
+        if target_shift is not None:
+            target_logits = target_logits + target_shift
+        if alpha_shift is not None:
+            alpha_logits = alpha_logits + alpha_shift
+        target = torch.tanh(target_logits)
         alpha = self.alpha_min + (self.alpha_max - self.alpha_min) * torch.sigmoid(
-            self.alpha(x)
+            alpha_logits
         )
         updated = (1.0 - alpha) * hidden + alpha * target
         return updated, alpha
@@ -86,8 +94,22 @@ class TissueBank(nn.Module):
             }
         )
 
-    def forward(self, name: str, hidden, message, drive):
-        return self.rules[name](hidden, message, drive)
+    def forward(
+        self,
+        name: str,
+        hidden,
+        message,
+        drive,
+        target_shift=None,
+        alpha_shift=None,
+    ):
+        return self.rules[name](
+            hidden,
+            message,
+            drive,
+            target_shift=target_shift,
+            alpha_shift=alpha_shift,
+        )
 
     @torch.no_grad()
     def operator_norms(self) -> dict[str, float]:

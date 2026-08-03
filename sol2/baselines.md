@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Defines the conventional controls that determine whether SOL2's cellular substrate is
-adding capability rather than merely learning something nontrivial.
+Defines conventional closed-world controls that quantify SOL2's sequence-modeling
+opportunity cost. They do not test growth, grafting, topology, or continuous evolution
+and therefore do not determine whether the substrate succeeds overall.
 
 ## Components
 

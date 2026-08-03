@@ -34,5 +34,8 @@ and zero-initializing new optimizer rows.
 - No previously active source or slot changes.
 - Every new cell is sensory-reachable and read by existing tissue.
 - Output cells remain sinks.
+- Output cells continue to read only compute/relay tissue after a graft.
 - Existing state and optimizer rows are bitwise preserved.
 - New cell state, identity, and optimizer moments begin at zero.
+- Identity optimizer migration uses mutable-expression row counts, not physical memory
+  indices.

@@ -43,6 +43,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--updates", type=int, default=24_000)
     parser.add_argument("--seeds", type=int, nargs="+", default=[7, 13, 21])
+    parser.add_argument("--creature-only", action="store_true")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     args.root.mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,8 @@ def main() -> None:
     manifest = []
     for seed in args.seeds:
         for name, kind, cfg in factorial(seed, args.updates):
+            if args.creature_only and kind != "creature":
+                continue
             out_dir = args.root / name
             manifest.append(
                 {

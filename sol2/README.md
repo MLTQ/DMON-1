@@ -8,7 +8,8 @@ must share one universal rule.
 ## What is new
 
 - Separate input, compute, relay, and output tissue rules.
-- Optional bounded private identity for every cell.
+- Optional bounded private target/time-constant expression for every mutable cell.
+- Organ-specific learned queries that attend only to dedicated output tissue.
 - Parameter-count-neutral bounded graph operators: damp-only spectral rescaling and
   unit-ball attention, bounded values, and bounded edge bias.
 - Stream-written sensory memory named honestly as short-term memory, not learned credit.
@@ -31,13 +32,19 @@ character stream
                 │
           output tissue (sink)
                 │
-        fixed character output organ
+       attentive character output organ
 ```
 
-Every mutable cell owns persistent state. A rule is shared only within its tissue. In
-the identity treatment, each cell additionally owns bounded gain/bias expression. Relay
-growth appends both state and private parameters while preserving the rules as tissue
-genomes.
+Input, compute, and relay cells own persistent state; output tissue is cleared at each
+token boundary so it cannot become an autonomous language model. A rule is shared only
+within its tissue. In the identity treatment, each mutable cell additionally owns
+bounded private expression. Relay growth appends both state and private parameters
+while preserving the rules as tissue genomes.
+
+Output targets read only compute/relay cells. The architecture therefore permits
+low-traffic reserve cells but cannot solve the task through a direct sensory-to-decoder
+shortcut. Gradient participation is logged as effective, material, and reserve
+fractions rather than optimized as an activity reward.
 
 ## CPU gate
 
@@ -68,6 +75,9 @@ manifest without beginning training:
 ```
 
 `--execute --device cuda:0` starts the recorded arms after a GPU is allocated.
+The preregistered first launch is a four-creature, seed-7, 2,000-update diagnostic via
+`--creature-only`; a single weak differentiation result is not treated as a conclusive
+architectural rejection.
 
 ## Deliberate omissions
 

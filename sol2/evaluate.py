@@ -7,6 +7,7 @@ import math
 import torch
 from torch.nn import functional as F
 
+from .interventions import degree_preserving_rewire, shuffled_private_expression
 from .model import Sol2
 from .state import OrganismState
 
@@ -97,6 +98,10 @@ def evaluate_with_ablations(
         )
 
     memory_zero = prequential(model, ids, warmup, scored, device, mutate=zero_memory)
+    with shuffled_private_expression(model):
+        identity_shuffled = prequential(model, ids, warmup, scored, device)
+    with degree_preserving_rewire(model):
+        topology_rewired = prequential(model, ids, warmup, scored, device)
     normal_bpc = normal["bits_per_character"]
     result = {
         "normal": normal,
@@ -104,10 +109,18 @@ def evaluate_with_ablations(
         "freeze_internal": freeze_internal,
         "shuffle_within_tissue": shuffled,
         "memory_zero": memory_zero,
+        "identity_shuffled": identity_shuffled,
+        "topology_rewired": topology_rewired,
         "reset_delta_bpc": reset["bits_per_character"] - normal_bpc,
         "freeze_internal_delta_bpc": freeze_internal["bits_per_character"] - normal_bpc,
         "shuffle_within_tissue_delta_bpc": shuffled["bits_per_character"] - normal_bpc,
         "memory_delta_bpc": memory_zero["bits_per_character"] - normal_bpc,
+        "identity_shuffle_delta_bpc": (
+            identity_shuffled["bits_per_character"] - normal_bpc
+        ),
+        "topology_rewire_delta_bpc": (
+            topology_rewired["bits_per_character"] - normal_bpc
+        ),
     }
     for name in ("compute", "relay"):
         frozen = prequential(

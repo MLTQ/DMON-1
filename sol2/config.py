@@ -19,6 +19,7 @@ class Sol2Config:
     n_dendrites: int = 12
     initial_active_dendrites: int = 8
     steps_per_token: int = 3
+    organ_queries: int = 4
 
     # Experimental factors for S0-R.
     bounded_operators: bool = True
@@ -29,6 +30,7 @@ class Sol2Config:
     edge_logit_limit: float = 4.0
     identity_gain: float = 0.5
     identity_bias: float = 0.10
+    identity_time: float = 0.25
 
     # Stream and optimization.
     vocab_size: int = 0
@@ -82,6 +84,8 @@ class Sol2Config:
             raise ValueError("initial active dendrites must be in [1, n_dendrites]")
         if self.steps_per_token < 1 or self.chunk_length < 1:
             raise ValueError("steps_per_token and chunk_length must be positive")
+        if self.organ_queries < 1:
+            raise ValueError("organ_queries must be positive")
         if self.operator_bound <= 0 or self.attention_temperature <= 0:
             raise ValueError("operator bound and attention temperature must be positive")
         if self.schedule not in {"constant", "cosine"}:

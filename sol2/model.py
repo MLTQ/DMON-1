@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from .config import Sol2Config
 from .graph import DirectedConnectome
+from .organs import AttentiveOutputOrgan
 from .state import OrganismState
 from .tissues import TissueBank
 
@@ -22,6 +23,9 @@ class StepHealth:
     logit_absmax: float
     alpha_mean: dict[str, float]
     operator_norm_max: float
+    organ_attention_entropy: float
+    organ_attention_max: float
+    organ_effective_cells: float
 
 
 class Sol2(nn.Module):
@@ -51,6 +55,7 @@ class Sol2(nn.Module):
             cfg.initial_active_dendrites,
             source_pool,
             self.input_idx,
+            self.internal_idx,
             self.output_idx,
             seed=cfg.seed,
             bounded_operators=cfg.bounded_operators,
@@ -66,15 +71,21 @@ class Sol2(nn.Module):
         )
 
         if cfg.cell_identity:
-            self.cell_gain = nn.Parameter(torch.zeros(cfg.n_cells, hidden))
-            self.cell_bias = nn.Parameter(torch.zeros(cfg.n_cells, hidden))
+            self.cell_gain = nn.Parameter(torch.zeros(cfg.n_mutable, hidden))
+            self.cell_bias = nn.Parameter(torch.zeros(cfg.n_mutable, hidden))
         else:
             self.cell_gain = None
             self.cell_bias = None
 
-        output_width = cfg.n_output * hidden
-        self.output_norm = nn.LayerNorm(output_width)
-        self.readout = nn.Linear(output_width, cfg.vocab_size)
+        self.output_organ = AttentiveOutputOrgan(
+            hidden,
+            cfg.vocab_size,
+            cfg.organ_queries,
+            bounded_operators=cfg.bounded_operators,
+            operator_bound=cfg.operator_bound,
+            value_gain=cfg.value_gain,
+            attention_temperature=cfg.attention_temperature,
+        )
 
     def _build_index_buffers(self) -> None:
         cfg = self.cfg
@@ -107,6 +118,27 @@ class Sol2(nn.Module):
             self.mutable_idx = mutable.to(self.mutable_idx.device)
         else:
             self.register_buffer("mutable_idx", mutable)
+
+        # Private-expression rows follow physical mutable-cell order. Memory owns no
+        # learned rule and therefore receives no dead identity parameter. Relay is
+        # physically last, so new relay expression rows append without moving organs.
+        expression_cells = torch.cat(
+            [self.input_idx, self.compute_idx, self.output_idx, self.relay_idx]
+        )
+        expression_pos = torch.full(
+            (self.n_cells,), -1, dtype=torch.long, device=expression_cells.device
+        )
+        expression_pos[expression_cells] = torch.arange(
+            len(expression_cells), device=expression_cells.device
+        )
+        for name, value in (
+            ("expression_cells", expression_cells),
+            ("expression_pos", expression_pos),
+        ):
+            if hasattr(self, name):
+                setattr(self, name, value.to(getattr(self, name).device))
+            else:
+                self.register_buffer(name, value)
 
         cursor = 0
         for name in self.TISSUES:
@@ -145,18 +177,19 @@ class Sol2(nn.Module):
             weight_version=0,
         )
 
-    def _apply_identity(
-        self, message: torch.Tensor, mutable_cells: torch.Tensor
-    ) -> torch.Tensor:
+    def _private_expression(
+        self, cells: torch.Tensor
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         if self.cell_gain is None:
-            return message
-        gain = 1.0 + self.cfg.identity_gain * torch.tanh(
-            self.cell_gain[mutable_cells]
-        ).unsqueeze(0)
-        bias = self.cfg.identity_bias * torch.tanh(
-            self.cell_bias[mutable_cells]
-        ).unsqueeze(0)
-        return message * gain + bias
+            return None, None
+        positions = self.expression_pos[cells]
+        if bool((positions < 0).any()):
+            raise ValueError("stream-written memory has no private expression")
+        gain = torch.tanh(self.cell_gain[positions]).unsqueeze(0)
+        bias = torch.tanh(self.cell_bias[positions]).unsqueeze(0)
+        target_shift = self.cfg.identity_gain * gain + self.cfg.identity_bias * bias
+        alpha_shift = self.cfg.identity_time * (gain - bias)
+        return target_shift, alpha_shift
 
     def step(
         self,
@@ -170,6 +203,20 @@ class Sol2(nn.Module):
         hidden = state.hidden
         if hidden.shape[1:] != (self.n_cells, cfg.hidden):
             raise ValueError("state shape does not match the current organism")
+
+        # Output tissue is a per-token interface, not an autonomous recurrent model.
+        # It may integrate over microsteps, but it cannot carry a private sequence
+        # model across token boundaries and bypass internal tissue.
+        output_zeros = hidden.new_zeros(
+            hidden.shape[0], len(self.output_idx), hidden.shape[2]
+        )
+        hidden = hidden.index_copy(1, self.output_idx, output_zeros)
+
+        if frozen_idx is not None and len(frozen_idx):
+            frozen_zeros = hidden.new_zeros(
+                hidden.shape[0], len(frozen_idx), hidden.shape[2]
+            )
+            hidden = hidden.index_copy(1, frozen_idx, frozen_zeros)
 
         # Embedding is bounded before entering persistent state. This is a kernel
         # invariant, not one arm of the graph-operator factorial.
@@ -188,7 +235,7 @@ class Sol2(nn.Module):
         alpha_means: dict[str, float] = {}
         for micro in range(cfg.steps_per_token):
             raw_message = self.graph.aggregate(hidden, self.mutable_idx)
-            message = self._apply_identity(raw_message, self.mutable_idx)
+            message = raw_message
             drive = torch.zeros_like(message)
             if micro == 0:
                 drive = drive.index_copy(1, self.input_pos, sensory_drive)
@@ -196,11 +243,14 @@ class Sol2(nn.Module):
             for name in self.TISSUES:
                 cells = getattr(self, f"{name}_idx")
                 positions = getattr(self, f"{name}_pos")
+                target_shift, alpha_shift = self._private_expression(cells)
                 updated, alpha = self.tissues(
                     name,
                     hidden[:, cells],
                     message[:, positions],
                     drive[:, positions],
+                    target_shift=target_shift,
+                    alpha_shift=alpha_shift,
                 )
                 hidden = hidden.index_copy(1, cells, updated)
                 if collect_health:
@@ -210,15 +260,21 @@ class Sol2(nn.Module):
                 zeros = hidden.new_zeros(hidden.shape[0], len(frozen_idx), hidden.shape[2])
                 hidden = hidden.index_copy(1, frozen_idx, zeros)
 
-        output = hidden[:, self.output_idx].reshape(hidden.shape[0], -1)
-        logits = self.readout(self.output_norm(output))
+        logits, organ_health = self.output_organ(
+            hidden[:, self.output_idx], collect_health=collect_health
+        )
 
         health = None
         if collect_health:
             norms = {
                 **{f"graph.{k}": v for k, v in self.graph.operator_norms().items()},
                 **{f"tissue.{k}": v for k, v in self.tissues.operator_norms().items()},
+                **{
+                    f"organ.{k}": v
+                    for k, v in self.output_organ.operator_norms().items()
+                },
             }
+            assert organ_health is not None
             health = StepHealth(
                 hidden_absmax=float(hidden.detach().abs().max()),
                 message_rms=float(raw_message.detach().pow(2).mean().sqrt()),
@@ -226,6 +282,9 @@ class Sol2(nn.Module):
                 logit_absmax=float(logits.detach().abs().max()),
                 alpha_mean=alpha_means,
                 operator_norm_max=max(norms.values()),
+                organ_attention_entropy=organ_health.attention_entropy,
+                organ_attention_max=organ_health.attention_max,
+                organ_effective_cells=organ_health.effective_cells,
             )
 
         return (

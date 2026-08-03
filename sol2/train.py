@@ -186,6 +186,7 @@ def run(
                 / max(time.time() - window_started, 1e-9),
                 "gradient_norm": update_health.total_norm,
                 "gradient_modules": update_health.module_norms,
+                "cell_gradient_utilization": update_health.cell_gradient_utilization,
                 "accepted_updates": accepted_updates,
                 "rejected_updates": rejected_updates,
             }
@@ -197,6 +198,9 @@ def run(
                     "logit_absmax": step_health.logit_absmax,
                     "alpha_mean": step_health.alpha_mean,
                     "operator_norm_max": step_health.operator_norm_max,
+                    "organ_attention_entropy": step_health.organ_attention_entropy,
+                    "organ_attention_max": step_health.organ_attention_max,
+                    "organ_effective_cells": step_health.organ_effective_cells,
                 }
             history.append(entry)
             print(

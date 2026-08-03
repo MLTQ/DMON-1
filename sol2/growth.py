@@ -119,11 +119,16 @@ def grow_relay_tissue(
     graph.n_cells = old_n + n_new
 
     if model.cell_gain is not None:
+        old_expression_rows = len(model.cell_gain)
         zero_rows = torch.zeros(n_new, model.cfg.hidden, device=device)
         gain_data = torch.cat([model.cell_gain.detach(), zero_rows], dim=0)
         bias_data = torch.cat([model.cell_bias.detach(), zero_rows.clone()], dim=0)
-        _replace_resized_parameter(model, "cell_gain", gain_data, optimizer, old_n)
-        _replace_resized_parameter(model, "cell_bias", bias_data, optimizer, old_n)
+        _replace_resized_parameter(
+            model, "cell_gain", gain_data, optimizer, old_expression_rows
+        )
+        _replace_resized_parameter(
+            model, "cell_bias", bias_data, optimizer, old_expression_rows
+        )
 
     model.relay_idx = torch.cat([model.relay_idx, new_ids])
     model._rebuild_mutable()
@@ -134,6 +139,8 @@ def grow_relay_tissue(
         raise RuntimeError("growth violated sensory reachability")
     if not graph.output_cells_are_sinks(model.output_idx):
         raise RuntimeError("growth made an output cell a message source")
+    if not graph.targets_read_only_from(model.output_idx, model.internal_idx):
+        raise RuntimeError("growth introduced a direct output-organ bypass")
 
     def migrate(state: OrganismState) -> OrganismState:
         padding = state.hidden.new_zeros(
