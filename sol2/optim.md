@@ -1,0 +1,22 @@
+# `optim.py`
+
+## Purpose
+
+Enforces one optimizer policy for SOL2 and its baselines while exposing which module
+creates any gradient pathology.
+
+## Components
+
+- `schedule_factor` / `set_learning_rate` — shared constant or cosine schedule.
+- `build_optimizer` — AdamW with explicit decay/no-decay groups.
+- `gradient_health` — total and top-level module gradient norms.
+- `guarded_step` — rejects non-finite or astronomically large gradients before they can
+  poison parameters, then clips accepted updates.
+
+## Contracts
+
+- The guard is a fail-safe, not the stability mechanism; bounded operators should keep
+  it inactive.
+- Rejected updates are counted and surfaced by the trainer.
+- Schedules are pure functions of configuration and absolute update.
+- Every compared model uses the same optimizer family and schedule.
