@@ -90,6 +90,29 @@ The second change makes a question-only, lifetime-position, or static output pol
 incapable of satisfying both branches. L0-C1b starts from a fresh initialization and
 retains the original development/held-out sources, causal arms, and success gates.
 
+### L0-C1b result
+
+The repaired 96-memory-cell, 50-update run completed on 2026-08-04; its full artifact
+is `l0c1b-paired-m96-u50-result.json`. Mean paired training accuracy rose from 5% in
+updates 1-10 to 38% in updates 26-50, with 16.80 GiB peak CUDA allocation. Held-out
+`normal` reached 62.5% and `zero_control` remained 37.5%, proving that the trained
+organism exerted behaviorally relevant control over frozen Llama.
+
+It did not establish memory: `normal`, `no_exposure`, `reset_after_exposure`,
+`wrong_passage`, `memory_lesion`, and `internal_lesion` were all 62.5%. Passage exposure
+nevertheless changed internal activity substantially (0.1821 RMS versus 0.0586 without
+exposure) and populated the preserved memory bank (0.7604 RMS versus zero), while
+normal and no-exposure control RMS remained nearly equal (0.07830 versus 0.07805).
+Thus the repair retained and propagated passage-dependent state, but the learned query
+readout ignored that distinction and converged on a static steering policy.
+
+The next protocol revision must target credit routing rather than organism size or
+update count: remove the within-episode gradient stop on stream-memory writes and test
+a bounded content-addressed recall head that injects retrieved memory into input or
+recurrent tissue. It must not connect memory directly to the LLM effector, so the
+existing output-sink/no-bypass invariant remains intact. A matched paired-branch
+separation measurement is required before another held-out run.
+
 ## Episode
 
 For one lifetime lane:
