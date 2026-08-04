@@ -50,3 +50,4 @@ procedure to masquerade as a transfer failure.
 - The current and larger geometries receive identical examples and evaluation budgets.
 - Larger capacity is promoted only if it is used and improves mastery efficiency; size
   is not itself a success metric.
+- CPU and CUDA resume share device-independent RNG restoration from `checkpoint.py`.

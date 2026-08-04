@@ -11,7 +11,12 @@ from pathlib import Path
 import torch
 from torch.nn import functional as F
 
-from .checkpoint import pack_state, unpack_state
+from .checkpoint import (
+    pack_state,
+    restore_rng_state,
+    same_tensor_values,
+    unpack_state,
+)
 from .consolidation import (
     ConsolidationPolicy,
     UtilityProfile,
@@ -481,8 +486,8 @@ def run_consolidated_attachment_branch(
         payload = torch.load(checkpoint_path, map_location=device, weights_only=True)
         if payload.get("schema") != SCHEMA or payload.get("branch") != branch:
             raise ValueError("incompatible consolidated-attachment checkpoint")
-        if not torch.equal(
-            payload["utility_profile"]["measured_cell"], measured_cell.detach().cpu()
+        if not same_tensor_values(
+            payload["utility_profile"]["measured_cell"], measured_cell
         ):
             raise ValueError("utility calibration changed across resume")
         if payload.get("grafts", []) != grafts:
@@ -495,10 +500,7 @@ def run_consolidated_attachment_branch(
         rejected_updates = int(payload["rejected_updates"])
         records = list(payload["records"])
         evaluations = list(payload["evaluations"])
-        torch.set_rng_state(payload["torch_rng_state"].cpu())
-        cuda_state = payload.get("cuda_rng_state")
-        if cuda_state is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(cuda_state)
+        restore_rng_state(payload)
 
     while update < adaptation_updates:
         interval = min(eval_every, adaptation_updates - update)

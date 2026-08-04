@@ -19,6 +19,7 @@ place concurrently across available GPUs without sharing mutable state.
 - Reports total and trainable parameter counts separately so the organ-only branch does
   not make the physical organism appear smaller merely because its substrate is frozen.
 - Resumes model, optimizer, living state, counters, histories, and RNG state.
+- Restores RNG byte tensors through the shared device-independent checkpoint helper.
 
 ### Branch construction
 

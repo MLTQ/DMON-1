@@ -9,7 +9,7 @@ from pathlib import Path
 
 import torch
 
-from .checkpoint import pack_state, unpack_state
+from .checkpoint import pack_state, restore_rng_state, unpack_state
 from .config import Sol2Config
 from .model import Sol2, count_parameters
 from .optim import add_optimizer_parameters, build_optimizer
@@ -432,10 +432,7 @@ def run_organ_attachment_branch(
         rejected_updates = int(payload["rejected_updates"])
         records = list(payload["records"])
         evaluations = list(payload["evaluations"])
-        torch.set_rng_state(payload["torch_rng_state"].cpu())
-        cuda_state = payload.get("cuda_rng_state")
-        if cuda_state is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(cuda_state)
+        restore_rng_state(payload)
 
     a_digest_before = _parameter_digest(_a_organ_named_parameters(model))
     substrate_digest_before = _parameter_digest(_substrate_named_parameters(model))

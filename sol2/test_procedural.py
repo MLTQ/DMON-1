@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from .anchored_consolidation import ProximalAnchorPolicy, make_anchor_profile
+from .checkpoint import same_tensor_values
 from .config import Sol2Config
 from .consolidated_attachment import run_consolidated_attachment_branch
 from .consolidated_attachment_analysis import analyze as analyze_consolidation
@@ -18,10 +19,7 @@ from .consolidation import (
     make_utility_profile,
 )
 from .development import DevelopmentController
-from .developmental_attachment import (
-    _same_tensor_values,
-    run_developmental_attachment_branch,
-)
+from .developmental_attachment import run_developmental_attachment_branch
 from .developmental_analysis import analyze as analyze_development
 from .growth import grow_relay_tissue
 from .model import Sol2
@@ -454,9 +452,9 @@ def test_checkpoint_tensor_invariants_compare_values_not_storage() -> None:
     reference = torch.tensor([0.0, 0.25, 1.0])
     independent = reference.clone()
     assert independent.data_ptr() != reference.data_ptr()
-    assert _same_tensor_values(reference, independent)
+    assert same_tensor_values(reference, independent)
     independent[-1] = 0.5
-    assert not _same_tensor_values(reference, independent)
+    assert not same_tensor_values(reference, independent)
 
 
 def test_tiny_true_organ_branch_integrity() -> None:

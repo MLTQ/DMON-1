@@ -22,8 +22,8 @@ plasticity-pressure telemetry, and optional pressure-triggered relay-cell growth
 
 - `_train_interval` measures raw pre-clip substrate pressure, performs guarded AdamW,
   and applies the proximal anchor only after accepted updates.
-- `_same_tensor_values` normalizes checkpoint invariants to CPU before equality checks,
-  because `torch.load(map_location="cuda")` remaps tensors that were stored on CPU.
+- `same_tensor_values` and `restore_rng_state` from `checkpoint.py` normalize serialized
+  CPU tensors after `torch.load(map_location="cuda")` remaps them.
 - `_drift_summary` measures mature-prefix displacement after any amount of growth.
 - `_growth_lesions` freezes all born cells or zeros their private adapters.
 - `_mature_utility_lesions` compares equal-size high/low A-utility mature cells without

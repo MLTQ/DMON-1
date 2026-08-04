@@ -27,6 +27,8 @@ and matched transformer.
 - State detaches at optimizer boundaries but never resets.
 - Evaluation never mutates training state.
 - Checkpoints include the exact next stream position and optimizer moments.
+- RNG restoration uses the shared device-independent checkpoint contract, including
+  CUDA checkpoints loaded through `map_location`.
 - Baselines receive identical token, optimizer, and schedule budgets.
 - Two hundred consecutive rejected gradients abort loudly instead of producing a zombie
   run.

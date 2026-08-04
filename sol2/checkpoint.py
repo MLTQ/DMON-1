@@ -10,6 +10,21 @@ from .config import Sol2Config
 from .state import OrganismState
 
 
+def same_tensor_values(left: torch.Tensor, right: torch.Tensor) -> bool:
+    """Compare checkpoint invariants independently of map-location devices."""
+
+    return torch.equal(left.detach().cpu(), right.detach().cpu())
+
+
+def restore_rng_state(payload: dict) -> None:
+    """Restore CPU and CUDA RNG tensors after device-aware checkpoint loading."""
+
+    torch.set_rng_state(payload["torch_rng_state"].detach().cpu())
+    cuda_state = payload.get("cuda_rng_state")
+    if cuda_state is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all([state.detach().cpu() for state in cuda_state])
+
+
 def pack_state(state) -> dict:
     if isinstance(state, OrganismState):
         return {

@@ -17,7 +17,12 @@ from .anchored_consolidation import (
     anchor_profile_summary,
     make_anchor_profile,
 )
-from .checkpoint import pack_state, unpack_state
+from .checkpoint import (
+    pack_state,
+    restore_rng_state,
+    same_tensor_values,
+    unpack_state,
+)
 from .consolidation import calibrate_causal_utility
 from .development import DevelopmentController, decision_payload
 from .growth import grow_relay_tissue
@@ -51,12 +56,6 @@ def _parameter_digest(named_parameters) -> str:
         digest.update(name.encode())
         digest.update(parameter.detach().cpu().contiguous().numpy().tobytes())
     return digest.hexdigest()
-
-
-def _same_tensor_values(left: torch.Tensor, right: torch.Tensor) -> bool:
-    """Compare checkpoint invariants independently of load-time device remapping."""
-
-    return torch.equal(left.detach().cpu(), right.detach().cpu())
 
 
 def _a_organ_named_parameters(model: Sol2):
@@ -483,7 +482,7 @@ def run_developmental_attachment_branch(
         payload = torch.load(checkpoint_path, map_location=device, weights_only=True)
         if payload.get("schema") != SCHEMA or payload.get("branch") != branch:
             raise ValueError("incompatible developmental checkpoint")
-        if not _same_tensor_values(
+        if not same_tensor_values(
             payload["anchor_profile"]["measured_cell"], measured_cell
         ):
             raise ValueError("utility calibration changed across resume")
@@ -509,10 +508,7 @@ def run_developmental_attachment_branch(
         decisions = list(payload["decisions"])
         growth_events = list(payload["growth_events"])
         controller.load_state_dict(payload["controller"])
-        torch.set_rng_state(payload["torch_rng_state"].cpu())
-        cuda_state = payload.get("cuda_rng_state")
-        if cuda_state is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(cuda_state)
+        restore_rng_state(payload)
 
     while update < adaptation_updates:
         interval = min(eval_every, adaptation_updates - update)

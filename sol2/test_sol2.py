@@ -15,10 +15,12 @@ from .baselines import (
     match_gru_hidden,
     match_transformer_hidden,
 )
-from .checkpoint import load_checkpoint, save_checkpoint, unpack_state
+from .checkpoint import load_checkpoint, restore_rng_state, save_checkpoint, unpack_state
+from .campaign import claim_ready_job, finish_job, write_manifest
 from .config import Sol2Config
 from .evaluate import evaluate_with_ablations
 from .growth import activate_reserve_dendrites, grow_relay_tissue
+from .hardware_preflight import run_hardware_preflight
 from .interventions import (
     degree_preserving_rewire,
     disable_graft_edges,
@@ -460,6 +462,82 @@ def test_background_learning_does_not_reset_ticks() -> None:
         assert runtime.state.hidden.abs().sum() > 0
 
 
+def test_hardware_preflight_measures_base_and_growth() -> None:
+    cfg = SMALL.scaled(
+        steps_per_token=1,
+        batch_size=2,
+        cell_adapter_rank=2,
+        device="cpu",
+    )
+    result = run_hardware_preflight(
+        cfg,
+        warmup_updates=1,
+        measure_updates=2,
+        program_steps=2,
+        growth_cells=2,
+    )
+    assert result["schema"] == 1
+    assert result["hardware"]["type"] == "cpu"
+    assert [row["name"] for row in result["phases"]] == ["base", "grown"]
+    assert all(row["accepted_updates"] == 2 for row in result["phases"])
+    assert all(row["rejected_updates"] == 0 for row in result["phases"])
+    assert result["phases"][1]["cells"] == result["phases"][0]["cells"] + 2
+    assert len(result["growth"]["cells"]) == 2
+    assert result["protocol"]["base_config"]["n_relay"] == cfg.n_relay
+    assert result["capacity"]["estimated_concurrent_processes_at_80pct"] is None
+
+
+def test_campaign_claims_dependencies_and_requires_artifacts() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        jobs = [
+            {
+                "id": "acquire-s7",
+                "command": ["{python}", "-c", "print('acquire')"],
+                "depends_on": [],
+                "expected_artifact": "acquire/acquisition.pt",
+            },
+            {
+                "id": "adapt-s7",
+                "command": ["{python}", "-c", "print('adapt')"],
+                "depends_on": ["acquire-s7"],
+                "expected_artifact": "adapt/metrics.json",
+            },
+        ]
+        first_manifest = write_manifest(root, jobs, {"name": "test"})
+        assert write_manifest(root, jobs, {"name": "test"}) == first_manifest
+        first = claim_ready_job(root, "worker-a", now=10.0)
+        assert first is not None and first["id"] == "acquire-s7"
+        assert claim_ready_job(root, "worker-b", now=11.0) is None
+        failed = finish_job(root, first["id"], "worker-a", exit_code=0, now=12.0)
+        assert failed["status"] == "failed"
+        assert failed["failure"] == "expected_artifact_missing"
+        assert claim_ready_job(root, "worker-b", now=13.0) is None
+
+        retried = claim_ready_job(root, "worker-a", retry_failed=True, now=14.0)
+        assert retried is not None and retried["id"] == "acquire-s7"
+        artifact = root / "acquire" / "acquisition.pt"
+        artifact.parent.mkdir()
+        artifact.write_bytes(b"checkpoint")
+        completed = finish_job(root, retried["id"], "worker-a", exit_code=0, now=15.0)
+        assert completed["status"] == "complete"
+        downstream = claim_ready_job(root, "worker-b", now=16.0)
+        assert downstream is not None and downstream["id"] == "adapt-s7"
+
+
+def test_checkpoint_rng_restore_normalizes_serialized_state() -> None:
+    original = torch.get_rng_state()
+    try:
+        torch.manual_seed(991)
+        target = torch.get_rng_state().clone()
+        torch.manual_seed(992)
+        assert not torch.equal(torch.get_rng_state(), target)
+        restore_rng_state({"torch_rng_state": target, "cuda_rng_state": None})
+        assert torch.equal(torch.get_rng_state(), target)
+    finally:
+        torch.set_rng_state(original)
+
+
 def main() -> None:
     tests = [
         test_shapes_bounds_and_topology,
@@ -477,6 +555,9 @@ def main() -> None:
         test_matched_transformer_budget,
         test_checkpoint_restores_process,
         test_background_learning_does_not_reset_ticks,
+        test_hardware_preflight_measures_base_and_growth,
+        test_campaign_claims_dependencies_and_requires_artifacts,
+        test_checkpoint_rng_restore_normalizes_serialized_state,
     ]
     print("SOL2 CPU contract gate")
     for test in tests:

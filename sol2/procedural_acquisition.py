@@ -8,7 +8,7 @@ from pathlib import Path
 
 import torch
 
-from .checkpoint import pack_state, unpack_state
+from .checkpoint import pack_state, restore_rng_state, unpack_state
 from .config import Sol2Config
 from .model import Sol2, count_parameters
 from .optim import build_optimizer
@@ -180,10 +180,7 @@ def run_acquisition_calibration(
         records = list(payload["records"])
         evaluations = list(payload["evaluations"])
         mastery_streak = int(payload["mastery_streak"])
-        torch.set_rng_state(payload["torch_rng_state"].cpu())
-        cuda_state = payload.get("cuda_rng_state")
-        if cuda_state is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(cuda_state)
+        restore_rng_state(payload)
 
     while update < max_updates and mastery_streak < mastery_checks:
         interval_updates = min(evaluation_interval, max_updates - update)

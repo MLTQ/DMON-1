@@ -16,7 +16,7 @@ from .baselines import (
     match_gru_hidden,
     match_transformer_hidden,
 )
-from .checkpoint import load_checkpoint, save_checkpoint, unpack_state
+from .checkpoint import load_checkpoint, restore_rng_state, save_checkpoint, unpack_state
 from .config import Sol2Config
 from .evaluate import evaluate_model, evaluate_with_ablations
 from .model import Sol2, count_parameters
@@ -134,10 +134,7 @@ def run(
         rejected_updates = int(checkpoint_payload.get("rejected_updates", 0))
         history = list(checkpoint_payload.get("history", []))
         evaluations = list(checkpoint_payload.get("evaluations", []))
-        torch.set_rng_state(checkpoint_payload["torch_rng_state"].cpu())
-        cuda_state = checkpoint_payload.get("cuda_rng_state")
-        if cuda_state is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(cuda_state)
+        restore_rng_state(checkpoint_payload)
 
     model.train()
     window_nll = 0.0

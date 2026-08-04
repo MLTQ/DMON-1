@@ -46,6 +46,8 @@ or all internal cells, and disable the newly grafted edges alongside existing le
 - All branches consume the same B generator seeds and evaluation examples.
 - A's physical organ remains byte-identical.
 - Calibration must reproduce exactly before a checkpoint may resume.
+- Calibration comparison and RNG restoration are invariant to CUDA `map_location`
+  remapping of serialized CPU tensors.
 - Reserve grafts must reproduce exactly before a checkpoint may resume.
 - A and B evaluations never prime one another's living state.
 - The runner makes no success claim from a tiny smoke run; result-bearing budgets live
