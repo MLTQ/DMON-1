@@ -18,6 +18,8 @@ must share one universal rule.
 - Complete process checkpoints and matched GRU/transformer controls.
 - A versioned background-learning runtime that keeps foreground ticks separate from
   backward computation.
+- A branch-controlled procedural-transfer benchmark that separates new interfaces from
+  new algorithms and can freeze the core while sensory/output organs adapt.
 
 ## Architecture
 
@@ -50,12 +52,30 @@ fractions rather than optimized as an activity reward.
 
 ```bash
 .venv/bin/python -m sol2.test_sol2
+.venv/bin/python -m sol2.test_procedural
 ```
 
 The suite is deliberately executable without pytest so a fresh project environment
 can validate the architecture before optional test-runner dependencies are installed.
 
 This gate must pass before GPU work.
+
+## Procedural transfer
+
+`experiments/s1-procedural-transfer.md` begins the organism-level evaluation line.
+Freshly generated programs replace text compression; only exact procedural answers are
+scored. One acquired organism is forked into unchanged, new-interface, reversed-
+procedure, and SOL2 organ-only branches. Accuracy by program length and causal tissue,
+identity, topology, reset, and memory interventions are retained in `metrics.json`.
+
+```bash
+.venv/bin/python -m sol2.procedural_benchmark --model creature --device cpu \
+  --acquisition-updates 1000 --adaptation-updates 500 \
+  --out-dir /tmp/sol2-procedural
+```
+
+This is a dense bridge test, not yet a DNC memory experiment. A procedural mode must be
+useful while active before external storage and retrieval of that mode is justified.
 
 ## Short local smoke
 
