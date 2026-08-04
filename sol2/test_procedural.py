@@ -98,11 +98,15 @@ def test_tiny_branching_smoke() -> None:
             "acquisition",
             "control",
             "interface",
+            "interface_scratch",
             "procedure",
             "interface_organs_only",
             "procedure_organs_only",
         }
         assert all(len(rows) == 2 for rows in result["records"].values())
+        lesions = result["summary"]["branches"]["control"]["trained_length"]
+        assert "freeze_compute" in lesions
+        assert "freeze_relay" in lesions
         assert (Path(directory) / "metrics.json").exists()
 
 

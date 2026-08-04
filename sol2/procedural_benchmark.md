@@ -32,20 +32,24 @@ answers produced by latent program composition receive loss.
 
 ### `evaluate_with_ablations`
 
-- **Does**: Applies reset, internal freeze, within-tissue state shuffle, memory zero,
-  private-expression shuffle, and topology rewire interventions on procedural answers.
+- **Does**: Applies reset, whole-internal, compute-only and relay-only freezes,
+  within-tissue state shuffle, memory zero, private-expression shuffle, and topology
+  rewire interventions on procedural answers.
 - **Rationale**: High accuracy alone does not establish that differentiated substrate
-  structure carries the procedure.
+  structure carries the procedure. Tissue-specific freezes distinguish computation
+  from routing; these are acute evaluation lesions, never robustness training targets.
 
 ### `run_benchmark`
 
-- **Does**: Acquires regime A, snapshots the exact model/optimizer/live state, then
-  forks matched continuation, new-interface, and new-procedure branches. SOL2 also
-  receives organ-only interface and procedure forks with its internal substrate frozen.
+- **Does**: Snapshots the exact initial and acquired model/optimizer/live states, then
+  forks matched continuation, new-interface, new-procedure, and new-interface-from-
+  scratch branches. SOL2 also receives organ-only interface and procedure forks with
+  its internal substrate operational but parameter-frozen.
 - **Rationale**: Forking removes training-age and initialization confounds. Successful
-  interface adaptation through only sensory and output organs directly tests whether a
-  fixed procedural core can be reconnected; the matched reversed-procedure fork tests
-  whether the frozen core can be bypassed by those organs.
+  full-organism interface adaptation is the biological capability. Its matched scratch
+  branch measures whether acquisition transfers an advantage. Organ-only adaptation is
+  a diagnostic of modular reuse, not a requirement that the neurology remain immutable;
+  the reversed-procedure fork checks whether organs can route around the core.
 
 ## Contracts
 
@@ -55,6 +59,7 @@ answers produced by latent program composition receive loss.
 | Offline analysis | `metrics.json` retains raw per-update records | Removing or renaming record fields |
 | SOL2 interventions | All ablations see identical generated batches | Changing generator seeds between ablations |
 | Full/organ-only forks | Matched interface or procedure pairs see identical training programs | Per-branch sample seeds |
+| Acquired/scratch interface forks | Same B programs, update count, and learning-rate phase | Different sample seeds or curricula |
 
 ## Decisions
 
@@ -67,6 +72,9 @@ answers produced by latent program composition receive loss.
 - Organs-only SOL2 forks preserve optimizer moments, but frozen core parameters receive
   no gradient or weight decay; trainable parameters are embedding, sensory affine
   identity, and the attentive output organ.
+- Lesion penalties establish causal localization; larger damage is not optimized or
+  treated as inherently better. Recovery after organ changes is a separate plasticity
+  experiment with learning enabled.
 - The first harness is intentionally short and not checkpoint-resumable. GPU promotion
   requires a manifest and service-level restart boundary after the CPU gate establishes
   that the task produces learnable, nontrivial curves.

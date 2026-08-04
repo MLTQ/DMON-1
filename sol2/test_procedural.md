@@ -14,6 +14,8 @@ branching harness before any GPU experiment is allocated.
   latent answers, confirming that the C fork changes computation rather than interface.
 - A tiny SOL2 organism can acquire, fork full and organs-only transfer branches, run
   interventions, and write a complete metrics artifact.
+- The interface-from-scratch control is present, and acute lesions separately expose
+  compute- and relay-tissue contributions.
 
 ## Contracts
 

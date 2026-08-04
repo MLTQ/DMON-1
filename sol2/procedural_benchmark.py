@@ -212,6 +212,12 @@ def evaluate_with_ablations(
     result["freeze_internal"] = evaluate_regime(
         **common, frozen_idx=model.internal_idx
     )
+    result["freeze_compute"] = evaluate_regime(
+        **common, frozen_idx=model.tissue_indices("compute")
+    )
+    result["freeze_relay"] = evaluate_regime(
+        **common, frozen_idx=model.tissue_indices("relay")
+    )
     generator = torch.Generator().manual_seed(1729)
     permutations = {}
     for name in ("compute", "relay"):
@@ -338,6 +344,9 @@ def run_benchmark(
     model = build_model(kind, cfg, cfg.device)
     optimizer = build_optimizer(model, cfg)
     state = model.initial_state(cfg.batch_size, cfg.device)
+    initial_model = copy.deepcopy(model.state_dict())
+    initial_optimizer = copy.deepcopy(optimizer.state_dict())
+    initial_state = _clone_state(state)
     acquisition = train_phase(
         model,
         optimizer,
@@ -358,31 +367,37 @@ def run_benchmark(
     snapshot_state = _clone_state(acquisition.state)
 
     branch_specs = {
-        "control": (regime_a, False, 0),
-        "interface": (regime_b, False, 1),
-        "procedure": (regime_c, False, 2),
+        "control": (regime_a, False, 0, "acquired"),
+        "interface": (regime_b, False, 1, "acquired"),
+        "procedure": (regime_c, False, 2, "acquired"),
+        "interface_scratch": (regime_b, False, 1, "initial"),
     }
     if kind == "creature":
         branch_specs.update(
             {
-                "interface_organs_only": (regime_b, True, 1),
-                "procedure_organs_only": (regime_c, True, 2),
+                "interface_organs_only": (regime_b, True, 1, "acquired"),
+                "procedure_organs_only": (regime_c, True, 2, "acquired"),
             }
         )
     branches = {}
     branch_models = {}
-    for name, (regime, organs_only, sample_offset) in branch_specs.items():
+    for name, (regime, organs_only, sample_offset, source) in branch_specs.items():
+        source_model = snapshot_model if source == "acquired" else initial_model
+        source_optimizer = (
+            snapshot_optimizer if source == "acquired" else initial_optimizer
+        )
+        source_state = snapshot_state if source == "acquired" else initial_state
         branch_model, branch_optimizer = _fresh_branch(
             kind,
             cfg,
-            snapshot_model,
-            snapshot_optimizer,
+            source_model,
+            source_optimizer,
             organs_only=organs_only,
         )
         phase = train_phase(
             branch_model,
             branch_optimizer,
-            _clone_state(snapshot_state),
+            _clone_state(source_state),
             task,
             regime,
             cfg,
@@ -415,10 +430,11 @@ def run_benchmark(
         "branches": {},
     }
     for name, phase in branches.items():
-        regime, organs_only, _ = branch_specs[name]
+        regime, organs_only, _, source = branch_specs[name]
         branch_model = branch_models[name]
         summaries["branches"][name] = {
             "organs_only": organs_only,
+            "source_checkpoint": source,
             "early": _window_summary(phase.records, 0.10, from_end=False),
             "late": _window_summary(phase.records, 0.25, from_end=True),
             "by_length": _length_curve(
@@ -464,6 +480,14 @@ def run_benchmark(
             "procedure_full_late_accuracy": summaries["branches"]["procedure"]
             ["late"]["answer_accuracy"],
         }
+    summaries["interface_transfer"] = {
+        "full_minus_scratch_early_accuracy": summaries["branches"]["interface"]
+        ["early"]["answer_accuracy"]
+        - summaries["branches"]["interface_scratch"]["early"]["answer_accuracy"],
+        "full_minus_scratch_late_accuracy": summaries["branches"]["interface"]
+        ["late"]["answer_accuracy"]
+        - summaries["branches"]["interface_scratch"]["late"]["answer_accuracy"],
+    }
     summaries["return_to_a_after_interface"] = evaluate_regime(
         branch_models["interface"],
         branches["interface"].state,

@@ -1,7 +1,7 @@
 # S1-P: procedural transfer across changing interfaces
 
-Status: architecture and CPU gate complete; GPU protocol frozen 2026-08-03 before
-result-bearing runs.
+Status: architecture and CPU gate complete; interpretation amended 2026-08-03 before
+result-bearing runs to distinguish adaptation from lesion tolerance.
 
 ## Goal
 
@@ -24,23 +24,32 @@ freshly generated, so memorizing facts cannot solve the task.
    - B-interface: new state, operation, and answer symbols; same procedure.
    - C-procedure: same symbols and primitive meanings; compose the program in reverse
      rather than forward order.
+   - B-scratch: learn B from the exact pre-acquisition initialization on the same B
+     examples, providing a transfer baseline for the unrestricted organism.
    - SOL2-only B/C organ forks: repeat both changes while freezing graph, tissue rules,
-     private cell expression, and recurrent core; train only sensory and output organs.
+     and private cell expression parameters; the recurrent core remains operational,
+     while only sensory and output organs learn.
 4. Compare early and late answer accuracy, answer cross-entropy, longer-program
    extrapolation, per-length acquisition/adaptation curves, and return-to-A retention.
 
-The primary procedural-transfer signal is useful B-interface adaptation with the
-internal core frozen, relative to the unrestricted B branch. The matched frozen C branch
-tests whether interface organs can fake a new procedure. A measures ordinary continued
-improvement. Raw B-versus-C speed is descriptive because arbitrary symbol remapping and
-reversed execution need not have equal intrinsic difficulty.
+The primary organism capability is useful unrestricted B-interface adaptation. Its
+advantage over B-scratch measures transfer from prior procedural acquisition. The
+organ-only B branch diagnoses how much reuse is possible without internal parameter
+change; it is not a demand that biological neurology remain immutable. The matched
+organ-only C branch tests whether interface organs can fake a new procedure. A measures
+ordinary continued improvement. Raw B-versus-C speed is descriptive because arbitrary
+symbol remapping and reversed execution need not have equal intrinsic difficulty.
 
 ## Organism evidence
 
-Task success is reported beside reset, internal freeze, within-tissue state shuffle,
-private-expression shuffle, topology rewire, and sensory-memory-zero interventions.
-The procedure is credited to differentiated substrate only when normal accuracy is
-useful and the corresponding causal interventions degrade it.
+Task success is reported beside reset, whole-internal, compute-only and relay-only
+freezes, within-tissue state shuffle, private-expression shuffle, topology rewire, and
+sensory-memory-zero interventions. These are acute lesions evaluated after learning;
+the organism is never trained to withstand them. Degradation establishes that grey-like
+computation, white-like routing, private identity, or topology carries the capability.
+Its magnitude is not a robustness objective and is meaningful only beside normal
+performance. Plastic recovery after adding or removing organs is a later experiment in
+which whole-organism learning remains enabled.
 
 ## Memory interpretation
 
@@ -109,19 +118,25 @@ Outcomes are interpreted in this order:
 2. **Substrate-use gate:** freezing internal cells or rewiring topology must each lower
    length-four A accuracy by at least 10 percentage points. Otherwise task performance
    has not established a procedural internal circuit.
-3. **Interface-reuse signal:** the B organs-only fork must exceed 22.5% length-four
-   accuracy (chance is 12.5%) and finish no more than 15 percentage points below the
-   unrestricted B fork. This is the direct evidence that the acquired core can be
-   reconnected through new sensors/effectors.
-4. **Specificity control:** B and C are never ranked by raw speed alone. We report the
+3. **Whole-organism adaptation gate:** unrestricted B must reach at least 50% held-out
+   length-four accuracy. B is compared with its matched from-scratch branch; an early
+   accuracy advantage of at least 10 percentage points is strong evidence that prior
+   acquisition accelerates adaptation, while useful B without that advantage establishes
+   adaptability but not positive transfer.
+4. **Modular-reuse diagnostic:** B organs-only above 22.5% length-four accuracy is
+   evidence that an operational but parameter-frozen core can be reconnected. Failure
+   does not negate successful whole-organism adaptation; it locates adaptation inside
+   the integrated substrate rather than only at its interface.
+5. **Specificity control:** B and C are never ranked by raw speed alone. We report the
    full-versus-organs-only gap within each regime; C checks whether organ-only learning
    can merely route around an unchanged procedure.
-5. **Retention and extrapolation:** return-to-A and length-eight results are reported
+6. **Retention and extrapolation:** return-to-A and length-eight results are reported
    as separate capabilities, not used to retroactively redefine the first three gates.
 
 A single seed can promote an architectural ablation but cannot establish a general
-capability claim. If gates 1 and 2 pass and B shows non-chance transfer, repeat seeds 13
-and 21 before adding complexity. If gates 1 and 2 pass but gate 3 does not, the next
-experiment is low-rank dynamic mode state. DNC-style slots remain deferred until that
-active mode is causally beneficial. Delta-aware liquid timescales are tested separately
-on irregular-latency variants, rather than bundled into this attribution run.
+capability claim. If gates 1 through 3 pass, repeat seeds 13 and 21 before adding
+complexity. If the substrate is causal and B adapts but shows neither a scratch advantage
+nor organ-only reuse, the next experiment is low-rank dynamic mode state. DNC-style
+slots remain deferred until that active mode is causally beneficial. Delta-aware liquid
+timescales are tested separately on irregular-latency variants, rather than bundled into
+this attribution run.
