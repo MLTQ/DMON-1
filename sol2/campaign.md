@@ -30,6 +30,8 @@ without duplicating acquisitions or treating partial output as completion.
 - Optionally pins one worker to a physical CUDA identifier through its environment.
 - Captures one append-only log per job and waits for other workers when downstream work
   is blocked by a currently running dependency.
+- Persists elapsed wall time for every completed or failed attempt beside its worker and
+  exit status.
 
 ## Contracts
 

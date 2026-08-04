@@ -209,6 +209,7 @@ def finish_job(
             {
                 "status": "complete" if success else "failed",
                 "finished_at": current_time,
+                "elapsed_seconds": current_time - float(row["started_at"]),
                 "exit_code": exit_code,
                 "artifact_present": artifact_present,
                 "completion_check_passed": completion_ok,

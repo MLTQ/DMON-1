@@ -36,6 +36,8 @@ Acts as the mandatory CPU gate before any SOL2 GPU allocation.
   immutable pre-growth geometry record.
 - Immutable campaign hashing, atomic multi-worker claims, dependency blocking, explicit
   attempt-capped retries, artifact verification, and nested JSON eligibility predicates.
+- Shell-free campaign worker execution across a two-job dependency chain with portable
+  root and Python placeholders, plus persistent attempt wall time.
 - Degree-preserving topology and private-expression interventions restore exactly.
 
 ## Contracts

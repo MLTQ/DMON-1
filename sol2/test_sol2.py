@@ -17,7 +17,13 @@ from .baselines import (
     match_transformer_hidden,
 )
 from .checkpoint import load_checkpoint, restore_rng_state, save_checkpoint, unpack_state
-from .campaign import claim_ready_job, finish_job, write_manifest
+from .campaign import (
+    campaign_status,
+    claim_ready_job,
+    finish_job,
+    run_worker,
+    write_manifest,
+)
 from .config import Sol2Config
 from .developmental_campaign import build_jobs, geometry_for_cells
 from .evaluate import evaluate_with_ablations
@@ -538,6 +544,7 @@ def test_campaign_claims_dependencies_and_requires_artifacts() -> None:
         artifact.write_text(json.dumps({"mastered": True}))
         completed = finish_job(root, retried["id"], "worker-a", exit_code=0, now=17.0)
         assert completed["status"] == "complete"
+        assert completed["elapsed_seconds"] == 1.0
         downstream = claim_ready_job(root, "worker-b", now=18.0)
         assert downstream is not None and downstream["id"] == "adapt-s7"
 
@@ -578,6 +585,52 @@ def test_developmental_campaign_is_capacity_and_mastery_gated() -> None:
     assert protocol["effective_batch_size"] == 24
 
 
+def test_campaign_worker_executes_dependency_chain() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        write_json = (
+            "import json; from pathlib import Path; "
+            "p=Path(r'{root}/%s'); p.parent.mkdir(parents=True, exist_ok=True); "
+            "p.write_text(json.dumps(%s))"
+        )
+        jobs = [
+            {
+                "id": "first",
+                "command": [
+                    "{python}",
+                    "-c",
+                    write_json % ("first.json", "{'ready': True}"),
+                ],
+                "depends_on": [],
+                "expected_artifact": "first.json",
+                "completion_check": {"json_field": ["ready"], "equals": True},
+            },
+            {
+                "id": "second",
+                "command": [
+                    "{python}",
+                    "-c",
+                    write_json % ("second.json", "{'done': 2}"),
+                ],
+                "depends_on": ["first"],
+                "expected_artifact": "second.json",
+                "completion_check": {"json_field": ["done"], "equals": 2},
+            },
+        ]
+        write_manifest(root, jobs, {"name": "worker-chain"})
+        exit_code = run_worker(
+            root,
+            "cpu-worker",
+            cuda_visible_devices=None,
+            retry_failed=False,
+            max_attempts=2,
+            reclaim_after_seconds=None,
+            poll_seconds=0.01,
+        )
+        assert exit_code == 0
+        assert campaign_status(root)["counts"]["complete"] == 2
+
+
 def main() -> None:
     tests = [
         test_shapes_bounds_and_topology,
@@ -599,6 +652,7 @@ def main() -> None:
         test_campaign_claims_dependencies_and_requires_artifacts,
         test_checkpoint_rng_restore_normalizes_serialized_state,
         test_developmental_campaign_is_capacity_and_mastery_gated,
+        test_campaign_worker_executes_dependency_chain,
     ]
     print("SOL2 CPU contract gate")
     for test in tests:
