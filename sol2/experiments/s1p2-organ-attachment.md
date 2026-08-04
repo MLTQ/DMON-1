@@ -1,6 +1,7 @@
 # S1-P2: true organ attachment and retention
 
-Status: preregistered before implementation and result inspection.
+Status: seed-7 4090 run complete; qualified mechanistic success, strong-success gate
+failed on early-transfer threshold and A retention.
 
 ## Question
 
@@ -96,3 +97,43 @@ All branches run exclusively on physical RTX 4090 UUID
 `GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`. The 2070S is reserved for the separate
 `jewels` program and must not receive SOL2 processes. Branches run in two memory-safe
 waves rather than spilling onto the reserved card.
+
+## Seed-7 result
+
+All four branches completed from commit `4a8f4d1` with zero rejected updates. The A
+organ remained byte-identical in every B branch, and the organ-only substrate remained
+byte-identical. The complete aggregate is retained in
+`s1p2-organ-attachment-result.json`.
+
+| Measure | Result |
+|---|---:|
+| A-control length 4 | 99.35% |
+| B-full / B-scratch length 4 | 95.77% / 84.83% |
+| B-organ-only length 1 / 2 / 3 / 4 | 94.5% / 46.9% / 24.3% / 19.7% |
+| Full-minus-scratch first-10% accuracy | +6.56 points |
+| Updates to 50% B-full / scratch | 800 / 1,800 |
+| Updates to 80% B-full / scratch | 1,000 / 2,000 |
+| A return after full B / matched control | 12.43% / 99.35% |
+| B before removal / immediate reattachment | 95.70% / 23.57% |
+| B after 25 / 100 / 250 recovery updates | 79.36% / 97.40% / 99.35% |
+| A after 500 detached-B updates | 98.96% |
+| B-full internal / compute / relay freeze penalty | 85.68 / 80.27 / 85.61 points |
+| B-full topology-rewire penalty | 72.72 points |
+
+The mature organism accelerates B substantially even though the frozen first-10%
+transfer gate missed 10 points: B-full reached 50% and 80% exactly 1,000 updates before
+scratch. The result therefore supports procedural reuse but does not pass the
+preregistered strong-transfer definition.
+
+The principal failure is simultaneous retention. As B length-four accuracy rose, A
+accuracy through its unchanged physical organ fell with checkpoint correlation -0.92;
+final A was near chance while A-control remained mastered. The enormous compute,
+relay, internal, and topology lesion penalties show that B did not bypass the body.
+Instead, whole-organism plasticity rewrote the shared procedural configuration.
+
+Removal and reversal are symmetric. Five hundred A updates restored A to 98.96% but
+made the unchanged reattached B organ score 23.57%; B then recovered to 79.36% in 25
+updates and 97.40% in 100. SOL2 has a highly reusable and rapidly rewritable substrate,
+but currently only one active deep procedural mode. The next architectural attribution
+should add a low-rank, organ-conditioned dynamic mode state and train interleaved A/B
+switches before adding external DNC-style storage.
