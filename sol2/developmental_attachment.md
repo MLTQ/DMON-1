@@ -22,6 +22,8 @@ plasticity-pressure telemetry, and optional pressure-triggered relay-cell growth
 
 - `_train_interval` measures raw pre-clip substrate pressure, performs guarded AdamW,
   and applies the proximal anchor only after accepted updates.
+- `_same_tensor_values` normalizes checkpoint invariants to CPU before equality checks,
+  because `torch.load(map_location="cuda")` remaps tensors that were stored on CPU.
 - `_drift_summary` measures mature-prefix displacement after any amount of growth.
 - `_growth_lesions` freezes all born cells or zeros their private adapters.
 - `_mature_utility_lesions` compares equal-size high/low A-utility mature cells without
@@ -36,6 +38,8 @@ plasticity-pressure telemetry, and optional pressure-triggered relay-cell growth
 - New rows remain outside the immutable A anchor for the entire episode.
 - Resume reconstructs geometry from the growth ledger before loading model and optimizer
   state, then restores controller streaks and RNG state.
+- Resume invariant checks are independent of whether the checkpoint is loaded on CPU or
+  CUDA; load-time remapping cannot cause a false utility-calibration mismatch.
 - Resume rejects changed controller thresholds and retains the true pre-adaptation
   baseline rather than reevaluating the partially trained checkpoint as update zero.
 - A-organ parameters remain byte-identical and no A rehearsal occurs.

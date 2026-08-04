@@ -53,6 +53,12 @@ def _parameter_digest(named_parameters) -> str:
     return digest.hexdigest()
 
 
+def _same_tensor_values(left: torch.Tensor, right: torch.Tensor) -> bool:
+    """Compare checkpoint invariants independently of load-time device remapping."""
+
+    return torch.equal(left.detach().cpu(), right.detach().cpu())
+
+
 def _a_organ_named_parameters(model: Sol2):
     for name, parameter in model.named_parameters():
         if name.startswith(("embedding.", "sensory_gain", "sensory_bias", "output_organ.")):
@@ -477,8 +483,8 @@ def run_developmental_attachment_branch(
         payload = torch.load(checkpoint_path, map_location=device, weights_only=True)
         if payload.get("schema") != SCHEMA or payload.get("branch") != branch:
             raise ValueError("incompatible developmental checkpoint")
-        if not torch.equal(
-            payload["anchor_profile"]["measured_cell"], measured_cell.detach().cpu()
+        if not _same_tensor_values(
+            payload["anchor_profile"]["measured_cell"], measured_cell
         ):
             raise ValueError("utility calibration changed across resume")
         if payload["controller_config"] != controller.configuration():

@@ -29,6 +29,8 @@ branching harness before any GPU experiment is allocated.
   fully plastic, and expose anchored versus accessible gradient demand.
 - Developmental triggers require persistent pressure, honor refractory periods and
   event caps, and resume their decision state exactly.
+- Checkpoint invariant comparisons depend on tensor values rather than storage identity
+  or the device selected by `torch.load(map_location=...)`.
 - Tiny full and organ-only true-attachment branches preserve inactive A parameters,
   keep the frozen organ-only substrate exact, checkpoint adaptation, and exercise the
   removal/reattachment path.

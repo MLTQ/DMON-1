@@ -18,7 +18,10 @@ from .consolidation import (
     make_utility_profile,
 )
 from .development import DevelopmentController
-from .developmental_attachment import run_developmental_attachment_branch
+from .developmental_attachment import (
+    _same_tensor_values,
+    run_developmental_attachment_branch,
+)
 from .developmental_analysis import analyze as analyze_development
 from .growth import grow_relay_tissue
 from .model import Sol2
@@ -445,6 +448,15 @@ def test_development_controller_requires_persistent_pressure_and_refractory() ->
     triggered = restored.observe(update=1200, b_accuracy=0.27, pressure=0.90)
     capped = restored.observe(update=1500, b_accuracy=0.28, pressure=0.90)
     assert triggered.trigger and not capped.trigger
+
+
+def test_checkpoint_tensor_invariants_compare_values_not_storage() -> None:
+    reference = torch.tensor([0.0, 0.25, 1.0])
+    independent = reference.clone()
+    assert independent.data_ptr() != reference.data_ptr()
+    assert _same_tensor_values(reference, independent)
+    independent[-1] = 0.5
+    assert not _same_tensor_values(reference, independent)
 
 
 def test_tiny_true_organ_branch_integrity() -> None:
@@ -882,6 +894,7 @@ def main() -> None:
         test_causal_utility_and_realized_update_protection,
         test_proximal_anchor_is_exact_and_growth_rows_remain_free,
         test_development_controller_requires_persistent_pressure_and_refractory,
+        test_checkpoint_tensor_invariants_compare_values_not_storage,
         test_tiny_true_organ_branch_integrity,
         test_tiny_consolidated_attachment_branch,
         test_tiny_developmental_branch_grows_and_resumes,
