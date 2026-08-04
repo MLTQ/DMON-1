@@ -31,7 +31,7 @@ def set_learning_rate(optimizer: torch.optim.Optimizer, cfg: Sol2Config, update:
     return learning_rate
 
 
-def build_optimizer(model: torch.nn.Module, cfg: Sol2Config) -> torch.optim.AdamW:
+def _parameter_groups(named_parameters, cfg: Sol2Config) -> list[dict]:
     no_decay_markers = (
         "bias",
         "norm",
@@ -42,20 +42,48 @@ def build_optimizer(model: torch.nn.Module, cfg: Sol2Config) -> torch.optim.Adam
         "sensory_bias",
     )
     decay, no_decay = [], []
-    for name, parameter in model.named_parameters():
+    for name, parameter in named_parameters:
         if not parameter.requires_grad:
             continue
         target = no_decay if parameter.ndim < 2 or any(
             marker in name for marker in no_decay_markers
         ) else decay
         target.append(parameter)
-    return torch.optim.AdamW(
-        [
-            {"params": decay, "weight_decay": cfg.weight_decay},
-            {"params": no_decay, "weight_decay": 0.0},
-        ],
-        lr=cfg.lr,
-    )
+    groups = []
+    if decay:
+        groups.append({"params": decay, "weight_decay": cfg.weight_decay})
+    if no_decay:
+        groups.append({"params": no_decay, "weight_decay": 0.0})
+    return groups
+
+
+def build_optimizer(model: torch.nn.Module, cfg: Sol2Config) -> torch.optim.AdamW:
+    groups = _parameter_groups(model.named_parameters(), cfg)
+    if not groups:
+        raise ValueError("cannot build an optimizer without trainable parameters")
+    return torch.optim.AdamW(groups, lr=cfg.lr)
+
+
+def add_optimizer_parameters(
+    optimizer: torch.optim.AdamW,
+    named_parameters,
+    cfg: Sol2Config,
+) -> None:
+    """Add a newly attached module while preserving every existing optimizer moment."""
+
+    known = {
+        id(parameter)
+        for group in optimizer.param_groups
+        for parameter in group["params"]
+    }
+    fresh = [
+        (name, parameter)
+        for name, parameter in named_parameters
+        if parameter.requires_grad and id(parameter) not in known
+    ]
+    for group in _parameter_groups(fresh, cfg):
+        group["lr"] = cfg.lr
+        optimizer.add_param_group(group)
 
 
 @dataclass

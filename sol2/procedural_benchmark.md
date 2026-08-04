@@ -17,12 +17,16 @@ answers produced by latent program composition receive loss.
 - **Rationale**: Acquisition expands program length from one transformation to the
   configured maximum. The transfer forks start at full length, so curriculum forms the
   composition circuit without making remapping artificially easy.
+- **Organ contract**: An explicit organ name selects the physical sensor/effector port;
+  legacy callers default to A.
 
 ### `evaluate_regime`
 
 - **Does**: Scores generated programs without weight updates from a cloned live state.
 - **Rationale**: Evaluation must preserve learned mode state without mutating the
   organism's continuing lifetime.
+- **Organ contract**: Evaluation and every lesion use the named port without changing
+  any attached organ registry.
 
 ### `_length_curve`
 
@@ -60,6 +64,7 @@ answers produced by latent program composition receive loss.
 | SOL2 interventions | All ablations see identical generated batches | Changing generator seeds between ablations |
 | Full/organ-only forks | Matched interface or procedure pairs see identical training programs | Per-branch sample seeds |
 | Acquired/scratch interface forks | Same B programs, update count, and learning-rate phase | Different sample seeds or curricula |
+| Multi-organ runners | Explicit A/B port selection reaches every train/evaluation step | Dropping `organ_name` during a nested evaluation |
 
 ## Decisions
 

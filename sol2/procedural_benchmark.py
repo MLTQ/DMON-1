@@ -41,12 +41,22 @@ def _clone_state(state):
     return state.detach().clone()
 
 
-def _step_episode(model, tokens: torch.Tensor, state, *, frozen_idx=None):
+def _step_episode(
+    model,
+    tokens: torch.Tensor,
+    state,
+    *,
+    organ_name: str = "A",
+    frozen_idx=None,
+):
     logits = None
     for position in range(tokens.shape[1]):
         if isinstance(model, Sol2):
             logits, state, _ = model.step(
-                tokens[:, position], state, frozen_idx=frozen_idx
+                tokens[:, position],
+                state,
+                organ_name=organ_name,
+                frozen_idx=frozen_idx,
             )
         else:
             logits, state = model.step(tokens[:, position], state)
@@ -69,6 +79,7 @@ def train_phase(
     generator_seed: int,
     log_every: int,
     length_curriculum: bool = False,
+    organ_name: str = "A",
 ) -> PhaseResult:
     """Train one uninterrupted regime and retain its answer-level learning curve."""
 
@@ -95,7 +106,9 @@ def train_phase(
         batch = task.sample_batch(
             regime, cfg.batch_size, steps, generator, cfg.device
         )
-        logits, next_state = _step_episode(model, batch.tokens, state)
+        logits, next_state = _step_episode(
+            model, batch.tokens, state, organ_name=organ_name
+        )
         loss = F.cross_entropy(logits, batch.answer_tokens)
         next_state = _detach_state(next_state)
 
@@ -142,6 +155,7 @@ def evaluate_regime(
     steps: int,
     batches: int,
     generator_seed: int,
+    organ_name: str = "A",
     frozen_idx=None,
     reset_each_episode: bool = False,
     mutate_state=None,
@@ -163,7 +177,11 @@ def evaluate_regime(
         if mutate_state is not None:
             state = mutate_state(state)
         logits, state = _step_episode(
-            model, batch.tokens, state, frozen_idx=frozen_idx
+            model,
+            batch.tokens,
+            state,
+            organ_name=organ_name,
+            frozen_idx=frozen_idx,
         )
         total_nll += float(F.cross_entropy(logits, batch.answer_tokens, reduction="sum"))
         correct += int(logits.argmax(-1).eq(batch.answer_tokens).sum())
@@ -188,6 +206,7 @@ def evaluate_with_ablations(
     steps: int,
     batches: int,
     generator_seed: int,
+    organ_name: str = "A",
 ) -> dict:
     """Run task-specific state, tissue, identity, topology, and memory interventions."""
 
@@ -200,6 +219,7 @@ def evaluate_with_ablations(
         steps=steps,
         batches=batches,
         generator_seed=generator_seed,
+        organ_name=organ_name,
     )
     normal = evaluate_regime(**common)
     result = {
@@ -284,6 +304,7 @@ def _length_curve(
     max_steps: int,
     batches: int,
     generator_seed: int,
+    organ_name: str = "A",
 ) -> dict[str, dict]:
     return {
         str(steps): evaluate_regime(
@@ -295,6 +316,7 @@ def _length_curve(
             steps=steps,
             batches=batches,
             generator_seed=generator_seed + steps,
+            organ_name=organ_name,
         )
         for steps in range(min_steps, max_steps + 1)
     }

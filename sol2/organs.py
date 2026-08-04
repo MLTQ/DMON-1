@@ -113,3 +113,55 @@ class AttentiveOutputOrgan(nn.Module):
     @staticmethod
     def maximum_entropy(n_cells: int) -> float:
         return math.log(max(n_cells, 1))
+
+
+class SensorEffectorOrgan(nn.Module):
+    """A detachable, independently parameterized sensor and output interface."""
+
+    def __init__(
+        self,
+        n_input: int,
+        hidden: int,
+        vocab_size: int,
+        n_queries: int,
+        *,
+        bounded_operators: bool,
+        operator_bound: float,
+        value_gain: float,
+        attention_temperature: float,
+    ) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, hidden)
+        nn.init.normal_(self.embedding.weight, std=0.16)
+        self.sensory_gain = nn.Parameter(torch.zeros(n_input, hidden))
+        self.sensory_bias = nn.Parameter(torch.zeros(n_input, hidden))
+        self.output = AttentiveOutputOrgan(
+            hidden,
+            vocab_size,
+            n_queries,
+            bounded_operators=bounded_operators,
+            operator_bound=operator_bound,
+            value_gain=value_gain,
+            attention_temperature=attention_temperature,
+        )
+
+    def sense(self, tokens: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return the bounded memory write and input-tissue sensory drive."""
+
+        embedded = torch.tanh(self.embedding(tokens))
+        sensory_gain = 1.0 + 0.5 * torch.tanh(self.sensory_gain)
+        sensory_bias = 0.1 * torch.tanh(self.sensory_bias)
+        drive = embedded.unsqueeze(1) * sensory_gain + sensory_bias
+        return embedded, drive
+
+    def read(
+        self,
+        output_cells: torch.Tensor,
+        *,
+        collect_health: bool = False,
+    ) -> tuple[torch.Tensor, OrganHealth | None]:
+        return self.output(output_cells, collect_health=collect_health)
+
+    @torch.no_grad()
+    def operator_norms(self) -> dict[str, float]:
+        return self.output.operator_norms()

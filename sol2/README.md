@@ -20,6 +20,8 @@ must share one universal rule.
   backward computation.
 - A branch-controlled procedural-transfer benchmark that separates new interfaces from
   new algorithms and can freeze the core while sensory/output organs adapt.
+- Checkpoint-compatible detachable sensor/effector bundles with explicit port
+  selection, matched true-attachment branches, and removal/reattachment recovery.
 
 ## Architecture
 
@@ -89,6 +91,19 @@ acquisition:
 The checkpoint and JSON telemetry update every evaluation interval. They preserve the
 living state for the subsequent organ-attachment fork and expose real cell activation,
 identity differentiation, and connectome values to visualization tooling.
+
+The promoted checkpoint feeds the true organ-attachment experiment described in
+`experiments/s1p2-organ-attachment.md`. Each branch is independently resumable:
+
+```bash
+.venv/bin/python -m sol2.organ_attachment \
+  --acquisition-checkpoint /tmp/sol2-acquisition/acquisition.pt \
+  --branch full --device cpu --adaptation-updates 10 --eval-every 5 \
+  --eval-batches 1 --out-dir /tmp/sol2-organ-full
+```
+
+After all four canonical branch directories complete, aggregate the frozen gates with
+`python -m sol2.organ_attachment_analysis <result-root>`.
 
 ## Short local smoke
 

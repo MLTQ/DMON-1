@@ -4,6 +4,8 @@
 
 Assembles typed tissues, the directed connectome, stream-written sensory memory,
 private cell identity, and the attentive text-output organ into one persistent organism.
+The legacy A organ remains checkpoint-compatible while additional sensor/effector
+bundles can be explicitly attached, detached, and selected.
 
 ## Components
 
@@ -22,6 +24,10 @@ and the largest effective operator norm beside behavioral loss.
   autonomous recurrent shortcut.
 - Reads dedicated output tissue through learned organ queries; the organ never sees
   input, memory, compute, or relay tensors directly.
+- Retains legacy A parameter names and stores additional physical ports in an initially
+  empty `attached_organs` module dictionary.
+- Selects one organ explicitly per step and exposes exact attach/detach/reattach and
+  organ-parameter iteration operations.
 - Supports zero-and-freeze tissue interventions without changing the training path.
 
 ### `count_parameters`
@@ -37,6 +43,8 @@ Counts only trainable parameters for matched controls.
 - Token embeddings are bounded before entering persistent state in every arm.
 - The output organ has fixed query slots but is not tied to concatenated cell positions.
   Growth extends internal tissue only in this first kernel.
+- An empty attached-organ registry adds no state-dict keys, so pre-attachment
+  acquisition checkpoints continue to load strictly.
 - Relay tissue is physically last in the index layout, so relay growth is append-only
   and reconstructible from configuration plus checkpoint buffers.
 - Private-expression rows map only to mutable cells. Stream-written memory contributes
@@ -52,3 +60,5 @@ Counts only trainable parameters for matched controls.
 - `weight_version` is preserved through ticks.
 - All tissue access uses index buffers; growth may append cells after the original
   output block without relying on contiguity.
+- Attaching an organ preserves global RNG state and cannot alter A behavior until that
+  organ is explicitly selected.

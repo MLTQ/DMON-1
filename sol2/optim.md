@@ -9,6 +9,8 @@ creates any gradient pathology and how broadly private cells receive learning si
 
 - `schedule_factor` / `set_learning_rate` — shared constant or cosine schedule.
 - `build_optimizer` — AdamW with explicit decay/no-decay groups.
+- `add_optimizer_parameters` — appends only genuinely new attached-organ parameters
+  while preserving all existing optimizer moments and decay policy.
 - `gradient_health` — total and top-level module gradient norms.
 - `cell_gradient_utilization` — material/nonzero row fractions plus an
   entropy-effective participation fraction; reserve is the complement of effective
@@ -26,3 +28,5 @@ creates any gradient pathology and how broadly private cells receive learning si
   private rows.
 - Schedules are pure functions of configuration and absolute update.
 - Every compared model uses the same optimizer family and schedule.
+- Attaching an organ never rebuilds or discards the mature substrate's optimizer state;
+  new parameters begin with empty Adam moments in matching decay/no-decay groups.

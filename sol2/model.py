@@ -10,7 +10,7 @@ from torch.nn import functional as F
 
 from .config import Sol2Config
 from .graph import DirectedConnectome
-from .organs import AttentiveOutputOrgan
+from .organs import AttentiveOutputOrgan, SensorEffectorOrgan
 from .state import OrganismState
 from .tissues import TissueBank
 
@@ -85,6 +85,86 @@ class Sol2(nn.Module):
             operator_bound=cfg.operator_bound,
             value_gain=cfg.value_gain,
             attention_temperature=cfg.attention_temperature,
+        )
+        # Organ A keeps the legacy parameter names so acquisition checkpoints load
+        # strictly. Newly attached ports live here and are always selected explicitly.
+        self.attached_organs = nn.ModuleDict()
+
+    def attach_organ(self, name: str, *, seed: int) -> SensorEffectorOrgan:
+        """Create a deterministic independent sensor/effector bundle."""
+
+        if not name or name == "A" or "." in name:
+            raise ValueError("attached organ name must be non-empty, non-'A', and dot-free")
+        if name in self.attached_organs:
+            raise ValueError(f"organ {name!r} is already attached")
+        device = self.embedding.weight.device
+        cuda_devices = [device] if device.type == "cuda" else []
+        with torch.random.fork_rng(devices=cuda_devices):
+            torch.manual_seed(seed)
+            organ = SensorEffectorOrgan(
+                len(self.input_idx),
+                self.cfg.hidden,
+                self.cfg.vocab_size,
+                self.cfg.organ_queries,
+                bounded_operators=self.cfg.bounded_operators,
+                operator_bound=self.cfg.operator_bound,
+                value_gain=self.cfg.value_gain,
+                attention_temperature=self.cfg.attention_temperature,
+            ).to(device)
+        self.attached_organs[name] = organ
+        return organ
+
+    def detach_organ(self, name: str) -> SensorEffectorOrgan:
+        """Remove and return an attached bundle without changing its parameters."""
+
+        if name == "A":
+            raise ValueError("the checkpoint-compatible primary organ cannot be detached")
+        if name not in self.attached_organs:
+            raise KeyError(f"organ {name!r} is not attached")
+        return self.attached_organs.pop(name)
+
+    def reattach_organ(self, name: str, organ: SensorEffectorOrgan) -> None:
+        """Restore the exact previously detached module object."""
+
+        if not name or name == "A" or "." in name:
+            raise ValueError("attached organ name must be non-empty, non-'A', and dot-free")
+        if name in self.attached_organs:
+            raise ValueError(f"organ {name!r} is already attached")
+        self.attached_organs[name] = organ
+
+    def organ_parameters(self, name: str):
+        """Iterate the parameters belonging only to one physical interface."""
+
+        if name == "A":
+            yield from self.embedding.parameters()
+            yield self.sensory_gain
+            yield self.sensory_bias
+            yield from self.output_organ.parameters()
+            return
+        if name not in self.attached_organs:
+            raise KeyError(f"organ {name!r} is not attached")
+        yield from self.attached_organs[name].parameters()
+
+    def _sense(
+        self, tokens: torch.Tensor, organ_name: str
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if organ_name == "A":
+            embedded = torch.tanh(self.embedding(tokens))
+            sensory_gain = 1.0 + 0.5 * torch.tanh(self.sensory_gain)
+            sensory_bias = 0.1 * torch.tanh(self.sensory_bias)
+            return embedded, embedded.unsqueeze(1) * sensory_gain + sensory_bias
+        if organ_name not in self.attached_organs:
+            raise KeyError(f"organ {organ_name!r} is not attached")
+        return self.attached_organs[organ_name].sense(tokens)
+
+    def _read_output(self, hidden: torch.Tensor, organ_name: str, collect_health: bool):
+        output_cells = hidden[:, self.output_idx]
+        if organ_name == "A":
+            return self.output_organ(output_cells, collect_health=collect_health)
+        if organ_name not in self.attached_organs:
+            raise KeyError(f"organ {organ_name!r} is not attached")
+        return self.attached_organs[organ_name].read(
+            output_cells, collect_health=collect_health
         )
 
     def _build_index_buffers(self) -> None:
@@ -196,6 +276,7 @@ class Sol2(nn.Module):
         tokens: torch.Tensor,
         state: OrganismState,
         *,
+        organ_name: str = "A",
         frozen_idx: torch.Tensor | None = None,
         collect_health: bool = False,
     ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
@@ -220,15 +301,11 @@ class Sol2(nn.Module):
 
         # Embedding is bounded before entering persistent state. This is a kernel
         # invariant, not one arm of the graph-operator factorial.
-        embedded = torch.tanh(self.embedding(tokens))
+        embedded, sensory_drive = self._sense(tokens, organ_name)
         memory_slot = self.memory_idx[state.memory_cursor % len(self.memory_idx)]
         hidden = hidden.index_copy(
             1, memory_slot.reshape(1), embedded.detach().unsqueeze(1)
         )
-
-        sensory_gain = 1.0 + 0.5 * torch.tanh(self.sensory_gain)
-        sensory_bias = 0.1 * torch.tanh(self.sensory_bias)
-        sensory_drive = embedded.unsqueeze(1) * sensory_gain + sensory_bias
 
         raw_message = None
         message = None
@@ -260,19 +337,19 @@ class Sol2(nn.Module):
                 zeros = hidden.new_zeros(hidden.shape[0], len(frozen_idx), hidden.shape[2])
                 hidden = hidden.index_copy(1, frozen_idx, zeros)
 
-        logits, organ_health = self.output_organ(
-            hidden[:, self.output_idx], collect_health=collect_health
-        )
+        logits, organ_health = self._read_output(hidden, organ_name, collect_health)
 
         health = None
         if collect_health:
+            organ_norms = (
+                self.output_organ.operator_norms()
+                if organ_name == "A"
+                else self.attached_organs[organ_name].operator_norms()
+            )
             norms = {
                 **{f"graph.{k}": v for k, v in self.graph.operator_norms().items()},
                 **{f"tissue.{k}": v for k, v in self.tissues.operator_norms().items()},
-                **{
-                    f"organ.{k}": v
-                    for k, v in self.output_organ.operator_norms().items()
-                },
+                **{f"organ.{organ_name}.{k}": v for k, v in organ_norms.items()},
             }
             assert organ_health is not None
             health = StepHealth(
@@ -303,6 +380,7 @@ class Sol2(nn.Module):
         targets: torch.Tensor,
         state: OrganismState,
         *,
+        organ_name: str = "A",
         collect_health: bool = False,
     ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
         losses = []
@@ -311,6 +389,7 @@ class Sol2(nn.Module):
             logits, state, health = self.step(
                 tokens[:, position],
                 state,
+                organ_name=organ_name,
                 collect_health=collect_health and position == tokens.shape[1] - 1,
             )
             losses.append(F.cross_entropy(logits, targets[:, position]))
