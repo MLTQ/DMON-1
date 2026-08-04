@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-04",
+  "commit": "d8a3f58",
+  "model": "NousResearch/Meta-Llama-3-8B-Instruct",
+  "device": "cuda:0",
+  "dtype": "bfloat16",
+  "cuda_visible_devices": "GPU-21d45575-7ece-a97c-35a0-294f7bce9c39",
+  "cuda_device_name": "NVIDIA GeForce RTX 4090",
+  "cuda_total_memory_bytes": 25250627584,
+  "prompt_tokens": 13,
+  "backbone_width": 4096,
+  "backbone_vocab_size": 128256,
+  "backbone_parameters": 8030261248,
+  "backbone_trainable_parameters": 0,
+  "backbone_gradient_tensors": 0,
+  "organism_trainable_parameters": 2357058,
+  "native_logit_error": 0.0,
+  "zero_controls": true,
+  "control_decoder_gradient_l1": 0.00021813291823491454,
+  "loss": 0.00016117095947265625,
+  "step_seconds": 0.32725874300012947,
+  "total_seconds": 3.8272865020007885,
+  "peak_cuda_allocated_bytes": 16158660096,
+  "peak_cuda_reserved_bytes": 16259219456,
+  "health": {
+    "hidden_absmax": 0.9999475479125977,
+    "message_rms": 0.010704216547310352,
+    "message_absmax": 0.11004070192575455,
+    "logit_absmax": 0.0,
+    "alpha_mean": {
+      "input": 0.500291109085083,
+      "compute": 0.11998569965362549,
+      "relay": 0.6499944925308228,
+      "output": 0.40001797676086426
+    },
+    "operator_norm_max": 1.000109314918518,
+    "organ_attention_entropy": 2.0794410705566406,
+    "organ_attention_max": 0.12518851459026337,
+    "organ_effective_cells": 7.999995708465576
+  }
+}

@@ -33,9 +33,9 @@ caller's random stream.
 - `advance` treats only the final context token as new sensory evidence. Callers own
   the language context, while SOL2 owns lifetime state; this prevents accidental
   replay of an entire transcript into the organism on every turn.
-- Teacher forcing builds prefixes only for the deterministic reference interface.
-  Production transformer adapters should add key/value caching without changing the
-  state transition contract.
+- Teacher forcing computes one causal frozen-backbone feature sequence, evolves SOL2
+  sequentially over those features, and decodes with one control bank per position.
+  It therefore avoids the quadratic repeated-prefix execution of the reference loop.
 - Frozen features are computed once per transition and reused for controlled decoding;
   there is no mandatory second backbone pass.
 - Sensory features are explicitly converted to the continuing cellular state's device

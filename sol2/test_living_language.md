@@ -13,6 +13,8 @@ backbone or GPU training is attempted.
   bounded sensor.
 - Language loss first recruits the zero-up control decoder and subsequently reaches
   the sensor and deeper closed loop.
+- One-pass vectorized teacher forcing exactly matches the causal repeated-prefix
+  reference loss, controls, and continuing cellular state.
 - Frozen language parameters receive no gradients and remain byte-for-byte unchanged.
 - Generation feeds prompt and generated tokens into one continuing organism state.
 - Erasing the visible language context does not erase cellular state.

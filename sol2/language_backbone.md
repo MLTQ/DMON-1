@@ -15,7 +15,7 @@ A structural protocol exposing only:
 - `width` and `vocab_size` metadata,
 - contextual feature extraction for sensory input, and
 - language logits under optional continuous control tokens, including decoding from
-  already-computed frozen features.
+  already-computed frozen features and one distinct control bank per sequence position.
 
 ### `ToyFrozenLanguageBackbone`
 
@@ -46,6 +46,9 @@ A structural protocol exposing only:
 - Decoding from existing features avoids a duplicate frozen forward pass. Applying the
   residual immediately before the language head also avoids storing a full frozen
   transformer graph merely to deliver gradients into SOL2 controls.
+- Position-specific control banks allow a whole causal training sequence to use one
+  frozen backbone pass. Each hidden position already encodes only its causal prefix;
+  SOL2 still evolves sequentially and supplies a separate control for that position.
 - Sensory extraction is detached because the language model is an environmental organ,
   not part of the organism's trainable persistent state.
 - The first production adapter should obey this protocol while choosing a
@@ -60,6 +63,8 @@ A structural protocol exposing only:
 - Input IDs have shape `[batch, sequence]` and dtype `torch.long`.
 - `encode` returns detached features shaped `[batch, sequence, width]`.
 - Controls have shape `[batch, control_tokens, width]`.
+- Training-sequence controls may instead have shape
+  `[batch, sequence, control_tokens, width]`.
 - Adapters convert controls to the frozen feature device and dtype before attention.
 - Frozen parameters never receive gradients or optimizer updates.
 - Language loss remains differentiable with respect to non-detached controls.

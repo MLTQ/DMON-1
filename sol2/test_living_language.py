@@ -121,6 +121,32 @@ def test_language_loss_recruits_the_organ_but_not_the_backbone() -> None:
         assert torch.equal(parameter, frozen_before[name])
 
 
+def test_vectorized_teacher_forcing_matches_causal_prefix_steps() -> None:
+    system, organ = build_system()
+    with torch.no_grad():
+        nn.init.normal_(organ.output.decoder.weight, std=0.02)
+    inputs = torch.tensor([[1, 2, 3, 4], [4, 3, 2, 1]])
+    targets = torch.tensor([[2, 3, 4, 5], [3, 2, 1, 0]])
+    fast_loss, fast_state, fast_controls = system.teacher_forced_loss(
+        inputs, targets, system.initial_state(2, "cpu")
+    )
+    slow_state = system.initial_state(2, "cpu")
+    slow_logits = []
+    slow_controls = []
+    for position in range(inputs.shape[1]):
+        step = system.advance(inputs[:, : position + 1], slow_state)
+        slow_logits.append(step.logits)
+        slow_controls.append(step.controls)
+        slow_state = step.state
+    slow_logits = torch.stack(slow_logits, dim=1)
+    slow_loss = torch.nn.functional.cross_entropy(
+        slow_logits.flatten(0, 1), targets.flatten()
+    )
+    assert torch.allclose(fast_loss, slow_loss, atol=1e-6)
+    assert torch.allclose(fast_state.hidden, slow_state.hidden, atol=1e-6)
+    assert torch.allclose(fast_controls, torch.stack(slow_controls, dim=1), atol=1e-6)
+
+
 def test_generation_feeds_tokens_back_into_continuing_state() -> None:
     system, _ = build_system()
     prompt = torch.tensor([[1, 2, 3]])
@@ -248,6 +274,7 @@ def main() -> None:
     tests = [
         test_new_language_graft_is_an_exact_noop,
         test_language_loss_recruits_the_organ_but_not_the_backbone,
+        test_vectorized_teacher_forcing_matches_causal_prefix_steps,
         test_generation_feeds_tokens_back_into_continuing_state,
         test_context_erasure_does_not_erase_the_organism,
         test_specialized_organ_detaches_and_reattaches_exactly,

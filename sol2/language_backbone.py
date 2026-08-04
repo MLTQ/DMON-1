@@ -32,6 +32,49 @@ class FrozenLanguageBackbone(Protocol):
     ) -> torch.Tensor:
         """Decode already-computed frozen features under optional controls."""
 
+    def controlled_logits_sequence_from_features(
+        self,
+        features: torch.Tensor,
+        controls: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Decode features under one separate control bank per sequence position."""
+
+
+def _apply_control_residual(
+    features: torch.Tensor,
+    controls: torch.Tensor | None,
+    width: int,
+) -> torch.Tensor:
+    """Attend from frozen features to global or position-specific control banks."""
+
+    if controls is None:
+        return features
+    controls = controls.to(device=features.device, dtype=features.dtype)
+    scale = width**-0.5
+    if controls.ndim == 3:
+        if controls.shape[0] != features.shape[0] or controls.shape[2] != width:
+            raise ValueError("controls must have shape [batch, tokens, width]")
+        scores = torch.einsum("bsw,btw->bst", features, controls) * scale
+        attention = torch.softmax(scores.float(), dim=-1).to(features.dtype)
+        residual = torch.einsum("bst,btw->bsw", attention, controls)
+    elif controls.ndim == 4:
+        expected = (features.shape[0], features.shape[1], width)
+        if (
+            controls.shape[0] != expected[0]
+            or controls.shape[1] != expected[1]
+            or controls.shape[2] < 1
+            or controls.shape[3] != expected[2]
+        ):
+            raise ValueError(
+                "sequence controls must have shape [batch, sequence, tokens, width]"
+            )
+        scores = torch.einsum("bsw,bstw->bst", features, controls) * scale
+        attention = torch.softmax(scores.float(), dim=-1).to(features.dtype)
+        residual = torch.einsum("bst,bstw->bsw", attention, controls)
+    else:
+        raise ValueError("controls must be a global or position-specific token bank")
+    return features + residual
+
 
 class ToyFrozenLanguageBackbone(nn.Module):
     """Small deterministic backbone for contract tests and CPU development.
@@ -78,18 +121,14 @@ class ToyFrozenLanguageBackbone(nn.Module):
     ) -> torch.Tensor:
         if features.ndim != 3 or features.shape[-1] != self.width:
             raise ValueError("features must have shape [batch, sequence, width]")
-        controlled = features
-        if controls is not None:
-            if controls.ndim != 3 or controls.shape[0] != features.shape[0]:
-                raise ValueError("controls must have shape [batch, tokens, width]")
-            if controls.shape[1] < 1 or controls.shape[2] != self.width:
-                raise ValueError("controls must contain at least one width-sized token")
-            controls = controls.to(device=features.device, dtype=features.dtype)
-            scores = torch.einsum("bsw,btw->bst", features, controls) * self.width**-0.5
-            attention = torch.softmax(scores, dim=-1)
-            residual = torch.einsum("bst,btw->bsw", attention, controls)
-            controlled = features + residual
-        return self.decoder(controlled)
+        return self.decoder(_apply_control_residual(features, controls, self.width))
+
+    def controlled_logits_sequence_from_features(
+        self,
+        features: torch.Tensor,
+        controls: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.controlled_logits_from_features(features, controls)
 
     def _validate_input_ids(self, input_ids: torch.Tensor) -> None:
         if input_ids.ndim != 2:
@@ -170,22 +209,15 @@ class HuggingFaceFrozenBackbone(nn.Module):
     ) -> torch.Tensor:
         if features.ndim != 3 or features.shape[-1] != self.width:
             raise ValueError("features must have shape [batch, sequence, width]")
-        controlled = features
-        if controls is not None:
-            if (
-                controls.ndim != 3
-                or controls.shape[0] != features.shape[0]
-                or controls.shape[1] < 1
-                or controls.shape[2] != self.width
-            ):
-                raise ValueError("controls must have shape [batch, tokens, width]")
-            controls = controls.to(device=features.device, dtype=features.dtype)
-            scores = torch.einsum("bsw,btw->bst", features, controls)
-            scores = scores * self.width**-0.5
-            attention = torch.softmax(scores.float(), dim=-1).to(features.dtype)
-            residual = torch.einsum("bst,btw->bsw", attention, controls)
-            controlled = features + residual
+        controlled = _apply_control_residual(features, controls, self.width)
         return self.model.get_output_embeddings()(controlled)
+
+    def controlled_logits_sequence_from_features(
+        self,
+        features: torch.Tensor,
+        controls: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.controlled_logits_from_features(features, controls)
 
     @torch.no_grad()
     def native_logit_error(self, input_ids: torch.Tensor) -> float:

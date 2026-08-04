@@ -1,7 +1,7 @@
 # DMON-L0: a living organism with a detachable language organ
 
-Status: architecture contract implemented 2026-08-04; production backbone and
-result-bearing training protocol remain exploratory until the 4090 smoke measurements.
+Status: architecture contract and Llama-3 8B 4090 smoke passed 2026-08-04;
+result-bearing lifetime language training remains exploratory.
 
 ## Goal
 
@@ -74,6 +74,16 @@ Before any training:
 
 No 2070S process is launched. A larger rented device is unnecessary unless production
 backbone memory or sequence length—not SOL2 capacity—becomes the measured bottleneck.
+
+### L0-B result
+
+`l0-llama3-8b-smoke-result.json` records the first passing run on physical RTX 4090
+UUID `GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`. The 8.03B-parameter BF16 backbone
+had zero trainable parameters, zero gradient tensors, and exactly zero native-logit
+error. The 2.36M-parameter organism/graft emitted exact-zero controls at attachment
+while receiving a nonzero control-decoder gradient. Peak reserved VRAM was 16.26 GB of
+25.25 GB and one graft forward/backward step took 0.327 seconds. The L0-C trainer may
+therefore begin on the local 4090 without renting a larger-memory device.
 
 ## Stage L0-C: lifetime language curriculum
 

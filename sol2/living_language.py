@@ -99,20 +99,27 @@ class LivingLanguageSystem(nn.Module):
 
         if input_ids.shape != target_ids.shape or input_ids.ndim != 2:
             raise ValueError("input_ids and target_ids must share [batch, sequence] shape")
-        losses = []
         controls = []
         next_state = state
+        feature_sequence = self.backbone.encode(input_ids)
         for position in range(input_ids.shape[1]):
-            step = self.advance(
-                input_ids[:, : position + 1],
+            features = feature_sequence[:, position].to(
+                device=next_state.hidden.device,
+                dtype=next_state.hidden.dtype,
+            )
+            position_controls, next_state, _ = self.organism.step(
+                features,
                 next_state,
-                control_scale=control_scale,
+                organ_name=self.organ_name,
                 frozen_idx=frozen_idx,
             )
-            losses.append(F.cross_entropy(step.logits, target_ids[:, position]))
-            controls.append(step.controls)
-            next_state = step.state
-        return torch.stack(losses).mean(), next_state, torch.stack(controls, dim=1)
+            controls.append(position_controls * control_scale)
+        control_sequence = torch.stack(controls, dim=1)
+        logits = self.backbone.controlled_logits_sequence_from_features(
+            feature_sequence, control_sequence
+        )
+        loss = F.cross_entropy(logits.flatten(0, 1), target_ids.flatten())
+        return loss, next_state, control_sequence
 
     @torch.no_grad()
     def generate(
