@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from .config import Sol2Config
+from .procedural_acquisition import run_acquisition_calibration
 from .procedural_benchmark import run_benchmark
 from .procedural_task import ProceduralTask
 
@@ -110,12 +111,65 @@ def test_tiny_branching_smoke() -> None:
         assert (Path(directory) / "metrics.json").exists()
 
 
+def test_acquisition_checkpoint_and_resume() -> None:
+    task = ProceduralTask()
+    cfg = Sol2Config(
+        n_input=2,
+        n_memory=2,
+        n_compute=4,
+        n_relay=2,
+        n_output=2,
+        hidden=8,
+        n_dendrites=4,
+        initial_active_dendrites=2,
+        steps_per_token=1,
+        organ_queries=1,
+        vocab_size=task.vocab_size,
+        batch_size=2,
+        updates=4,
+        warmup_updates=1,
+        log_every=1,
+        operator_bound=4.0,
+        seed=41,
+        device="cpu",
+    )
+    with TemporaryDirectory() as directory:
+        out_dir = Path(directory)
+        first = run_acquisition_calibration(
+            cfg,
+            out_dir,
+            max_updates=2,
+            evaluation_interval=1,
+            stage_updates=1,
+            eval_batches=1,
+            mastery_accuracy=2.0,
+            mastery_checks=2,
+        )
+        assert first["update"] == 2
+        resumed = run_acquisition_calibration(
+            cfg,
+            out_dir,
+            max_updates=4,
+            evaluation_interval=1,
+            stage_updates=1,
+            eval_batches=1,
+            mastery_accuracy=2.0,
+            mastery_checks=2,
+            resume=True,
+        )
+        assert resumed["update"] == 4
+        assert len(resumed["evaluations"]) == 4
+        assert len(resumed["evaluations"][-1]["telemetry"]["cells"]) == cfg.n_cells
+        assert (out_dir / "acquisition.pt").exists()
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
         test_latent_execution_and_surface_encoding,
         test_reverse_order_changes_the_procedure_without_changing_inputs,
         test_tiny_branching_smoke,
+        test_acquisition_checkpoint_and_resume,
     )
     for test in tests:
         test()

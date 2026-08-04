@@ -16,6 +16,8 @@ branching harness before any GPU experiment is allocated.
   interventions, and write a complete metrics artifact.
 - The interface-from-scratch control is present, and acute lesions separately expose
   compute- and relay-tissue contributions.
+- Mastery-gated acquisition writes a complete checkpoint, emits per-neuron telemetry,
+  and resumes to the exact next interval without discarding prior evaluations.
 
 ## Contracts
 

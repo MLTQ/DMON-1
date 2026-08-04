@@ -77,6 +77,19 @@ identity, topology, reset, and memory interventions are retained in `metrics.jso
 This is a dense bridge test, not yet a DNC memory experiment. A procedural mode must be
 useful while active before external storage and retrieval of that mode is justified.
 
+Before attaching a new organ, compare organism sizes with resumable mastery-gated
+acquisition:
+
+```bash
+.venv/bin/python -m sol2.procedural_acquisition --device cpu \
+  --max-updates 10000 --mastery-accuracy 0.80 \
+  --out-dir /tmp/sol2-acquisition
+```
+
+The checkpoint and JSON telemetry update every evaluation interval. They preserve the
+living state for the subsequent organ-attachment fork and expose real cell activation,
+identity differentiation, and connectome values to visualization tooling.
+
 ## Short local smoke
 
 ```bash
