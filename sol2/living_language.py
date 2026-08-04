@@ -57,6 +57,7 @@ class LivingLanguageSystem(nn.Module):
         *,
         control_scale: float,
         frozen_idx: torch.Tensor | None,
+        write_memory: bool,
         collect_final_health: bool = False,
     ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
         controls = []
@@ -72,6 +73,7 @@ class LivingLanguageSystem(nn.Module):
                 next_state,
                 organ_name=self.organ_name,
                 frozen_idx=frozen_idx,
+                write_memory=write_memory,
                 collect_health=(
                     collect_final_health and position == feature_sequence.shape[1] - 1
                 ),
@@ -88,6 +90,7 @@ class LivingLanguageSystem(nn.Module):
         *,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
+        write_memory: bool = True,
     ) -> tuple[OrganismState, torch.Tensor]:
         """Absorb a causal token sequence without allocating vocabulary logits."""
 
@@ -99,6 +102,7 @@ class LivingLanguageSystem(nn.Module):
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=write_memory,
         )
 
     def observe_feature_sequence(
@@ -108,6 +112,7 @@ class LivingLanguageSystem(nn.Module):
         *,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
+        write_memory: bool = True,
     ) -> tuple[OrganismState, torch.Tensor]:
         """Absorb already-computed frozen features without vocabulary logits."""
 
@@ -118,6 +123,7 @@ class LivingLanguageSystem(nn.Module):
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=write_memory,
         )
         return next_state, controls
 
@@ -128,6 +134,7 @@ class LivingLanguageSystem(nn.Module):
         *,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
+        write_memory: bool = True,
         collect_health: bool = False,
     ) -> LanguageStep:
         """Absorb a complete prompt and score only its next-token distribution."""
@@ -140,6 +147,7 @@ class LivingLanguageSystem(nn.Module):
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=write_memory,
             collect_health=collect_health,
         )
 
@@ -150,6 +158,7 @@ class LivingLanguageSystem(nn.Module):
         *,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
+        write_memory: bool = True,
         collect_health: bool = False,
     ) -> LanguageStep:
         """Evolve over cached features and score their final next-token distribution."""
@@ -161,6 +170,7 @@ class LivingLanguageSystem(nn.Module):
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=write_memory,
             collect_final_health=collect_health,
         )
         logits = self.backbone.controlled_logits_from_features(
@@ -229,6 +239,7 @@ class LivingLanguageSystem(nn.Module):
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=True,
         )
         logits = self.backbone.controlled_logits_sequence_from_features(
             feature_sequence, control_sequence

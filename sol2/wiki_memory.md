@@ -42,6 +42,8 @@ feature is sent through the vocabulary head.
   organism rather than the 8B language encoder.
 - Processes the question after a fresh language context and computes cross-entropy only
   over the four label logits.
+- Closes the stream-memory write gate during the question so the prompt cannot replace
+  the passage slots that the intervention is intended to test.
 
 ### `summarize_results`
 
@@ -60,6 +62,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   optimizer updates.
 - Deterministic answer permutation prevents a fixed output-position policy and is part
   of the resumable sample cursor.
+- Query tokens continue through input and recurrent tissue but never overwrite the
+  passage memory under test.
 
 ## Contracts
 

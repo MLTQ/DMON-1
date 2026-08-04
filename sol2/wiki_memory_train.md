@@ -18,6 +18,13 @@ Appends an episode-specific temporary erratum to a meta-training memory card and
 the target choice deterministically each epoch. Static Llama knowledge cannot solve the
 varying binding.
 
+### `counterfactual_training_pair`
+
+Builds two incompatible temporary bindings for an identical question and choice order.
+With `--paired-counterfactual`, both branches start from the same organism state and
+contribute equally to one update, so a question-only or lifetime-position policy cannot
+satisfy both targets.
+
 ### `save_wiki_memory_checkpoint` / `load_wiki_memory_checkpoint`
 
 Round-trip organism and attached-graft weights, optimizer moments, continuing lifetime
@@ -38,6 +45,8 @@ performs independent cellular transitions and language-head control.
 - Continues one lifetime lane across meta-training updates while truncating autograd at
   each optimizer boundary.
 - Cycles deterministically across all meta-training questions and counterfactual values.
+- Optionally accumulates gradients from a matched incompatible pair while carrying only
+  the primary branch forward as the continuing lifetime lane.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -51,6 +60,11 @@ performs independent cellular transitions and language-head control.
 - One persistent lane is a closer model of a continuing creature than independent
   minibatches. It also creates interference pressure that a useful memory operation
   must learn to manage.
+- The paired branch is a controlled counterfactual used only for credit assignment;
+  the primary branch remains the single physical continuation after each update.
+- Query-phase memory gating was added after the 50-update diagnostic showed that the
+  multiple-choice prompt completely overwrote the 16-slot exposure FIFO. The question
+  still drives input and recurrent tissue, but cannot destroy the passage slots.
 - Evaluation starts each question from a matched fresh cellular state. This isolates
   rapid exposure memory from incidental history accumulated by the training lane.
 - Classification loss is restricted to four frozen-head label logits. The backbone
@@ -74,5 +88,5 @@ CUDA_VISIBLE_DEVICES=GPU-21d45575-7ece-a97c-35a0-294f7bce9c39 \
 python -m sol2.wiki_memory_train \
   --model NousResearch/Meta-Llama-3-8B-Instruct --local-files-only \
   --baseline data/dmon-l0/l0c1-baseline.json \
-  --updates 300 --out-dir data/dmon-l0/l0c1-train
+  --paired-counterfactual --updates 300 --out-dir data/dmon-l0/l0c1-train
 ```

@@ -17,7 +17,8 @@ and the largest effective operator norm beside behavioral loss.
 ### `Sol2`
 
 - Builds explicit input, memory, compute, relay, and output index buffers.
-- Writes bounded token embeddings into a detached FIFO sensory-memory tissue.
+- Writes bounded token embeddings into a detached FIFO sensory-memory tissue when the
+  selected processing phase opens its write gate.
 - Applies one rule per mutable tissue type.
 - Optionally gives every mutable cell bounded private target/time-constant expression.
 - Optionally gives every mutable cell a private low-rank transition residual over its
@@ -65,6 +66,8 @@ Counts only trainable parameters for matched controls.
 
 - Mutable state remains in `[-1,1]` from a zero initial state.
 - Only the external stream writes memory cells.
+- A closed write gate preserves both memory contents and the FIFO cursor while sensory
+  input and mutable-tissue evolution continue normally.
 - Output cells are sinks in the connectome.
 - Output cells receive only from compute/relay tissue and retain state only within a
   token's microsteps.

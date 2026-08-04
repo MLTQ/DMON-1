@@ -44,6 +44,7 @@ class WikiMemoryTrainConfig:
     max_memory_tokens: int = 256
     max_question_tokens: int = 256
     seed: int = 7
+    paired_counterfactual: bool = False
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
@@ -69,6 +70,20 @@ def counterfactual_training_record(
     return (
         dataclasses.replace(document, memory=document.memory + annotation),
         dataclasses.replace(question, answer=answer),
+    )
+
+
+def counterfactual_training_pair(
+    document: WikiDocument,
+    question: WikiQuestion,
+    *,
+    epoch: int,
+) -> tuple[tuple[WikiDocument, WikiQuestion], tuple[WikiDocument, WikiQuestion]]:
+    """Create two incompatible bindings for one identical question and start state."""
+
+    return (
+        counterfactual_training_record(document, question, epoch=epoch),
+        counterfactual_training_record(document, question, epoch=epoch + 1),
     )
 
 
@@ -356,6 +371,7 @@ def run_training(args: argparse.Namespace) -> dict:
         max_memory_tokens=args.max_memory_tokens,
         max_question_tokens=args.max_question_tokens,
         seed=args.seed,
+        paired_counterfactual=args.paired_counterfactual,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -387,45 +403,68 @@ def run_training(args: argparse.Namespace) -> dict:
     while update < train_config.updates:
         document, question = schedule[update % len(schedule)]
         epoch = update // len(schedule)
-        training_document, training_question = counterfactual_training_record(
-            document, question, epoch=epoch
-        )
-        result = run_wiki_memory_episode(
-            system,
-            tokenizer,
-            training_document,
-            training_question,
-            lane_state,
-            permutation_seed=train_config.permutation_seed + update,
-            max_memory_tokens=train_config.max_memory_tokens,
-            max_question_tokens=train_config.max_question_tokens,
-        )
+        if train_config.paired_counterfactual:
+            training_records = counterfactual_training_pair(
+                document, question, epoch=epoch
+            )
+        else:
+            training_records = (
+                counterfactual_training_record(document, question, epoch=epoch),
+            )
         optimizer.zero_grad(set_to_none=True)
-        result.loss.backward()
+        branch_results = []
+        for training_document, training_question in training_records:
+            branch_result = run_wiki_memory_episode(
+                system,
+                tokenizer,
+                training_document,
+                training_question,
+                lane_state,
+                permutation_seed=train_config.permutation_seed + update,
+                max_memory_tokens=train_config.max_memory_tokens,
+                max_question_tokens=train_config.max_question_tokens,
+            )
+            (branch_result.loss / len(training_records)).backward()
+            branch_results.append(branch_result)
         grad_norm = torch.nn.utils.clip_grad_norm_(
             system.organism.parameters(), train_config.grad_clip
         )
         optimizer.step()
         update += 1
+        result = branch_results[0]
         lane_state = result.state.detach()
         lane_state.weight_version = update
+        mean_loss = sum(float(branch.loss.detach()) for branch in branch_results) / len(
+            branch_results
+        )
+        branch_accuracy = sum(branch.correct for branch in branch_results) / len(
+            branch_results
+        )
         row = {
             "update": update,
             "document_id": document.id,
             "question_id": question.id,
-            "loss": float(result.loss.detach()),
-            "bits": float(result.loss.detach()) / math.log(2.0),
+            "loss": mean_loss,
+            "bits": mean_loss / math.log(2.0),
             "correct": result.correct,
+            "branch_accuracy": branch_accuracy,
+            "branch_answers": [branch.correct_label for branch in branch_results],
             "grad_norm": float(grad_norm),
-            "control_rms": result.control_rms,
-            "internal_activity": result.internal_activity,
-            "memory_activity": result.memory_activity,
+            "control_rms": sum(branch.control_rms for branch in branch_results)
+            / len(branch_results),
+            "internal_activity": sum(
+                branch.internal_activity for branch in branch_results
+            )
+            / len(branch_results),
+            "memory_activity": sum(branch.memory_activity for branch in branch_results)
+            / len(branch_results),
         }
         history.append(row)
         if update == 1 or update % args.log_every == 0:
             print(
                 f"[wiki-memory] u{update} loss={row['loss']:.4f} "
-                f"correct={int(row['correct'])} control={row['control_rms']:.4f} "
+                f"branch_acc={row['branch_accuracy']:.2f} "
+                f"control={row['control_rms']:.4f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -548,6 +587,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-memory-tokens", type=int, default=256)
     parser.add_argument("--max-question-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--paired-counterfactual",
+        action="store_true",
+        help="train two incompatible passage bindings from one matched start state",
+    )
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)

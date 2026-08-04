@@ -17,6 +17,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - No-exposure and reset causal arms traverse the same exact scorer.
 - Aggregate metrics remain bounded and auditable.
 - Counterfactual targets vary deterministically by epoch.
+- Paired counterfactuals retain identical question wording and choices while assigning
+  incompatible passage-bound targets.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, and update cursor.
 - The matched evaluator emits all eight preregistered causal arms.

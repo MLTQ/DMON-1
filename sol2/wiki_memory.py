@@ -293,6 +293,7 @@ def run_wiki_memory_episode(
             next_state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=False,
             collect_health=collect_health,
         )
     else:
@@ -301,6 +302,7 @@ def run_wiki_memory_episode(
             next_state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
+            write_memory=False,
             collect_health=collect_health,
         )
     labels = label_token_ids(tokenizer, device)

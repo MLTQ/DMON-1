@@ -24,6 +24,7 @@ from .wiki_memory import (
 )
 from .wiki_memory_train import (
     WikiMemoryTrainConfig,
+    counterfactual_training_pair,
     counterfactual_training_record,
     evaluate_wiki_memory,
     load_wiki_memory_checkpoint,
@@ -172,6 +173,11 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
     assert second_question.answer != first_question.answer
     assert "Temporary archive erratum" in first_document.memory
     assert document.memory not in ("", first_document.memory)
+    paired = counterfactual_training_pair(document, question, epoch=0)
+    assert paired[0][1].question == paired[1][1].question
+    assert paired[0][1].choices == paired[1][1].choices
+    assert paired[0][1].answer != paired[1][1].answer
+    assert paired[0][0].memory != paired[1][0].memory
 
     system, _ = build_system()
     optimizer = torch.optim.AdamW(system.organism.parameters(), lr=1e-3)

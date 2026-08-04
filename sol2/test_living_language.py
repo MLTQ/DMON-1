@@ -184,6 +184,20 @@ def test_observation_scoring_and_masked_loss_preserve_sequence_causality() -> No
     assert torch.allclose(cached_scored.logits, scored.logits, atol=1e-6)
     assert torch.allclose(cached_scored.state.hidden, scored.state.hidden, atol=1e-6)
 
+    gated = system.score_next_after_sequence(
+        question, exposed_state, write_memory=False
+    )
+    assert gated.state.memory_cursor == exposed_state.memory_cursor
+    assert torch.equal(
+        gated.state.hidden[:, system.organism.memory_idx],
+        exposed_state.hidden[:, system.organism.memory_idx],
+    )
+    cached_gated = system.score_next_from_features(
+        question_features, cached_state, write_memory=False
+    )
+    assert torch.allclose(cached_gated.logits, gated.logits, atol=1e-6)
+    assert torch.allclose(cached_gated.state.hidden, gated.state.hidden, atol=1e-6)
+
     targets = torch.tensor([[2, 3], [4, 5]])
     mask = torch.tensor([[False, True], [False, True]])
     masked_loss, _, _ = system.teacher_forced_loss(

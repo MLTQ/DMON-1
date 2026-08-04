@@ -65,6 +65,31 @@ path. Unmodified wiki facts remain mixed into meta-training, and all development
 held-out passages remain unmodified. This amendment trains the write/query operation;
 the unchanged held-out gate still asks whether it transfers to natural wiki facts.
 
+### L0-C1a diagnostic and frozen repair
+
+The first 50-update run completed on 2026-08-04 before the repair below. Its full
+artifact is `l0c1-wiki-memory-u50-result.json`. Training accuracy improved from 10% in
+updates 1-10 to 36% in updates 26-50, and held-out normal rose from 37.5% at update 2
+to 50%. However, held-out `normal`, `no_exposure`, `reset_after_exposure`,
+`wrong_passage`, `memory_lesion`, and `internal_lesion` were exactly equal at 50% with
+equal mean loss. `zero_control` was 37.5%. The organism had learned nonzero LLM steering
+but no passage-dependent memory.
+
+Code inspection identified a concrete mechanism: every token wrote to the finite
+stream-memory ring, so the question prompt completely replaced all 16 passage slots
+before the answer was scored. Before any optimizer update under a repaired protocol,
+L0-C1b is frozen with two changes:
+
+1. Passage exposure opens the stream-memory write gate, while the question closes it;
+   question tokens still drive input, recurrent dynamics, and the output organ.
+2. Every meta-training update presents two incompatible temporary bindings for the
+   identical question and choice order from the identical starting state, averages
+   their loss, and carries only the primary branch into the continuing lifetime.
+
+The second change makes a question-only, lifetime-position, or static output policy
+incapable of satisfying both branches. L0-C1b starts from a fresh initialization and
+retains the original development/held-out sources, causal arms, and success gates.
+
 ## Episode
 
 For one lifetime lane:

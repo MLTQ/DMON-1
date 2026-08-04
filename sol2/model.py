@@ -325,6 +325,7 @@ class Sol2(nn.Module):
         *,
         organ_name: str = "A",
         frozen_idx: torch.Tensor | None = None,
+        write_memory: bool = True,
         collect_health: bool = False,
     ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
         cfg = self.cfg
@@ -349,10 +350,11 @@ class Sol2(nn.Module):
         # Embedding is bounded before entering persistent state. This is a kernel
         # invariant, not one arm of the graph-operator factorial.
         embedded, sensory_drive = self._sense(tokens, organ_name)
-        memory_slot = self.memory_idx[state.memory_cursor % len(self.memory_idx)]
-        hidden = hidden.index_copy(
-            1, memory_slot.reshape(1), embedded.detach().unsqueeze(1)
-        )
+        if write_memory:
+            memory_slot = self.memory_idx[state.memory_cursor % len(self.memory_idx)]
+            hidden = hidden.index_copy(
+                1, memory_slot.reshape(1), embedded.detach().unsqueeze(1)
+            )
 
         raw_message = None
         message = None
@@ -419,7 +421,7 @@ class Sol2(nn.Module):
             logits,
             OrganismState(
                 hidden=hidden,
-                memory_cursor=state.memory_cursor + 1,
+                memory_cursor=state.memory_cursor + int(write_memory),
                 weight_version=state.weight_version,
             ),
             health,

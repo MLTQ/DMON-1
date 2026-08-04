@@ -25,6 +25,8 @@ optional SOL2 health telemetry.
   final next-token distribution for classification-style memory probes.
 - Accepts already-computed frozen feature sequences for matched causal evaluations
   that reuse the exact same language representation across organism interventions.
+- Exposes a per-sequence memory write gate so a read/query phase can retain an earlier
+  exposure while continuing to process its own tokens.
 - Supports masked teacher forcing so question/prompt tokens can evolve the organism
   without receiving a language loss.
 
@@ -47,6 +49,8 @@ caller's random stream.
   learning objective.
 - `score_next_after_sequence` evolves over every prompt token but decodes only the last
   position, which is the exact surface needed by multiple-choice memory experiments.
+- Stream-memory writing remains enabled by default for ordinary language flow and is
+  closed only by protocols that explicitly distinguish write and query phases.
 - Feature-level observation/scoring is semantically identical to token wrappers. It
   avoids repeating an 8B-parameter frozen forward for every causal arm while retaining
   separate cellular transitions and controls.
@@ -67,6 +71,8 @@ caller's random stream.
 
 - A continuous organ is attached before system construction.
 - One `advance` call corresponds to one newly observed token and one SOL2 transition.
+- Disabling memory writes freezes only stream-memory contents and cursor advancement;
+  sensory input, recurrent evolution, and output remain active.
 - Language loss has a gradient path into controls and SOL2 but never into backbone
   parameters.
 - Generated tokens are sensory input on the following transition.
