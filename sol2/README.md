@@ -120,6 +120,8 @@ utility control:
 ```
 
 The frozen result protocol is in `experiments/s1p3-consolidated-reserve.md`.
+Once all three branches complete, run
+`python -m sol2.consolidated_attachment_analysis <result-root>` to apply its gates.
 
 ## Short local smoke
 

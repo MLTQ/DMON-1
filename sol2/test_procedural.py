@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -9,6 +10,7 @@ import torch
 
 from .config import Sol2Config
 from .consolidated_attachment import run_consolidated_attachment_branch
+from .consolidated_attachment_analysis import analyze as analyze_consolidation
 from .consolidation import (
     ConsolidationPolicy,
     calibrate_causal_utility,
@@ -484,6 +486,53 @@ def test_tiny_consolidated_attachment_branch() -> None:
         assert (root / "consolidated" / "adaptation.pt").exists()
 
 
+def test_consolidated_analysis_applies_frozen_gates() -> None:
+    def payload(a_accuracy: float, b_accuracy: float) -> dict:
+        lesion_rows = {
+            "normal": {"answer_accuracy": b_accuracy},
+            "freeze_high_utility": {"answer_accuracy": b_accuracy - 0.30},
+            "freeze_low_utility": {"answer_accuracy": b_accuracy - 0.10},
+        }
+        return {
+            "protocol": {"max_steps": 4},
+            "rejected_updates": 0,
+            "integrity": {"a_organ_unchanged": True},
+            "summary": {
+                "final": {
+                    "a_fixed": {"answer_accuracy": a_accuracy},
+                    "b_by_length": {"4": {"answer_accuracy": b_accuracy}},
+                    "drift": {
+                        "expression_by_measured_utility": {
+                            "low_mean": 2.0,
+                            "high_mean": 1.0,
+                        },
+                        "edge_by_measured_utility": {
+                            "low_mean": 3.0,
+                            "high_mean": 1.0,
+                        },
+                    },
+                },
+                "utility_lesions": {"A": lesion_rows, "B": lesion_rows},
+            },
+        }
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        for branch, values in {
+            "plastic": (0.20, 0.90),
+            "consolidated": (0.85, 0.90),
+            "shuffled": (0.40, 0.90),
+        }.items():
+            branch_dir = root / branch
+            branch_dir.mkdir()
+            (branch_dir / "metrics.json").write_text(
+                json.dumps(payload(*values))
+            )
+        result = analyze_consolidation(root)
+        assert result["primary_success"]
+        assert result["gates"]["b_reuses_high_utility_more_than_low"]
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
@@ -495,6 +544,7 @@ def main() -> None:
         test_causal_utility_and_realized_update_protection,
         test_tiny_true_organ_branch_integrity,
         test_tiny_consolidated_attachment_branch,
+        test_consolidated_analysis_applies_frozen_gates,
     )
     for test in tests:
         test()

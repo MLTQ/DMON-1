@@ -28,6 +28,8 @@ branching harness before any GPU experiment is allocated.
   removal/reattachment path.
 - A tiny consolidated-attachment branch calibrates utility, protects the substrate,
   retains A-organ integrity, checkpoints, and emits utility lesions end to end.
+- Synthetic matched artifacts exercise the exact S1-P3 aggregate contrasts and frozen
+  success gates without waiting for a GPU result.
 - Split organ-only execution resumes to the same records, model tensors, and living
   state as uninterrupted interval execution.
 
