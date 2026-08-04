@@ -147,6 +147,45 @@ def test_vectorized_teacher_forcing_matches_causal_prefix_steps() -> None:
     assert torch.allclose(fast_controls, torch.stack(slow_controls, dim=1), atol=1e-6)
 
 
+def test_observation_scoring_and_masked_loss_preserve_sequence_causality() -> None:
+    system, organ = build_system()
+    with torch.no_grad():
+        nn.init.normal_(organ.output.decoder.weight, std=0.02)
+    exposure = torch.tensor([[1, 2, 3], [3, 2, 1]])
+    question = torch.tensor([[4, 5], [5, 4]])
+    initial = system.initial_state(2, "cpu")
+    exposed_state, exposure_controls = system.observe_sequence(exposure, initial)
+    scored = system.score_next_after_sequence(question, exposed_state)
+    assert exposure_controls.shape[:2] == exposure.shape
+    assert scored.state.memory_cursor == exposure.shape[1] + question.shape[1]
+
+    reference_state = initial
+    for position in range(exposure.shape[1]):
+        reference_state = system.advance(
+            exposure[:, : position + 1], reference_state
+        ).state
+    reference = None
+    for position in range(question.shape[1]):
+        reference = system.advance(
+            question[:, : position + 1], reference_state
+        )
+        reference_state = reference.state
+    assert reference is not None
+    assert torch.allclose(scored.logits, reference.logits, atol=1e-6)
+    assert torch.allclose(scored.state.hidden, reference.state.hidden, atol=1e-6)
+
+    targets = torch.tensor([[2, 3], [4, 5]])
+    mask = torch.tensor([[False, True], [False, True]])
+    masked_loss, _, _ = system.teacher_forced_loss(
+        question, targets, exposed_state, loss_mask=mask
+    )
+    unmasked_loss, _, _ = system.teacher_forced_loss(
+        question, targets, exposed_state
+    )
+    assert masked_loss.ndim == 0
+    assert not torch.equal(masked_loss, unmasked_loss)
+
+
 def test_generation_feeds_tokens_back_into_continuing_state() -> None:
     system, _ = build_system()
     prompt = torch.tensor([[1, 2, 3]])
@@ -275,6 +314,7 @@ def main() -> None:
         test_new_language_graft_is_an_exact_noop,
         test_language_loss_recruits_the_organ_but_not_the_backbone,
         test_vectorized_teacher_forcing_matches_causal_prefix_steps,
+        test_observation_scoring_and_masked_loss_preserve_sequence_causality,
         test_generation_feeds_tokens_back_into_continuing_state,
         test_context_erasure_does_not_erase_the_organism,
         test_specialized_organ_detaches_and_reattaches_exactly,

@@ -21,6 +21,10 @@ optional SOL2 health telemetry.
 - Computes teacher-forced language loss without unfreezing the backbone.
 - Greedily generates while feeding both prompt tokens and newly generated tokens into
   the same continuing organism state.
+- Absorbs exposure sequences without allocating vocabulary logits, and scores only the
+  final next-token distribution for classification-style memory probes.
+- Supports masked teacher forcing so question/prompt tokens can evolve the organism
+  without receiving a language loss.
 
 ### `graft_language_backbone`
 
@@ -36,6 +40,11 @@ caller's random stream.
 - Teacher forcing computes one causal frozen-backbone feature sequence, evolves SOL2
   sequentially over those features, and decodes with one control bank per position.
   It therefore avoids the quadratic repeated-prefix execution of the reference loop.
+- `observe_sequence` deliberately omits the frozen vocabulary head. This keeps passage
+  exposure memory-efficient and prevents an unused text loss from becoming the
+  learning objective.
+- `score_next_after_sequence` evolves over every prompt token but decodes only the last
+  position, which is the exact surface needed by multiple-choice memory experiments.
 - Frozen features are computed once per transition and reused for controlled decoding;
   there is no mandatory second backbone pass.
 - Sensory features are explicitly converted to the continuing cellular state's device
@@ -58,3 +67,5 @@ caller's random stream.
 - Generated tokens are sensory input on the following transition.
 - Clearing the LLM context does not itself clear `OrganismState`.
 - Grafting is deterministic from its private seed and preserves global RNG state.
+- A loss mask changes credit assignment only; every input token still advances the
+  same continuing cellular state.

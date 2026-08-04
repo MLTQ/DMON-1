@@ -50,6 +50,89 @@ class LivingLanguageSystem(nn.Module):
     def initial_state(self, batch: int, device: str | torch.device) -> OrganismState:
         return self.organism.initial_state(batch, device)
 
+    def _evolve_feature_sequence(
+        self,
+        feature_sequence: torch.Tensor,
+        state: OrganismState,
+        *,
+        control_scale: float,
+        frozen_idx: torch.Tensor | None,
+        collect_final_health: bool = False,
+    ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
+        controls = []
+        next_state = state
+        final_health = None
+        for position in range(feature_sequence.shape[1]):
+            features = feature_sequence[:, position].to(
+                device=next_state.hidden.device,
+                dtype=next_state.hidden.dtype,
+            )
+            position_controls, next_state, health = self.organism.step(
+                features,
+                next_state,
+                organ_name=self.organ_name,
+                frozen_idx=frozen_idx,
+                collect_health=(
+                    collect_final_health and position == feature_sequence.shape[1] - 1
+                ),
+            )
+            controls.append(position_controls * control_scale)
+            if health is not None:
+                final_health = health
+        return torch.stack(controls, dim=1), next_state, final_health
+
+    def observe_sequence(
+        self,
+        input_ids: torch.Tensor,
+        state: OrganismState,
+        *,
+        control_scale: float = 1.0,
+        frozen_idx: torch.Tensor | None = None,
+    ) -> tuple[OrganismState, torch.Tensor]:
+        """Absorb a causal token sequence without allocating vocabulary logits."""
+
+        if input_ids.ndim != 2 or input_ids.shape[1] < 1:
+            raise ValueError("input_ids must contain a non-empty token sequence")
+        feature_sequence = self.backbone.encode(input_ids)
+        controls, next_state, _ = self._evolve_feature_sequence(
+            feature_sequence,
+            state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+        )
+        return next_state, controls
+
+    def score_next_after_sequence(
+        self,
+        input_ids: torch.Tensor,
+        state: OrganismState,
+        *,
+        control_scale: float = 1.0,
+        frozen_idx: torch.Tensor | None = None,
+        collect_health: bool = False,
+    ) -> LanguageStep:
+        """Absorb a complete prompt and score only its next-token distribution."""
+
+        if input_ids.ndim != 2 or input_ids.shape[1] < 1:
+            raise ValueError("input_ids must contain a non-empty token sequence")
+        feature_sequence = self.backbone.encode(input_ids)
+        controls, next_state, health = self._evolve_feature_sequence(
+            feature_sequence,
+            state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+            collect_final_health=collect_health,
+        )
+        logits = self.backbone.controlled_logits_from_features(
+            feature_sequence[:, -1:], controls[:, -1]
+        )[:, -1]
+        return LanguageStep(
+            logits=logits,
+            controls=controls[:, -1],
+            state=next_state,
+            health=health,
+        )
+
     def advance(
         self,
         context_ids: torch.Tensor,
@@ -92,6 +175,7 @@ class LivingLanguageSystem(nn.Module):
         target_ids: torch.Tensor,
         state: OrganismState,
         *,
+        loss_mask: torch.Tensor | None = None,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, OrganismState, torch.Tensor]:
@@ -99,26 +183,26 @@ class LivingLanguageSystem(nn.Module):
 
         if input_ids.shape != target_ids.shape or input_ids.ndim != 2:
             raise ValueError("input_ids and target_ids must share [batch, sequence] shape")
-        controls = []
-        next_state = state
         feature_sequence = self.backbone.encode(input_ids)
-        for position in range(input_ids.shape[1]):
-            features = feature_sequence[:, position].to(
-                device=next_state.hidden.device,
-                dtype=next_state.hidden.dtype,
-            )
-            position_controls, next_state, _ = self.organism.step(
-                features,
-                next_state,
-                organ_name=self.organ_name,
-                frozen_idx=frozen_idx,
-            )
-            controls.append(position_controls * control_scale)
-        control_sequence = torch.stack(controls, dim=1)
+        control_sequence, next_state, _ = self._evolve_feature_sequence(
+            feature_sequence,
+            state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+        )
         logits = self.backbone.controlled_logits_sequence_from_features(
             feature_sequence, control_sequence
         )
-        loss = F.cross_entropy(logits.flatten(0, 1), target_ids.flatten())
+        token_loss = F.cross_entropy(
+            logits.flatten(0, 1), target_ids.flatten(), reduction="none"
+        ).view_as(target_ids)
+        if loss_mask is None:
+            loss = token_loss.mean()
+        else:
+            if loss_mask.shape != input_ids.shape:
+                raise ValueError("loss_mask must share the input sequence shape")
+            mask = loss_mask.to(device=token_loss.device, dtype=token_loss.dtype)
+            loss = (token_loss * mask).sum() / mask.sum().clamp_min(1.0)
         return loss, next_state, control_sequence
 
     @torch.no_grad()
