@@ -26,6 +26,9 @@ Hugging Face causal language model before any conversational training.
   receive a specialized adapter rather than silently changing its baseline.
 - Only the final hidden feature and frozen output head participate in the controlled
   path, so no full transformer backward graph is retained.
+- The requested CUDA device is made current before using no-argument memory-stat and
+  synchronization calls, which is portable to the remote PyTorch/CUDA build while
+  respecting the process-level GPU visibility mask.
 
 ## Output contract
 
@@ -44,4 +47,3 @@ The JSON result must show:
   --model /path/to/local/model --device cuda:0 --dtype bfloat16 \
   --out /tmp/dmon-l0-smoke.json --local-files-only
 ```
-

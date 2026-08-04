@@ -30,7 +30,7 @@ def dtype_from_name(name: str) -> torch.dtype | str:
 
 def synchronize(device: torch.device) -> None:
     if device.type == "cuda":
-        torch.cuda.synchronize(device)
+        torch.cuda.synchronize()
 
 
 def run_smoke(args: argparse.Namespace) -> dict:
@@ -41,7 +41,8 @@ def run_smoke(args: argparse.Namespace) -> dict:
 
     device = torch.device(args.device)
     if device.type == "cuda":
-        torch.cuda.reset_peak_memory_stats(device)
+        torch.cuda.set_device(device)
+        torch.cuda.reset_peak_memory_stats()
     started = time.perf_counter()
     backbone = HuggingFaceFrozenBackbone.from_pretrained(
         args.model,
@@ -132,10 +133,10 @@ def run_smoke(args: argparse.Namespace) -> dict:
         "step_seconds": step_seconds,
         "total_seconds": time.perf_counter() - started,
         "peak_cuda_allocated_bytes": (
-            torch.cuda.max_memory_allocated(device) if device.type == "cuda" else 0
+            torch.cuda.max_memory_allocated() if device.type == "cuda" else 0
         ),
         "peak_cuda_reserved_bytes": (
-            torch.cuda.max_memory_reserved(device) if device.type == "cuda" else 0
+            torch.cuda.max_memory_reserved() if device.type == "cuda" else 0
         ),
         "health": None if step.health is None else step.health.__dict__,
     }
