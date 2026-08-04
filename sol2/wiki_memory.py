@@ -67,6 +67,8 @@ class WikiEpisodeResult:
     control_rms: float
     internal_activity: float
     memory_activity: float
+    controls: torch.Tensor | None = None
+    label_logits: torch.Tensor | None = None
 
 
 def load_wiki_memory_corpus(path: Path) -> WikiMemoryCorpus:
@@ -237,6 +239,8 @@ def score_frozen_baseline(
         control_rms=0.0,
         internal_activity=0.0,
         memory_activity=0.0,
+        controls=None,
+        label_logits=label_logits[0],
     )
 
 
@@ -323,6 +327,8 @@ def run_wiki_memory_episode(
         control_rms=float(scored.controls.detach().pow(2).mean().sqrt()),
         internal_activity=float(internal.detach().pow(2).mean().sqrt()),
         memory_activity=float(memory.detach().pow(2).mean().sqrt()),
+        controls=scored.controls,
+        label_logits=label_logits[0],
     )
 
 

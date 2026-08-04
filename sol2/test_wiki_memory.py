@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import torch
+from torch import nn
 
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_memory import (
@@ -178,6 +179,29 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
     assert paired[0][1].choices == paired[1][1].choices
     assert paired[0][1].answer != paired[1][1].answer
     assert paired[0][0].memory != paired[1][0].memory
+
+    paired_system, paired_organ = build_system()
+    with torch.no_grad():
+        nn.init.normal_(paired_organ.output.decoder.weight, std=0.02)
+    tokenizer = TinyTokenizer()
+    start = paired_system.initial_state(1, "cpu")
+    branch_results = [
+        run_wiki_memory_episode(
+            paired_system,
+            tokenizer,
+            paired_document,
+            paired_question,
+            start,
+            permutation_seed=19,
+        )
+        for paired_document, paired_question in paired
+    ]
+    assert all(result.controls is not None for result in branch_results)
+    assert all(result.label_logits is not None for result in branch_results)
+    separation = (
+        branch_results[0].controls - branch_results[1].controls
+    ).pow(2).mean().sqrt()
+    assert float(separation.detach()) > 0.0
 
     system, _ = build_system()
     optimizer = torch.optim.AdamW(system.organism.parameters(), lr=1e-3)

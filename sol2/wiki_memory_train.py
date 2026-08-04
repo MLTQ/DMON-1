@@ -440,6 +440,24 @@ def run_training(args: argparse.Namespace) -> dict:
         branch_accuracy = sum(branch.correct for branch in branch_results) / len(
             branch_results
         )
+        control_separation_rms = 0.0
+        label_logit_separation_rms = 0.0
+        if len(branch_results) == 2:
+            left, right = branch_results
+            assert left.controls is not None and right.controls is not None
+            assert left.label_logits is not None and right.label_logits is not None
+            control_separation_rms = float(
+                (left.controls.detach() - right.controls.detach())
+                .pow(2)
+                .mean()
+                .sqrt()
+            )
+            label_logit_separation_rms = float(
+                (left.label_logits.detach() - right.label_logits.detach())
+                .pow(2)
+                .mean()
+                .sqrt()
+            )
         row = {
             "update": update,
             "document_id": document.id,
@@ -449,6 +467,8 @@ def run_training(args: argparse.Namespace) -> dict:
             "correct": result.correct,
             "branch_accuracy": branch_accuracy,
             "branch_answers": [branch.correct_label for branch in branch_results],
+            "control_separation_rms": control_separation_rms,
+            "label_logit_separation_rms": label_logit_separation_rms,
             "grad_norm": float(grad_norm),
             "control_rms": sum(branch.control_rms for branch in branch_results)
             / len(branch_results),
@@ -465,6 +485,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"[wiki-memory] u{update} loss={row['loss']:.4f} "
                 f"branch_acc={row['branch_accuracy']:.2f} "
                 f"control={row['control_rms']:.4f} "
+                f"control_sep={row['control_separation_rms']:.4f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )

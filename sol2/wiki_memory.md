@@ -44,6 +44,8 @@ feature is sent through the vocabulary head.
   over the four label logits.
 - Closes the stream-memory write gate during the question so the prompt cannot replace
   the passage slots that the intervention is intended to test.
+- Retains live control and four-label logit tensors for paired-branch separation
+  measurement while serializing only detached scalar telemetry.
 
 ### `summarize_results`
 

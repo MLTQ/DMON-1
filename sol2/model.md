@@ -17,7 +17,7 @@ and the largest effective operator norm beside behavioral loss.
 ### `Sol2`
 
 - Builds explicit input, memory, compute, relay, and output index buffers.
-- Writes bounded token embeddings into a detached FIFO sensory-memory tissue when the
+- Writes bounded token embeddings into a FIFO sensory-memory tissue when the
   selected processing phase opens its write gate.
 - Applies one rule per mutable tissue type.
 - Optionally gives every mutable cell bounded private target/time-constant expression.
@@ -61,6 +61,11 @@ Counts only trainable parameters for matched controls.
   no dead parameters to the identity treatment or matched-control budget.
 - Adapter rows use the same mutable-cell mapping and cannot create a memory or decoder
   bypass; their bounded residual enters only the typed tissue target.
+- Stream writes remain differentiable within an episode so delayed answer loss can
+  shape the attached organ's memory encoding. The lifetime state is still detached at
+  optimizer boundaries, preventing gradients across weight versions.
+- An attached organ may content-address memory during a closed-write phase, but recall
+  is added only to input sensory drive. It cannot bypass compute/relay or output sinks.
 
 ## Contracts
 

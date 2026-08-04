@@ -47,6 +47,7 @@ performs independent cellular transitions and language-head control.
 - Cycles deterministically across all meta-training questions and counterfactual values.
 - Optionally accumulates gradients from a matched incompatible pair while carrying only
   the primary branch forward as the continuing lifetime lane.
+- Records RMS separation between paired control banks and paired four-label logits.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -71,6 +72,8 @@ performs independent cellular transitions and language-head control.
   stays fully frozen and is never serialized into organism checkpoints.
 - Causal evaluation caches detached frozen features because recomputing identical Llama
   representations for eight arms dominated the two-update pilot runtime.
+- L0-C1c uses paired separation as an early routing gate: aggregate accuracy is not
+  treated as memory evidence when incompatible passages emit indistinguishable controls.
 
 ## Contracts
 
@@ -80,6 +83,8 @@ performs independent cellular transitions and language-head control.
 - Backbone trainable parameters and gradient tensors remain zero.
 - All result-bearing GPU commands expose only the physical RTX 4090 UUID.
 - Checkpoint writes are atomic and resume the exact continuing cellular state.
+- A paired update reports exact control/logit separation; zero separation identifies a
+  passage-insensitive shortcut even if one branch or held-out accuracy improves.
 
 ## Example
 

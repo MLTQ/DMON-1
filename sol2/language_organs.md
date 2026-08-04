@@ -15,7 +15,9 @@ adaptation, and lifetime state remain in the cellular substrate.
 - Reads only dedicated output tissue with the existing attentive organ reader.
 - Emits a small bank of continuous language-width control tokens through a shared
   low-rank basis instead of decoding vocabulary logits.
-- Reports sensor, output-reader, and control-basis norms through normal health
+- Content-addresses valid stream-memory slots from the current contextual language
+  feature and returns a bounded recall vector to sensory/recurrent tissue.
+- Reports sensor, recall, output-reader, and control-basis norms through normal health
   telemetry.
 
 ## Decisions
@@ -30,6 +32,11 @@ adaptation, and lifetime state remain in the cellular substrate.
   `output_tissue -> control_tokens * language_width` matrix.
 - The sensor uses the same bounded drive and per-input-cell gain/bias convention as
   discrete organs, keeping internal anatomy causally relevant.
+- Recall is organ-specific because addressing language memory depends on the language
+  sensor's representational coordinates. Its result re-enters input tissue and cannot
+  directly reach the effector or frozen LLM head.
+- Query/key vectors use the same damp-only unit-ball projection as the connectome;
+  values and recalled drive are bounded before entering persistent dynamics.
 
 ## Contracts
 
@@ -38,6 +45,10 @@ adaptation, and lifetime state remain in the cellular substrate.
   `[batch, n_control_tokens, language_width]` and lies in
   `[-control_gain, control_gain]`.
 - At initialization, every control value is exactly zero.
-- The organ cannot read input, memory, compute, or relay tissue directly.
+- The effector cannot read input, memory, compute, or relay tissue directly; only the
+  recall sub-interface may read valid memory slots, and only to create sensory drive.
+- Recall may read only valid stream-memory slots, has shape `[batch, hidden]`, and lies
+  in `[-recall_gain, recall_gain]`.
+- Recall is a sensory drive, never an effector input; output tissue remains an internal-
+  only sink.
 - `control_rank` is positive and no larger than `language_width`.
-

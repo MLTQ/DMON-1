@@ -113,6 +113,25 @@ recurrent tissue. It must not connect memory directly to the LLM effector, so th
 existing output-sink/no-bypass invariant remains intact. A matched paired-branch
 separation measurement is required before another held-out run.
 
+### L0-C1c frozen routing repair
+
+Before any L0-C1c optimizer update, the routing repair is fixed as follows:
+
+1. Stream-memory writes remain differentiable within one exposure/query episode, while
+   the continuing state is still detached at every optimizer boundary.
+2. During the closed-write query phase, the language organ uses the current contextual
+   feature to content-address valid memory slots with bounded query/key/value operators.
+3. The bounded recalled vector is added to input sensory drive. It cannot enter output
+   tissue or the frozen LLM effector directly; all behavioral influence must still pass
+   through recurrent compute/relay tissue and the output sink.
+4. The paired incompatible-binding curriculum and 96-cell memory bank remain unchanged.
+5. Every paired update records RMS separation of its control banks and four-label logits.
+
+The first decision gate is routing, not held-out accuracy. By update 25, the trailing
+ten-update mean control separation must exceed `0.005`, and paired accuracy must exceed
+the 25% four-way floor. If either misses, stop before a longer held-out interpretation.
+If both pass, continue to update 50 and apply the original causal memory gates.
+
 ## Episode
 
 For one lifetime lane:

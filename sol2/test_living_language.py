@@ -121,6 +121,41 @@ def test_language_loss_recruits_the_organ_but_not_the_backbone() -> None:
         assert torch.equal(parameter, frozen_before[name])
 
 
+def test_stream_memory_write_and_content_recall_are_differentiable() -> None:
+    system, organ = build_system()
+    exposure = torch.tensor([[1, 2, 3]])
+    state, _ = system.observe_sequence(
+        exposure, system.initial_state(1, "cpu")
+    )
+    written = state.hidden[:, system.organism.memory_idx]
+    assert written.requires_grad
+    written.square().mean().backward()
+    assert organ.sensor.weight.grad is not None
+    assert float(organ.sensor.weight.grad.abs().sum()) > 0.0
+
+    system, organ = build_system()
+    query = torch.randn(1, LANGUAGE_CFG.hidden)
+    memory = torch.randn(1, LANGUAGE_CFG.n_memory, LANGUAGE_CFG.hidden)
+    memory.requires_grad_()
+    recalled, health = organ.recall(
+        query, memory, valid_count=2, collect_health=True
+    )
+    changed_inactive = memory.detach().clone()
+    changed_inactive[:, 2:] = 100.0
+    repeated, _ = organ.recall(query, changed_inactive, valid_count=2)
+    assert torch.allclose(recalled, repeated, atol=1e-6)
+    assert float(recalled.detach().abs().max()) <= organ.recall_gain + 1e-6
+    assert health is not None
+    assert 1.0 <= health.effective_cells <= 2.0 + 1e-6
+    recalled.square().mean().backward()
+    assert memory.grad is not None
+    assert float(memory.grad[:, :2].abs().sum()) > 0.0
+    assert torch.count_nonzero(memory.grad[:, 2:]) == 0
+    assert system.organism.graph.targets_read_only_from(
+        system.organism.output_idx, system.organism.internal_idx
+    )
+
+
 def test_vectorized_teacher_forcing_matches_causal_prefix_steps() -> None:
     system, organ = build_system()
     with torch.no_grad():
@@ -337,6 +372,7 @@ def main() -> None:
     tests = [
         test_new_language_graft_is_an_exact_noop,
         test_language_loss_recruits_the_organ_but_not_the_backbone,
+        test_stream_memory_write_and_content_recall_are_differentiable,
         test_vectorized_teacher_forcing_matches_causal_prefix_steps,
         test_observation_scoring_and_masked_loss_preserve_sequence_causality,
         test_generation_feeds_tokens_back_into_continuing_state,

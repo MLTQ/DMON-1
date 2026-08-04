@@ -11,6 +11,8 @@ backbone or GPU training is attempted.
   language logits.
 - Contextual language features enter stream-written organism memory through the
   bounded sensor.
+- Stream-memory writes preserve delayed gradients into the sensor, and content recall
+  is bounded, masks unwritten slots, and backpropagates through valid memory only.
 - Language loss first recruits the zero-up control decoder and subsequently reaches
   the sensor and deeper closed loop.
 - One-pass vectorized teacher forcing exactly matches the causal repeated-prefix
@@ -43,6 +45,8 @@ backbone or GPU training is attempted.
   noise from the contract gate.
 - The small deterministic learning gate is an architectural proof: identical visible
   queries become separable only through the continuing cellular route.
+- Recall is tested separately from language quality and the graph invariant verifies
+  that it does not create a direct memory-to-output effector bypass.
 
 ## Run
 

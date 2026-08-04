@@ -353,8 +353,18 @@ class Sol2(nn.Module):
         if write_memory:
             memory_slot = self.memory_idx[state.memory_cursor % len(self.memory_idx)]
             hidden = hidden.index_copy(
-                1, memory_slot.reshape(1), embedded.detach().unsqueeze(1)
+                1, memory_slot.reshape(1), embedded.unsqueeze(1)
             )
+        elif organ_name != "A":
+            recall = getattr(self.attached_organs[organ_name], "recall", None)
+            if callable(recall):
+                recalled, _ = recall(
+                    embedded,
+                    hidden[:, self.memory_idx],
+                    valid_count=min(state.memory_cursor, len(self.memory_idx)),
+                    collect_health=False,
+                )
+                sensory_drive = sensory_drive + recalled.unsqueeze(1)
 
         raw_message = None
         message = None
