@@ -38,6 +38,8 @@ feature is sent through the vocabulary head.
   vocabulary logits.
 - Supports no-exposure, wrong-passage, reset, stream-memory lesion, exact-zero control,
   and internal freeze/lesion arms through explicit arguments.
+- Accepts cached frozen passage/question features so matched causal arms rerun only the
+  organism rather than the 8B language encoder.
 - Processes the question after a fresh language context and computes cross-entropy only
   over the four label logits.
 
@@ -67,6 +69,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   post-erasure language workspace.
 - Reset changes state only, never weights.
 - Exact-zero control traverses the same exposure and cellular transitions as normal.
+- Cached features change performance only; token wrappers remain the training path and
+  cached-feature equivalence is covered by the living-language CPU gate.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.

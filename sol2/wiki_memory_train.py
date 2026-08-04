@@ -24,6 +24,8 @@ from .wiki_memory import (
     WikiDocument,
     WikiMemoryCorpus,
     WikiQuestion,
+    encode_text,
+    format_wiki_question,
     load_wiki_memory_corpus,
     run_wiki_memory_episode,
     summarize_results,
@@ -165,6 +167,33 @@ def evaluate_wiki_memory(
         )
     }
     device = next(system.organism.parameters()).device
+    memory_features = {
+        document.id: system.backbone.encode(
+            encode_text(
+                tokenizer,
+                document.memory,
+                device,
+                max_tokens=max_memory_tokens,
+            )
+        )
+        for document in documents
+    }
+    question_features = {}
+    for document in documents:
+        for question in document.questions:
+            for paraphrase in (False, True):
+                formatted = format_wiki_question(
+                    question,
+                    permutation_seed=permutation_seed,
+                    paraphrase=paraphrase,
+                )
+                ids = encode_text(
+                    tokenizer,
+                    formatted.prompt,
+                    device,
+                    max_tokens=max_question_tokens,
+                )
+                question_features[(question.id, paraphrase)] = system.backbone.encode(ids)
     for document_index, document in enumerate(documents):
         wrong_document = documents[(document_index + 1) % len(documents)]
         for question in document.questions:
@@ -179,23 +208,51 @@ def evaluate_wiki_memory(
                 "max_question_tokens": max_question_tokens,
             }
             results = {
-                "normal": run_wiki_memory_episode(**common),
-                "no_exposure": run_wiki_memory_episode(**common, expose=False),
-                "zero_control": run_wiki_memory_episode(**common, control_scale=0.0),
+                "normal": run_wiki_memory_episode(
+                    **common,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, False)],
+                ),
+                "no_exposure": run_wiki_memory_episode(
+                    **common,
+                    expose=False,
+                    question_features=question_features[(question.id, False)],
+                ),
+                "zero_control": run_wiki_memory_episode(
+                    **common,
+                    control_scale=0.0,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, False)],
+                ),
                 "reset_after_exposure": run_wiki_memory_episode(
-                    **common, reset_after_exposure=True
+                    **common,
+                    reset_after_exposure=True,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, False)],
                 ),
                 "wrong_passage": run_wiki_memory_episode(
-                    **common, exposure_document=wrong_document
+                    **common,
+                    exposure_document=wrong_document,
+                    exposure_features=memory_features[wrong_document.id],
+                    question_features=question_features[(question.id, False)],
                 ),
                 "memory_lesion": run_wiki_memory_episode(
-                    **common, memory_lesion=True
+                    **common,
+                    memory_lesion=True,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, False)],
                 ),
                 "internal_lesion": run_wiki_memory_episode(
-                    **common, frozen_idx=system.organism.internal_idx
+                    **common,
+                    frozen_idx=system.organism.internal_idx,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, False)],
                 ),
                 "question_paraphrase": run_wiki_memory_episode(
-                    **common, paraphrase=True
+                    **common,
+                    paraphrase=True,
+                    exposure_features=memory_features[document.id],
+                    question_features=question_features[(question.id, True)],
                 ),
             }
             for arm, result in results.items():
@@ -513,4 +570,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

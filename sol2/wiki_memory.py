@@ -249,6 +249,8 @@ def run_wiki_memory_episode(
     *,
     permutation_seed: int,
     exposure_document: WikiDocument | None = None,
+    exposure_features: torch.Tensor | None = None,
+    question_features: torch.Tensor | None = None,
     expose: bool = True,
     reset_after_exposure: bool = False,
     memory_lesion: bool = False,
@@ -265,10 +267,15 @@ def run_wiki_memory_episode(
     next_state = state
     if expose:
         exposed = document if exposure_document is None else exposure_document
-        memory_ids = encode_text(
-            tokenizer, exposed.memory, device, max_tokens=max_memory_tokens
-        )
-        next_state, _ = system.observe_sequence(memory_ids, next_state)
+        if exposure_features is None:
+            memory_ids = encode_text(
+                tokenizer, exposed.memory, device, max_tokens=max_memory_tokens
+            )
+            next_state, _ = system.observe_sequence(memory_ids, next_state)
+        else:
+            next_state, _ = system.observe_feature_sequence(
+                exposure_features, next_state
+            )
     if reset_after_exposure:
         next_state = system.initial_state(state.hidden.shape[0], device)
     elif memory_lesion:
@@ -277,16 +284,25 @@ def run_wiki_memory_episode(
     formatted = format_wiki_question(
         question, permutation_seed=permutation_seed, paraphrase=paraphrase
     )
-    question_ids = encode_text(
-        tokenizer, formatted.prompt, device, max_tokens=max_question_tokens
-    )
-    scored = system.score_next_after_sequence(
-        question_ids,
-        next_state,
-        control_scale=control_scale,
-        frozen_idx=frozen_idx,
-        collect_health=collect_health,
-    )
+    if question_features is None:
+        question_ids = encode_text(
+            tokenizer, formatted.prompt, device, max_tokens=max_question_tokens
+        )
+        scored = system.score_next_after_sequence(
+            question_ids,
+            next_state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+            collect_health=collect_health,
+        )
+    else:
+        scored = system.score_next_from_features(
+            question_features,
+            next_state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+            collect_health=collect_health,
+        )
     labels = label_token_ids(tokenizer, device)
     label_logits = _select_label_logits(scored.logits, labels)
     target = torch.tensor([formatted.correct_index], device=device)

@@ -17,6 +17,7 @@ backbone or GPU training is attempted.
   reference loss, controls, and continuing cellular state.
 - Exposure-only observation, final-position scoring, and masked token loss preserve
   exact causal state evolution while avoiding unnecessary vocabulary logits.
+- Cached frozen-feature entry points exactly match their token-encoding wrappers.
 - Frozen language parameters receive no gradients and remain byte-for-byte unchanged.
 - Generation feeds prompt and generated tokens into one continuing organism state.
 - Erasing the visible language context does not erase cellular state.

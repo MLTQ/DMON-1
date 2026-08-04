@@ -30,6 +30,9 @@ Evaluates normal, no-exposure, zero-control, reset, wrong-passage, stream-memory
 internal lesion, and paraphrase arms from matched fresh states. Held-out content causes
 state transitions only and never optimizer updates.
 
+Frozen passage and question features are cached once per evaluation. Every arm still
+performs independent cellular transitions and language-head control.
+
 ### `run_training`
 
 - Continues one lifetime lane across meta-training updates while truncating autograd at
@@ -52,6 +55,8 @@ state transitions only and never optimizer updates.
   rapid exposure memory from incidental history accumulated by the training lane.
 - Classification loss is restricted to four frozen-head label logits. The backbone
   stays fully frozen and is never serialized into organism checkpoints.
+- Causal evaluation caches detached frozen features because recomputing identical Llama
+  representations for eight arms dominated the two-update pilot runtime.
 
 ## Contracts
 
@@ -71,4 +76,3 @@ python -m sol2.wiki_memory_train \
   --baseline data/dmon-l0/l0c1-baseline.json \
   --updates 300 --out-dir data/dmon-l0/l0c1-train
 ```
-

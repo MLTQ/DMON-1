@@ -94,6 +94,25 @@ class LivingLanguageSystem(nn.Module):
         if input_ids.ndim != 2 or input_ids.shape[1] < 1:
             raise ValueError("input_ids must contain a non-empty token sequence")
         feature_sequence = self.backbone.encode(input_ids)
+        return self.observe_feature_sequence(
+            feature_sequence,
+            state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+        )
+
+    def observe_feature_sequence(
+        self,
+        feature_sequence: torch.Tensor,
+        state: OrganismState,
+        *,
+        control_scale: float = 1.0,
+        frozen_idx: torch.Tensor | None = None,
+    ) -> tuple[OrganismState, torch.Tensor]:
+        """Absorb already-computed frozen features without vocabulary logits."""
+
+        if feature_sequence.ndim != 3 or feature_sequence.shape[1] < 1:
+            raise ValueError("features must have non-empty [batch, sequence, width] shape")
         controls, next_state, _ = self._evolve_feature_sequence(
             feature_sequence,
             state,
@@ -116,6 +135,27 @@ class LivingLanguageSystem(nn.Module):
         if input_ids.ndim != 2 or input_ids.shape[1] < 1:
             raise ValueError("input_ids must contain a non-empty token sequence")
         feature_sequence = self.backbone.encode(input_ids)
+        return self.score_next_from_features(
+            feature_sequence,
+            state,
+            control_scale=control_scale,
+            frozen_idx=frozen_idx,
+            collect_health=collect_health,
+        )
+
+    def score_next_from_features(
+        self,
+        feature_sequence: torch.Tensor,
+        state: OrganismState,
+        *,
+        control_scale: float = 1.0,
+        frozen_idx: torch.Tensor | None = None,
+        collect_health: bool = False,
+    ) -> LanguageStep:
+        """Evolve over cached features and score their final next-token distribution."""
+
+        if feature_sequence.ndim != 3 or feature_sequence.shape[1] < 1:
+            raise ValueError("features must have non-empty [batch, sequence, width] shape")
         controls, next_state, health = self._evolve_feature_sequence(
             feature_sequence,
             state,

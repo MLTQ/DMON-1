@@ -23,6 +23,8 @@ optional SOL2 health telemetry.
   the same continuing organism state.
 - Absorbs exposure sequences without allocating vocabulary logits, and scores only the
   final next-token distribution for classification-style memory probes.
+- Accepts already-computed frozen feature sequences for matched causal evaluations
+  that reuse the exact same language representation across organism interventions.
 - Supports masked teacher forcing so question/prompt tokens can evolve the organism
   without receiving a language loss.
 
@@ -45,6 +47,9 @@ caller's random stream.
   learning objective.
 - `score_next_after_sequence` evolves over every prompt token but decodes only the last
   position, which is the exact surface needed by multiple-choice memory experiments.
+- Feature-level observation/scoring is semantically identical to token wrappers. It
+  avoids repeating an 8B-parameter frozen forward for every causal arm while retaining
+  separate cellular transitions and controls.
 - Frozen features are computed once per transition and reused for controlled decoding;
   there is no mandatory second backbone pass.
 - Sensory features are explicitly converted to the continuing cellular state's device
@@ -69,3 +74,5 @@ caller's random stream.
 - Grafting is deterministic from its private seed and preserves global RNG state.
 - A loss mask changes credit assignment only; every input token still advances the
   same continuing cellular state.
+- Cached features must retain `[batch, sequence, backbone_width]` shape and remain
+  detached from backbone parameters.
