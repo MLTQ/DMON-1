@@ -28,12 +28,14 @@ Acts as the mandatory CPU gate before any SOL2 GPU allocation.
 - Exact next stream chunk, state, loss, optimizer moments, and update after checkpoint
   resume.
 - Device-normalized CPU/CUDA RNG restoration from serialized checkpoint tensors.
+- Capacity-gated, mastery-gated multi-seed developmental manifests whose recurrent
+  substrate scales to exact 400/800/1,600/3,200-cell starting geometries.
 - Foreground ticks continuing while the background learner publishes an update.
 - Portable hardware preflight throughput, accepted-update, fingerprint, and grown-
   topology capacity telemetry on a deterministic CPU configuration, including an
   immutable pre-growth geometry record.
 - Immutable campaign hashing, atomic multi-worker claims, dependency blocking, explicit
-  retries, and artifact-verified completion.
+  attempt-capped retries, artifact verification, and nested JSON eligibility predicates.
 - Degree-preserving topology and private-expression interventions restore exactly.
 
 ## Contracts

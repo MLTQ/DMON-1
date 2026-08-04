@@ -47,6 +47,15 @@ def _validate_jobs(jobs: list[dict]) -> None:
         expected = row.get("expected_artifact")
         if not isinstance(expected, str) or Path(expected).is_absolute():
             raise ValueError(f"job {job_id} expected artifact must be relative")
+        completion_check = row.get("completion_check")
+        if completion_check is not None:
+            field = completion_check.get("json_field")
+            if not isinstance(field, list) or not field or not all(
+                isinstance(part, str) and part for part in field
+            ):
+                raise ValueError(f"job {job_id} completion check needs json_field")
+            if "equals" not in completion_check:
+                raise ValueError(f"job {job_id} completion check needs equals")
         dependencies = row.get("depends_on", [])
         if not isinstance(dependencies, list) or not set(dependencies) <= known:
             raise ValueError(f"job {job_id} has unknown dependencies")
@@ -111,11 +120,14 @@ def claim_ready_job(
     worker_id: str,
     *,
     retry_failed: bool = False,
+    max_attempts: int = 2,
     reclaim_after_seconds: float | None = None,
     now: float | None = None,
 ) -> dict | None:
     """Atomically claim the first dependency-ready job in manifest order."""
 
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be positive")
     manifest = load_manifest(root)
     current_time = time.time() if now is None else now
     with _locked_state(root, manifest) as state:
@@ -138,8 +150,9 @@ def claim_ready_job(
             status = existing.get("status", "pending")
             if status in {"complete", "running"}:
                 continue
-            if status == "failed" and not retry_failed:
-                continue
+            if status == "failed":
+                if not retry_failed or int(existing.get("attempt", 0)) >= max_attempts:
+                    continue
             if any(
                 statuses.get(dependency, {}).get("status") != "complete"
                 for dependency in job.get("depends_on", [])
@@ -178,20 +191,36 @@ def finish_job(
             raise ValueError(f"job {job_id} is not running")
         if row.get("worker_id") != worker_id:
             raise ValueError(f"job {job_id} belongs to another worker")
-        artifact = root / jobs[job_id]["expected_artifact"]
-        success = exit_code == 0 and artifact.is_file()
+        job = jobs[job_id]
+        artifact = root / job["expected_artifact"]
+        artifact_present = artifact.is_file()
+        completion_ok = artifact_present
+        completion_check = job.get("completion_check")
+        if completion_ok and completion_check is not None:
+            try:
+                value = json.loads(artifact.read_text())
+                for field in completion_check["json_field"]:
+                    value = value[field]
+                completion_ok = value == completion_check["equals"]
+            except (OSError, json.JSONDecodeError, KeyError, TypeError):
+                completion_ok = False
+        success = exit_code == 0 and completion_ok
         row.update(
             {
                 "status": "complete" if success else "failed",
                 "finished_at": current_time,
                 "exit_code": exit_code,
-                "artifact_present": artifact.is_file(),
+                "artifact_present": artifact_present,
+                "completion_check_passed": completion_ok,
             }
         )
         if not success:
-            row["failure"] = (
-                "nonzero_exit" if exit_code else "expected_artifact_missing"
-            )
+            if exit_code:
+                row["failure"] = "nonzero_exit"
+            elif not artifact_present:
+                row["failure"] = "expected_artifact_missing"
+            else:
+                row["failure"] = "completion_check_failed"
         return dict(row)
 
 
@@ -218,6 +247,7 @@ def run_worker(
     *,
     cuda_visible_devices: str | None,
     retry_failed: bool,
+    max_attempts: int,
     reclaim_after_seconds: float | None,
     poll_seconds: float,
 ) -> int:
@@ -230,6 +260,7 @@ def run_worker(
             root,
             worker_id,
             retry_failed=retry_failed,
+            max_attempts=max_attempts,
             reclaim_after_seconds=reclaim_after_seconds,
         )
         if job is not None:
@@ -267,6 +298,7 @@ def main() -> None:
     worker.add_argument("--worker-id", required=True)
     worker.add_argument("--cuda-visible-devices")
     worker.add_argument("--retry-failed", action="store_true")
+    worker.add_argument("--max-attempts", type=int, default=2)
     worker.add_argument("--reclaim-after-seconds", type=float)
     worker.add_argument("--poll-seconds", type=float, default=5.0)
     args = parser.parse_args()
@@ -279,6 +311,7 @@ def main() -> None:
             args.worker_id,
             cuda_visible_devices=args.cuda_visible_devices,
             retry_failed=args.retry_failed,
+            max_attempts=args.max_attempts,
             reclaim_after_seconds=args.reclaim_after_seconds,
             poll_seconds=args.poll_seconds,
         )

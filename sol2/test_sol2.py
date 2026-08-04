@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import math
 import tempfile
 from pathlib import Path
@@ -18,6 +19,7 @@ from .baselines import (
 from .checkpoint import load_checkpoint, restore_rng_state, save_checkpoint, unpack_state
 from .campaign import claim_ready_job, finish_job, write_manifest
 from .config import Sol2Config
+from .developmental_campaign import build_jobs, geometry_for_cells
 from .evaluate import evaluate_with_ablations
 from .growth import activate_reserve_dendrites, grow_relay_tissue
 from .hardware_preflight import run_hardware_preflight
@@ -495,7 +497,11 @@ def test_campaign_claims_dependencies_and_requires_artifacts() -> None:
                 "id": "acquire-s7",
                 "command": ["{python}", "-c", "print('acquire')"],
                 "depends_on": [],
-                "expected_artifact": "acquire/acquisition.pt",
+                "expected_artifact": "acquire/metrics.json",
+                "completion_check": {
+                    "json_field": ["mastered"],
+                    "equals": True,
+                },
             },
             {
                 "id": "adapt-s7",
@@ -514,14 +520,25 @@ def test_campaign_claims_dependencies_and_requires_artifacts() -> None:
         assert failed["failure"] == "expected_artifact_missing"
         assert claim_ready_job(root, "worker-b", now=13.0) is None
 
-        retried = claim_ready_job(root, "worker-a", retry_failed=True, now=14.0)
+        retried = claim_ready_job(
+            root, "worker-a", retry_failed=True, max_attempts=3, now=14.0
+        )
         assert retried is not None and retried["id"] == "acquire-s7"
-        artifact = root / "acquire" / "acquisition.pt"
+        artifact = root / "acquire" / "metrics.json"
         artifact.parent.mkdir()
-        artifact.write_bytes(b"checkpoint")
-        completed = finish_job(root, retried["id"], "worker-a", exit_code=0, now=15.0)
+        artifact.write_text(json.dumps({"mastered": False}))
+        ineligible = finish_job(
+            root, retried["id"], "worker-a", exit_code=0, now=15.0
+        )
+        assert ineligible["failure"] == "completion_check_failed"
+        retried = claim_ready_job(
+            root, "worker-a", retry_failed=True, max_attempts=3, now=16.0
+        )
+        assert retried is not None and retried["id"] == "acquire-s7"
+        artifact.write_text(json.dumps({"mastered": True}))
+        completed = finish_job(root, retried["id"], "worker-a", exit_code=0, now=17.0)
         assert completed["status"] == "complete"
-        downstream = claim_ready_job(root, "worker-b", now=16.0)
+        downstream = claim_ready_job(root, "worker-b", now=18.0)
         assert downstream is not None and downstream["id"] == "adapt-s7"
 
 
@@ -536,6 +553,29 @@ def test_checkpoint_rng_restore_normalizes_serialized_state() -> None:
         assert torch.equal(torch.get_rng_state(), target)
     finally:
         torch.set_rng_state(original)
+
+
+def test_developmental_campaign_is_capacity_and_mastery_gated() -> None:
+    geometry = geometry_for_cells(800)
+    assert geometry["n_compute"] == 576
+    assert geometry["n_relay"] == 144
+    assert geometry["growth_cells_per_event"] == 32
+    jobs, protocol = build_jobs(
+        seeds=[7, 13],
+        sizes=[400, 800],
+        acquisition_updates=10_000,
+        adaptation_updates=3_000,
+    )
+    assert len(jobs) == 2 + 2 * 2 * 5
+    by_id = {job["id"]: job for job in jobs}
+    acquisition = by_id["acquire-n800-s13"]
+    assert acquisition["depends_on"] == ["preflight-n800"]
+    assert acquisition["completion_check"]["json_field"] == ["mastered"]
+    developmental = by_id["adapt-n800-s13-developmental"]
+    assert developmental["depends_on"] == ["acquire-n800-s13"]
+    growth_index = developmental["command"].index("--growth-cells") + 1
+    assert developmental["command"][growth_index] == "32"
+    assert protocol["effective_batch_size"] == 24
 
 
 def main() -> None:
@@ -558,6 +598,7 @@ def main() -> None:
         test_hardware_preflight_measures_base_and_growth,
         test_campaign_claims_dependencies_and_requires_artifacts,
         test_checkpoint_rng_restore_normalizes_serialized_state,
+        test_developmental_campaign_is_capacity_and_mastery_gated,
     ]
     print("SOL2 CPU contract gate")
     for test in tests:
