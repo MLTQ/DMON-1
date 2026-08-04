@@ -1,6 +1,7 @@
 # S1-P3: utility-gated consolidation with plastic reserve
 
-Status: protocol frozen 2026-08-04 before implementation tests or GPU results.
+Status: seed-7 4090 run complete; graded consolidation improved the stability/plasticity
+frontier, but simultaneous mastery and measured-utility attribution gates failed.
 
 ## Question
 
@@ -83,3 +84,60 @@ All result-bearing processes select only physical RTX 4090 UUID
 `GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`. The RTX 2070S is reserved for `jewels` and
 must never receive an S1-P3 process. At most two branches may share the 4090 after
 observed memory confirms that doing so is safe.
+
+## Seed-7 result
+
+The 400-cell organism mastered A at update 6,000 with 94.53% held-out length-four
+accuracy, 1,288,790 parameters, and zero rejected updates. Attaching B raised each
+branch to 1,445,292 parameters. Plastic and measured branches ran together at roughly
+22.9/24.6 GB on the 4090; shuffled ran alone. No SOL2 process used the reserved 2070S.
+
+| Branch | A length 4 | B length 4 | Worst(A,B) | Rejected updates |
+|---|---:|---:|---:|---:|
+| Plastic | 13.48% | 97.46% | 13.48% | 0 |
+| Measured consolidation | 86.98% | 33.72% | 33.72% | 0 |
+| Shuffled consolidation | 83.14% | 34.05% | 34.05% | 0 |
+
+Measured consolidation improved the worst retained capability by 20.25 points over
+plastic and therefore barely cleared that isolated gate. Shuffled consolidation
+improved it by 20.57 points and was marginally better, so shuffling removed none of the
+gain. Neither protected arm approached simultaneous 80/80; primary success is false.
+The complete aggregate is retained in `s1p3-consolidated-reserve-result.json`.
+
+The measured mask did exactly localize change. Low-A-utility cell expression drifted
+7.63 times more than the high-utility quartile, and low-utility edges drifted 11.25
+times more. Yet this localization did not improve capability over shuffled placement.
+The result supports graded slowing and heterogeneous plastic reserve, but does not
+validate this first-order gradient ranking as the allocator of that reserve.
+
+Measured-consolidation B accuracy by length was 98.83%, 89.45%, 56.97%, and 33.72%.
+It learned primitives and shallow composition but not a second deep procedure. Acute
+freezing of all internal cells reduced its B accuracy from 34.24% to 11.91%, confirming
+that the partial B capability used the organism. Freezing 80 high-A-utility internal
+cells cost B 17.97 points, versus 5.66 points for 80 low-utility cells: B reused some
+consolidated A machinery while recruiting reserve. A-organ parameters remained
+byte-identical in every branch.
+
+## Architectural conclusion
+
+This is not evidence that consolidation is the wrong direction. It exposes two
+specific limitations of this implementation:
+
+1. Doubling 208 cells to 400 added only 64,512 parameters because the typed transition
+   rules remain shared. Reserve cells own target/time biases and edge logits, but no
+   independent transition operator; slowing the shared genome therefore protects A
+   and simultaneously limits what reserve can compute.
+2. Edge protection used the maximum utility of the edge, source, and target. That makes
+   a low-utility reserve cell pay to begin reading a useful consolidated source, which
+   violates the intended directional rule that reading stable knowledge should be
+   cheap while modifying the producer should be expensive.
+
+The next stepping stone should retain the natural shared organism rather than add an
+expert router: give each mutable cell a small private low-rank transition residual;
+protect those adapters by causal utility; protect an edge according to its own A demand
+and target utility, not source utility; and activate dormant dendrites only on reserve
+targets so they can cheaply read consolidated circuits. Add a uniform-slowdown control
+beside plastic, measured, and shuffled arms to separate the slow-genome effect from the
+benefit of heterogeneous plastic islands. Sweep a small number of genome rates rather
+than treating 0.05 as uniquely correct. Longer training of the current arm may trace a
+frontier, but it is unlikely to create the missing cell-local computational capacity.
