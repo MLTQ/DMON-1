@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -117,6 +118,15 @@ def run_smoke(args: argparse.Namespace) -> dict:
         "model": args.model,
         "device": str(device),
         "dtype": args.dtype,
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "cuda_device_name": (
+            torch.cuda.get_device_name() if device.type == "cuda" else None
+        ),
+        "cuda_total_memory_bytes": (
+            torch.cuda.get_device_properties(0).total_memory
+            if device.type == "cuda"
+            else 0
+        ),
         "prompt_tokens": int(input_ids.shape[1]),
         "backbone_width": backbone.width,
         "backbone_vocab_size": backbone.vocab_size,

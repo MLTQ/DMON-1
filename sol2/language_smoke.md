@@ -38,7 +38,8 @@ The JSON result must show:
 - exact-zero controls at graft initialization,
 - a nonzero control-decoder gradient,
 - native-logit error within the requested tolerance, and
-- measured peak allocated/reserved VRAM on CUDA.
+- the process visibility mask, physical device name, total memory, and measured peak
+  allocated/reserved VRAM on CUDA.
 
 ## Example
 
