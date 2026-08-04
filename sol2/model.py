@@ -110,11 +110,15 @@ class Sol2(nn.Module):
         # strictly. Newly attached ports live here and are always selected explicitly.
         self.attached_organs = nn.ModuleDict()
 
+    @staticmethod
+    def _validate_attached_organ_name(name: str) -> None:
+        if not name or name == "A" or "." in name:
+            raise ValueError("attached organ name must be non-empty, non-'A', and dot-free")
+
     def attach_organ(self, name: str, *, seed: int) -> SensorEffectorOrgan:
         """Create a deterministic independent sensor/effector bundle."""
 
-        if not name or name == "A" or "." in name:
-            raise ValueError("attached organ name must be non-empty, non-'A', and dot-free")
+        self._validate_attached_organ_name(name)
         if name in self.attached_organs:
             raise ValueError(f"organ {name!r} is already attached")
         device = self.embedding.weight.device
@@ -134,7 +138,24 @@ class Sol2(nn.Module):
         self.attached_organs[name] = organ
         return organ
 
-    def detach_organ(self, name: str) -> SensorEffectorOrgan:
+    def attach_organ_module(self, name: str, organ: nn.Module) -> nn.Module:
+        """Attach a specialized sensor/effector that obeys the organ protocol."""
+
+        self._validate_attached_organ_name(name)
+        if name in self.attached_organs:
+            raise ValueError(f"organ {name!r} is already attached")
+        missing = [
+            method
+            for method in ("sense", "read", "operator_norms")
+            if not callable(getattr(organ, method, None))
+        ]
+        if missing:
+            raise TypeError(f"organ is missing required methods: {', '.join(missing)}")
+        organ.to(self.embedding.weight.device)
+        self.attached_organs[name] = organ
+        return organ
+
+    def detach_organ(self, name: str) -> nn.Module:
         """Remove and return an attached bundle without changing its parameters."""
 
         if name == "A":
@@ -143,14 +164,10 @@ class Sol2(nn.Module):
             raise KeyError(f"organ {name!r} is not attached")
         return self.attached_organs.pop(name)
 
-    def reattach_organ(self, name: str, organ: SensorEffectorOrgan) -> None:
+    def reattach_organ(self, name: str, organ: nn.Module) -> None:
         """Restore the exact previously detached module object."""
 
-        if not name or name == "A" or "." in name:
-            raise ValueError("attached organ name must be non-empty, non-'A', and dot-free")
-        if name in self.attached_organs:
-            raise ValueError(f"organ {name!r} is already attached")
-        self.attached_organs[name] = organ
+        self.attach_organ_module(name, organ)
 
     def organ_parameters(self, name: str):
         """Iterate the parameters belonging only to one physical interface."""

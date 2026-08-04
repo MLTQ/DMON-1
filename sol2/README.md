@@ -24,6 +24,9 @@ must share one universal rule.
   selection, matched true-attachment branches, and removal/reattachment recovery.
 - Causal-utility calibration and graded update protection that can consolidate useful
   cells and connections while preserving a plastic internal reserve.
+- DMON-L0 continuous language grafts: a frozen replaceable language backbone supplies
+  contextual senses and fluent decoding while the persistent organism emits low-rank
+  control vectors through dedicated output tissue.
 
 ## Architecture
 
@@ -57,12 +60,47 @@ fractions rather than optimized as an activity reward.
 ```bash
 .venv/bin/python -m sol2.test_sol2
 .venv/bin/python -m sol2.test_procedural
+.venv/bin/python -m sol2.test_living_language
 ```
 
 The suite is deliberately executable without pytest so a fresh project environment
 can validate the architecture before optional test-runner dependencies are installed.
 
 This gate must pass before GPU work.
+
+## Living language graft
+
+DMON-L0 treats a pretrained language model as a detachable language organ, not as the
+creature itself:
+
+```text
+user/generated token -> frozen contextual feature -> continuous sensory graft
+    -> persistent SOL2 cells/connectome -> dedicated output tissue
+    -> low-rank control vectors -> frozen language head -> next token
+```
+
+The language model remains frozen. Its final hidden state is computed without a
+training graph, reused as sensory input, and modified only by an exactly zero-initialized
+control residual before the frozen vocabulary head. The organism therefore owns all
+new learned state and adaptation. Its state continues when visible language context is
+erased and receives generated tokens as subsequent sensory input.
+
+`test_living_language.py` includes the first architectural proof: after a tiny paired
+curriculum, identical post-erasure prompts are solved perfectly in normal operation,
+while zero language control, cellular reset, and internal-tissue lesion remain at or
+below chance. This is a causal integration gate, not an LLM quality comparison.
+
+The staged production protocol is in
+`experiments/l0-living-language-organ.md`.
+
+Once a decoder-only checkpoint is available locally, measure its real graft boundary
+before training:
+
+```bash
+.venv/bin/python -m sol2.language_smoke \
+  --model /path/to/local/model --device cuda:0 --dtype bfloat16 \
+  --out /tmp/dmon-l0-smoke.json --local-files-only
+```
 
 ## Procedural transfer
 

@@ -28,8 +28,8 @@ and the largest effective operator norm beside behavioral loss.
   input, memory, compute, or relay tensors directly.
 - Retains legacy A parameter names and stores additional physical ports in an initially
   empty `attached_organs` module dictionary.
-- Selects one organ explicitly per step and exposes exact attach/detach/reattach and
-  organ-parameter iteration operations.
+- Selects one organ explicitly per step and exposes exact attach/detach/reattach,
+  specialized-module attachment, and organ-parameter iteration operations.
 - Supports zero-and-freeze tissue interventions without changing the training path.
 
 ### `count_parameters`
@@ -51,6 +51,9 @@ Counts only trainable parameters for matched controls.
   Growth extends internal tissue only in this first kernel.
 - An empty attached-organ registry adds no state-dict keys, so pre-attachment
   acquisition checkpoints continue to load strictly.
+- Specialized organs use a structural protocol (`sense`, `read`, and
+  `operator_norms`) rather than inheriting a vocabulary-specific class. This keeps
+  the SOL2 substrate independent of the replaceable external modality or backbone.
 - Relay tissue is physically last in the index layout, so relay growth is append-only
   and reconstructible from configuration plus checkpoint buffers.
 - Private-expression rows map only to mutable cells. Stream-written memory contributes
@@ -70,3 +73,5 @@ Counts only trainable parameters for matched controls.
   output block without relying on contiguity.
 - Attaching an organ preserves global RNG state and cannot alter A behavior until that
   organ is explicitly selected.
+- A specialized organ is moved to the organism device when attached and must implement
+  the same sensory, effector, and health surfaces as the discrete organ.
