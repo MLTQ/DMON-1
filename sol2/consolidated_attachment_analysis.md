@@ -17,5 +17,8 @@ retention and attribution gates without manual arithmetic.
 
 - Reads only canonical `plastic`, `consolidated`, and `shuffled` directories.
 - Uses terminal 64-batch estimates, never interval telemetry, for the gates.
+- With `--acquisition-checkpoint`, recomputes equal-count drift quartiles from the exact
+  acquisition and adaptation tensors; this is authoritative when older artifacts used
+  threshold bins for composite edge utility.
 - Reports recruitment and reuse diagnostics separately from the primary success gate.
 - A one-seed success remains a mechanism result and does not bypass replication.

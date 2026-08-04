@@ -130,13 +130,17 @@ def _train_phase(
 
 
 def _quartile(values: torch.Tensor, utility: torch.Tensor) -> dict:
-    low = utility <= 0.25
-    high = utility >= 0.75
+    if values.numel() != utility.numel() or values.numel() < 1:
+        raise ValueError("drift values and utility must be non-empty and aligned")
+    count = max(1, values.numel() // 4)
+    order = torch.argsort(utility, stable=True)
+    low_values = values[order[:count]]
+    high_values = values[order[-count:]]
     return {
-        "low_count": int(low.sum()),
-        "high_count": int(high.sum()),
-        "low_mean": float(values[low].mean()) if bool(low.any()) else 0.0,
-        "high_mean": float(values[high].mean()) if bool(high.any()) else 0.0,
+        "low_count": count,
+        "high_count": count,
+        "low_mean": float(low_values.mean()),
+        "high_mean": float(high_values.mean()),
     }
 
 
@@ -570,7 +574,19 @@ def main() -> None:
         genome_plasticity=args.genome_plasticity,
         resume=args.resume,
     )
-    print(json.dumps(result["summary"]["final"], indent=2))
+    final = result["summary"]["final"]
+    print(
+        json.dumps(
+            {
+                "branch": result["branch"],
+                "a_fixed": final["a_fixed"],
+                "b_by_length": final["b_by_length"],
+                "min_ab_accuracy": final["min_ab_accuracy"],
+                "drift": final["drift"],
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

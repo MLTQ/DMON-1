@@ -63,7 +63,8 @@ bypassing the energy cost.
 
 - A and B fixed-length-four accuracy every 200 updates; 64-batch terminal estimates.
 - Per-length B curves, rejected updates, lesion penalties, and neuron telemetry.
-- Parameter drift by measured-utility quartile for private expression and edges.
+- Parameter drift by equal-count measured-utility quartile for private expression and
+  edges.
 - Equal-size high-utility and low-utility internal-cell lesions on both A and B.
 - Primary success: terminal A and B are both at least 80%.
 - Attribution: consolidation improves `min(A,B)` by at least 20 percentage points over

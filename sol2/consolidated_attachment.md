@@ -24,7 +24,7 @@ utility profile, and RNG state.
 ### Attribution
 
 Every interval scores A and B from separate cloned states and reports parameter drift
-by measured-utility quartile. Terminal probes compare equal-size high- and low-utility
+by equal-count measured-utility quartile. Terminal probes compare equal-size high- and low-utility
 internal-cell lesions, alongside the existing tissue and topology lesions.
 
 ## Contracts
@@ -35,3 +35,5 @@ internal-cell lesions, alongside the existing tissue and topology lesions.
 - A and B evaluations never prime one another's living state.
 - The runner makes no success claim from a tiny smoke run; result-bearing budgets live
   in the frozen S1-P3 experiment document and 4090-only launcher.
+- CLI completion prints compact behavioral and drift summaries; full neuron telemetry
+  remains in `metrics.json` rather than flooding the service journal.
