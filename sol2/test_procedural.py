@@ -8,6 +8,12 @@ from tempfile import TemporaryDirectory
 import torch
 
 from .config import Sol2Config
+from .consolidated_attachment import run_consolidated_attachment_branch
+from .consolidation import (
+    ConsolidationPolicy,
+    calibrate_causal_utility,
+    make_utility_profile,
+)
 from .model import Sol2
 from .organ_attachment import run_organ_attachment_branch
 from .optim import add_optimizer_parameters, build_optimizer
@@ -221,6 +227,99 @@ def test_distinct_organ_attachment_is_behaviorally_silent_for_a() -> None:
     )
 
 
+def test_causal_utility_and_realized_update_protection() -> None:
+    task = ProceduralTask()
+    cfg = Sol2Config(
+        n_input=2,
+        n_memory=2,
+        n_compute=4,
+        n_relay=2,
+        n_output=2,
+        hidden=8,
+        n_dendrites=4,
+        initial_active_dendrites=2,
+        steps_per_token=1,
+        organ_queries=1,
+        vocab_size=task.vocab_size,
+        batch_size=2,
+        warmup_updates=1,
+        operator_bound=4.0,
+        seed=49,
+        device="cpu",
+    )
+    model = build_model("creature", cfg, "cpu")
+    assert isinstance(model, Sol2)
+    state = model.initial_state(cfg.batch_size, "cpu")
+    regime = task.base_regime(seed=cfg.seed + 101)
+    before = {name: value.clone() for name, value in model.state_dict().items()}
+    cells, edges, _ = calibrate_causal_utility(
+        model,
+        state,
+        task,
+        regime,
+        cfg,
+        batches=2,
+        steps=2,
+        generator_seed=cfg.seed + 30_000,
+    )
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
+    assert float(cells.min()) >= 0.0 and float(cells.max()) <= 1.0
+    assert bool((edges[~model.graph.active] == 0).all())
+
+    consolidated = make_utility_profile(
+        model,
+        cells,
+        edges,
+        branch="consolidated",
+        threshold=0.65,
+        temperature=0.10,
+        minimum_plasticity=0.02,
+        genome_plasticity=0.05,
+        shuffle_seed=cfg.seed + 31_000,
+    )
+    shuffled = make_utility_profile(
+        model,
+        cells,
+        edges,
+        branch="shuffled",
+        threshold=0.65,
+        temperature=0.10,
+        minimum_plasticity=0.02,
+        genome_plasticity=0.05,
+        shuffle_seed=cfg.seed + 31_000,
+    )
+    for tissue in ("input", "memory", "compute", "relay", "output"):
+        tissue_cells = model.tissue_indices(tissue)
+        assert torch.equal(
+            consolidated.applied_cell[tissue_cells].sort().values,
+            shuffled.applied_cell[tissue_cells].sort().values,
+        )
+        mask = model.graph.active[tissue_cells]
+        assert torch.equal(
+            consolidated.applied_edge[tissue_cells][mask].sort().values,
+            shuffled.applied_edge[tissue_cells][mask].sort().values,
+        )
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    model.zero_grad(set_to_none=True)
+    for parameter in model.parameters():
+        parameter.grad = torch.ones_like(parameter)
+    policy = ConsolidationPolicy(model, consolidated)
+    old_rule = model.tissues.rules["compute"].target.bias.detach().clone()
+    old_cell = model.cell_gain.detach().clone()
+    captured = policy.capture_before_step()
+    optimizer.step()
+    policy.apply_after_step(captured)
+    torch.testing.assert_close(
+        model.tissues.rules["compute"].target.bias - old_rule,
+        torch.full_like(old_rule, -0.005),
+    )
+    expected_cell = -0.1 * consolidated.cell_plasticity[
+        model.expression_cells
+    ].unsqueeze(-1).expand_as(model.cell_gain)
+    torch.testing.assert_close(model.cell_gain - old_cell, expected_cell)
+
+
 def test_tiny_true_organ_branch_integrity() -> None:
     task = ProceduralTask()
     cfg = Sol2Config(
@@ -331,6 +430,60 @@ def test_tiny_true_organ_branch_integrity() -> None:
         assert (root / "full" / "adaptation.pt").exists()
 
 
+def test_tiny_consolidated_attachment_branch() -> None:
+    task = ProceduralTask()
+    cfg = Sol2Config(
+        n_input=2,
+        n_memory=2,
+        n_compute=4,
+        n_relay=2,
+        n_output=2,
+        hidden=8,
+        n_dendrites=4,
+        initial_active_dendrites=2,
+        steps_per_token=1,
+        organ_queries=1,
+        vocab_size=task.vocab_size,
+        batch_size=2,
+        updates=2,
+        warmup_updates=1,
+        log_every=1,
+        operator_bound=4.0,
+        seed=59,
+        device="cpu",
+    )
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        acquisition_dir = root / "acquisition"
+        run_acquisition_calibration(
+            cfg,
+            acquisition_dir,
+            max_updates=2,
+            evaluation_interval=1,
+            stage_updates=1,
+            eval_batches=1,
+            mastery_accuracy=2.0,
+            mastery_checks=2,
+        )
+        result = run_consolidated_attachment_branch(
+            acquisition_dir / "acquisition.pt",
+            root / "consolidated",
+            "consolidated",
+            device="cpu",
+            adaptation_updates=1,
+            eval_every=1,
+            eval_batches=1,
+            final_eval_batches=1,
+            utility_batches=1,
+            max_steps=2,
+        )
+        assert result["update"] == 1
+        assert result["integrity"]["a_organ_unchanged"]
+        assert result["profile"]["genome_plasticity"] == 0.05
+        assert "utility_lesions" in result["summary"]
+        assert (root / "consolidated" / "adaptation.pt").exists()
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
@@ -339,7 +492,9 @@ def main() -> None:
         test_tiny_branching_smoke,
         test_acquisition_checkpoint_and_resume,
         test_distinct_organ_attachment_is_behaviorally_silent_for_a,
+        test_causal_utility_and_realized_update_protection,
         test_tiny_true_organ_branch_integrity,
+        test_tiny_consolidated_attachment_branch,
     )
     for test in tests:
         test()

@@ -22,6 +22,8 @@ must share one universal rule.
   new algorithms and can freeze the core while sensory/output organs adapt.
 - Checkpoint-compatible detachable sensor/effector bundles with explicit port
   selection, matched true-attachment branches, and removal/reattachment recovery.
+- Causal-utility calibration and graded update protection that can consolidate useful
+  cells and connections while preserving a plastic internal reserve.
 
 ## Architecture
 
@@ -104,6 +106,20 @@ The promoted checkpoint feeds the true organ-attachment experiment described in
 
 After all four canonical branch directories complete, aggregate the frozen gates with
 `python -m sol2.organ_attachment_analysis <result-root>`.
+
+S1-P3 tests whether a doubled organism can learn through B without overwriting A by
+protecting useful cell expression, edges, and the slower tissue genome. The measured
+arm is compared with an equally large plastic organism and a within-tissue shuffled-
+utility control:
+
+```bash
+.venv/bin/python -m sol2.consolidated_attachment \
+  --acquisition-checkpoint /tmp/sol2-acquisition/acquisition.pt \
+  --branch consolidated --device cpu --adaptation-updates 10 --eval-every 5 \
+  --utility-batches 2 --eval-batches 1 --out-dir /tmp/sol2-consolidated
+```
+
+The frozen result protocol is in `experiments/s1p3-consolidated-reserve.md`.
 
 ## Short local smoke
 

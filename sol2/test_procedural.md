@@ -20,9 +20,14 @@ branching harness before any GPU experiment is allocated.
   and resumes to the exact next interval without discarding prior evaluations.
 - Attaching B preserves global RNG, leaves A logits exact and its state numerically
   identical, keeps A/B parameters disjoint, and restores the same module on reattach.
+- Causal utility calibration leaves parameters exact, assigns no utility to dormant
+  edges, preserves within-tissue treatment distributions when shuffled, and scales the
+  realized optimizer delta exactly for shared rules and private cell rows.
 - Tiny full and organ-only true-attachment branches preserve inactive A parameters,
   keep the frozen organ-only substrate exact, checkpoint adaptation, and exercise the
   removal/reattachment path.
+- A tiny consolidated-attachment branch calibrates utility, protects the substrate,
+  retains A-organ integrity, checkpoints, and emits utility lesions end to end.
 - Split organ-only execution resumes to the same records, model tensors, and living
   state as uninterrupted interval execution.
 
