@@ -35,6 +35,8 @@ branching harness before any GPU experiment is allocated.
   success gates without waiting for a GPU result.
 - Synthetic S1-P3b artifacts keep capability and measured-allocation conclusions
   separate while exercising adapter and graft recruitment gates.
+- The genome-rate selector maximizes worst-organ accuracy and applies the frozen
+  higher-B tie-break inside a two-point band.
 - Split organ-only execution resumes to the same records, model tensors, and living
   state as uninterrupted interval execution.
 

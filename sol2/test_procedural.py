@@ -17,6 +17,7 @@ from .consolidation import (
     make_utility_profile,
 )
 from .model import Sol2
+from .genome_rate_screen import select as select_genome_rate
 from .organ_attachment import run_organ_attachment_branch
 from .optim import add_optimizer_parameters, build_optimizer
 from .procedural_acquisition import run_acquisition_calibration
@@ -623,6 +624,34 @@ def test_private_transition_analysis_keeps_capability_and_allocation_separate() 
         assert result["gates"]["reserve_adapters_are_causal_for_b"]
 
 
+def test_genome_rate_screen_uses_frozen_tie_break() -> None:
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        candidates = {}
+        for rate, a, b in (
+            (0.05, 0.80, 0.60),
+            (0.15, 0.61, 0.90),
+            (0.30, 0.59, 0.95),
+        ):
+            path = root / f"{rate}.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "protocol": {"max_steps": 4},
+                        "summary": {
+                            "final": {
+                                "a_fixed": {"answer_accuracy": a},
+                                "b_by_length": {"4": {"answer_accuracy": b}},
+                            }
+                        },
+                    }
+                )
+            )
+            candidates[rate] = path
+        result = select_genome_rate(candidates)
+        assert result["selected_rate"] == 0.30
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
@@ -636,6 +665,7 @@ def main() -> None:
         test_tiny_consolidated_attachment_branch,
         test_consolidated_analysis_applies_frozen_gates,
         test_private_transition_analysis_keeps_capability_and_allocation_separate,
+        test_genome_rate_screen_uses_frozen_tie_break,
     )
     for test in tests:
         test()
