@@ -187,6 +187,21 @@ This is a curriculum simplification, not a reduced success claim. It asks first 
 the organism can learn a clean binding operation, then whether that operation survives
 irrelevant context and finally transfers to natural unseen passages.
 
+### L0-C1e result
+
+L0-C1e stopped at update 25 on 2026-08-04; the artifact is
+`l0c1e-compact-m96-u25-result.json`. Compact exposure increased trailing mean control
+separation to `0.0001326`, about 4.8 times L0-C1d, and produced the first nonzero mean
+four-label logit separation (`0.00625`). It nevertheless missed the `0.005` routing
+gate, and paired accuracy remained 10%. The checkpoint was not extended.
+
+Gradient telemetry localizes the remaining imbalance. Over updates 16-25, mean RMS
+gradients were `0.0000115` for recall, `0.0000607` for the sensor, `0.00242` for the
+connectome, `0.00119` for tissues, `0.00111` for cell identity, and `0.00623` for the
+effector. Thus the static answer route received over 500 times the recall head's RMS
+credit. The next intervention should rebalance plasticity or recall gain while retaining
+the compact gate; additional organism size is not indicated by this result.
+
 ## Episode
 
 For one lifetime lane:
