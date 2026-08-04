@@ -20,6 +20,8 @@ and the largest effective operator norm beside behavioral loss.
 - Writes bounded token embeddings into a detached FIFO sensory-memory tissue.
 - Applies one rule per mutable tissue type.
 - Optionally gives every mutable cell bounded private target/time-constant expression.
+- Optionally gives every mutable cell a private low-rank transition residual over its
+  state, incoming message, and drive.
 - Clears output tissue at each token boundary, preventing it from becoming an
   autonomous recurrent shortcut.
 - Reads dedicated output tissue through learned organ queries; the organ never sees
@@ -40,6 +42,10 @@ Counts only trainable parameters for matched controls.
   shared-rule constraint was accidental.
 - Cell identity is bounded and zero-initialized, so its enabled arm starts behaviorally
   identical to its disabled counterpart when seeded identically.
+- Private adapters use a seed-derived private random down projection and exactly zero
+  up projection, making their enabled initialization behaviorally identical to rank
+  zero while allowing gradients to recruit cell-local computation. The private RNG
+  also leaves all matched downstream organ initialization unchanged.
 - Token embeddings are bounded before entering persistent state in every arm.
 - The output organ has fixed query slots but is not tied to concatenated cell positions.
   Growth extends internal tissue only in this first kernel.
@@ -49,6 +55,8 @@ Counts only trainable parameters for matched controls.
   and reconstructible from configuration plus checkpoint buffers.
 - Private-expression rows map only to mutable cells. Stream-written memory contributes
   no dead parameters to the identity treatment or matched-control budget.
+- Adapter rows use the same mutable-cell mapping and cannot create a memory or decoder
+  bypass; their bounded residual enters only the typed tissue target.
 
 ## Contracts
 

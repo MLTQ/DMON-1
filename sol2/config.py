@@ -31,6 +31,8 @@ class Sol2Config:
     identity_gain: float = 0.5
     identity_bias: float = 0.10
     identity_time: float = 0.25
+    cell_adapter_rank: int = 0
+    cell_adapter_gain: float = 0.5
 
     # Stream and optimization.
     vocab_size: int = 0
@@ -86,6 +88,8 @@ class Sol2Config:
             raise ValueError("steps_per_token and chunk_length must be positive")
         if self.organ_queries < 1:
             raise ValueError("organ_queries must be positive")
+        if self.cell_adapter_rank < 0 or self.cell_adapter_gain < 0:
+            raise ValueError("cell adapter rank and gain cannot be negative")
         if self.operator_bound <= 0 or self.attention_temperature <= 0:
             raise ValueError("operator bound and attention temperature must be positive")
         if self.schedule not in {"constant", "cosine"}:

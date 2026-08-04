@@ -95,6 +95,7 @@ def calibrate_causal_utility(
     batches: int,
     steps: int,
     generator_seed: int,
+    directional_edges: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, dict]:
     """Estimate A utility from private-expression and anatomical gradient demand."""
 
@@ -102,7 +103,9 @@ def calibrate_causal_utility(
         raise ValueError("utility calibration budgets must be positive")
     generator = torch.Generator().manual_seed(generator_seed)
     calibration_state = state.clone_detached()
-    expression_score = torch.zeros(model.n_cells, device=cfg.device)
+    identity_score = torch.zeros(model.n_cells, device=cfg.device)
+    adapter_down_score = torch.zeros(model.n_cells, device=cfg.device)
+    adapter_up_score = torch.zeros(model.n_cells, device=cfg.device)
     edge_score = torch.zeros_like(model.graph.edge_logit)
     was_training = model.training
     model.eval()
@@ -116,11 +119,29 @@ def calibrate_causal_utility(
         loss.backward()
         if model.cell_gain.grad is None or model.cell_bias.grad is None:
             raise RuntimeError("private cell expression received no calibration gradient")
-        private = (
+        identity_private = (
             model.cell_gain.grad.detach().square()
             + model.cell_bias.grad.detach().square()
         ).mean(-1).sqrt()
-        expression_score[model.expression_cells] += private
+        identity_score[model.expression_cells] += identity_private
+        if model.cell_adapter_down is not None:
+            if (
+                model.cell_adapter_down.grad is None
+                or model.cell_adapter_up.grad is None
+            ):
+                raise RuntimeError("private cell adapters received no calibration gradient")
+            adapter_down_score[model.expression_cells] += (
+                model.cell_adapter_down.grad.detach()
+                .square()
+                .mean(dim=(1, 2))
+                .sqrt()
+            )
+            adapter_up_score[model.expression_cells] += (
+                model.cell_adapter_up.grad.detach()
+                .square()
+                .mean(dim=(1, 2))
+                .sqrt()
+            )
         if model.graph.edge_logit.grad is None:
             raise RuntimeError("edge logits received no calibration gradient")
         edge_score += model.graph.edge_logit.grad.detach().abs()
@@ -132,10 +153,20 @@ def calibrate_causal_utility(
     model.zero_grad(set_to_none=True)
     model.train(was_training)
 
-    expression_score /= batches
+    identity_score /= batches
+    adapter_down_score /= batches
+    adapter_up_score /= batches
     edge_score = edge_score / batches * model.graph.active
     incoming, outgoing = _edge_to_cell_scores(model, edge_score)
-    expression_rank = _cell_tissue_ranks(model, expression_score)
+    private_ranks = [_cell_tissue_ranks(model, identity_score)]
+    if model.cell_adapter_down is not None:
+        private_ranks.extend(
+            [
+                _cell_tissue_ranks(model, adapter_down_score),
+                _cell_tissue_ranks(model, adapter_up_score),
+            ]
+        )
+    expression_rank = torch.stack(private_ranks).mean(0)
     incoming_rank = _cell_tissue_ranks(model, incoming)
     outgoing_rank = _cell_tissue_ranks(model, outgoing)
     cell_utility = _cell_tissue_ranks(
@@ -145,18 +176,28 @@ def calibrate_causal_utility(
     intrinsic_edge = _edge_tissue_ranks(model, edge_score)
     sources = model.graph.sources
     target_utility = cell_utility.unsqueeze(-1).expand_as(intrinsic_edge)
-    source_utility = cell_utility[sources]
-    edge_utility = torch.maximum(
-        intrinsic_edge,
-        torch.maximum(target_utility, source_utility),
-    ) * model.graph.active
+    if directional_edges:
+        # An incoming connection belongs to the target's computation. A useful
+        # source may fan out into both mature and reserve targets, so source utility
+        # alone must not protect all of its outgoing anatomy.
+        edge_utility = torch.maximum(intrinsic_edge, target_utility)
+    else:
+        source_utility = cell_utility[sources]
+        edge_utility = torch.maximum(
+            intrinsic_edge,
+            torch.maximum(target_utility, source_utility),
+        )
+    edge_utility = edge_utility * model.graph.active
     diagnostics = {
         "batches": batches,
         "steps": steps,
         "mean_loss": sum(losses) / len(losses),
         "mean_accuracy": sum(accuracies) / len(accuracies),
-        "expression_gradient_mean": float(expression_score.mean()),
+        "identity_gradient_mean": float(identity_score.mean()),
+        "adapter_down_gradient_mean": float(adapter_down_score.mean()),
+        "adapter_up_gradient_mean": float(adapter_up_score.mean()),
         "active_edge_gradient_mean": float(edge_score[model.graph.active].mean()),
+        "directional_edges": directional_edges,
     }
     return cell_utility.detach(), edge_utility.detach(), diagnostics
 
@@ -204,7 +245,7 @@ def make_utility_profile(
 ) -> UtilityProfile:
     """Construct the plastic, measured, or distribution-matched shuffled treatment."""
 
-    if branch not in {"plastic", "consolidated", "shuffled"}:
+    if branch not in {"plastic", "uniform", "consolidated", "shuffled"}:
         raise ValueError(f"unknown consolidation branch {branch!r}")
     if not 0.0 <= minimum_plasticity <= 1.0:
         raise ValueError("minimum plasticity must be in [0, 1]")
@@ -234,6 +275,16 @@ def make_utility_profile(
         edge_plasticity = torch.where(
             model.graph.active, edge_plasticity, torch.ones_like(edge_plasticity)
         )
+        if branch == "uniform":
+            active = model.graph.active
+            cell_mean = cell_plasticity.mean()
+            edge_mean = edge_plasticity[active].mean()
+            cell_plasticity = torch.full_like(cell_plasticity, cell_mean)
+            edge_plasticity = torch.where(
+                active,
+                torch.full_like(edge_plasticity, edge_mean),
+                torch.ones_like(edge_plasticity),
+            )
         applied_genome = genome_plasticity
     return UtilityProfile(
         measured_cell=measured_cell,
@@ -256,6 +307,10 @@ class ConsolidationPolicy:
     def _mask(self, name: str, parameter: torch.Tensor) -> torch.Tensor | float | None:
         if name in {"cell_gain", "cell_bias"}:
             return self.profile.cell_plasticity[self.model.expression_cells].unsqueeze(-1)
+        if name in {"cell_adapter_down", "cell_adapter_up"}:
+            return self.profile.cell_plasticity[self.model.expression_cells].view(
+                -1, 1, 1
+            )
         if name == "graph.edge_logit":
             return self.profile.edge_plasticity
         if name.startswith(("graph.query.", "graph.key.", "graph.value.", "tissues.")):

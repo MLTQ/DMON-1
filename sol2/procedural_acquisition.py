@@ -77,11 +77,17 @@ def neuron_telemetry(model: Sol2, state) -> dict:
     activation_rms = hidden.square().mean(dim=(0, 2)).sqrt().cpu()
     activation_std = hidden.std(dim=(0, 2), unbiased=False).cpu()
     identity_rms = torch.zeros(model.n_cells)
+    adapter_up_rms = torch.zeros(model.n_cells)
     if model.cell_gain is not None:
         expression = (
             model.cell_gain.detach().square() + model.cell_bias.detach().square()
         ).mean(-1).sqrt().cpu()
         identity_rms[model.expression_cells.cpu()] = expression
+    if model.cell_adapter_up is not None:
+        adapter_expression = (
+            model.cell_adapter_up.detach().square().mean(dim=(1, 2)).sqrt().cpu()
+        )
+        adapter_up_rms[model.expression_cells.cpu()] = adapter_expression
 
     tissue_by_cell = ["unknown"] * model.n_cells
     for tissue in ("input", "memory", "compute", "relay", "output"):
@@ -113,6 +119,7 @@ def neuron_telemetry(model: Sol2, state) -> dict:
             "activation_rms": float(activation_rms[cell]),
             "activation_std": float(activation_std[cell]),
             "identity_rms": float(identity_rms[cell]),
+            "adapter_up_rms": float(adapter_up_rms[cell]),
             "active_indegree": int(indegree[cell]),
         }
         for cell in range(model.n_cells)
@@ -289,6 +296,8 @@ def main() -> None:
     parser.add_argument("--initial-active-dendrites", type=int, default=8)
     parser.add_argument("--steps-per-token", type=int, default=3)
     parser.add_argument("--organ-queries", type=int, default=4)
+    parser.add_argument("--cell-adapter-rank", type=int, default=0)
+    parser.add_argument("--cell-adapter-gain", type=float, default=0.5)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     cfg = Sol2Config(
@@ -300,6 +309,8 @@ def main() -> None:
         initial_active_dendrites=args.initial_active_dendrites,
         steps_per_token=args.steps_per_token,
         organ_queries=args.organ_queries,
+        cell_adapter_rank=args.cell_adapter_rank,
+        cell_adapter_gain=args.cell_adapter_gain,
         batch_size=args.batch_size,
         operator_bound=args.operator_bound,
         seed=args.seed,

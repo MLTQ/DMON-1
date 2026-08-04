@@ -18,8 +18,13 @@ from .baselines import (
 from .checkpoint import load_checkpoint, save_checkpoint, unpack_state
 from .config import Sol2Config
 from .evaluate import evaluate_with_ablations
-from .growth import grow_relay_tissue
-from .interventions import degree_preserving_rewire, shuffled_private_expression
+from .growth import activate_reserve_dendrites, grow_relay_tissue
+from .interventions import (
+    degree_preserving_rewire,
+    disable_graft_edges,
+    shuffled_private_expression,
+    zero_private_adapters,
+)
 from .model import Sol2, count_parameters
 from .optim import build_optimizer, cell_gradient_utilization
 from .runtime import AsyncOrganismRuntime
@@ -148,6 +153,45 @@ def test_zero_identity_is_behaviorally_silent() -> None:
     )
 
 
+def test_zero_up_private_adapters_are_silent_and_recruitable() -> None:
+    adapted_cfg = dataclasses.replace(SMALL, cell_adapter_rank=4)
+    torch.manual_seed(SMALL.seed)
+    baseline = Sol2(SMALL)
+    torch.manual_seed(SMALL.seed)
+    adapted = Sol2(adapted_cfg)
+    baseline_state = baseline.initial_state(2, "cpu")
+    adapted_state = adapted.initial_state(2, "cpu")
+    tokens = torch.randint(0, SMALL.vocab_size, (2, 5))
+    for position in range(tokens.shape[1]):
+        baseline_logits, baseline_state, _ = baseline.step(
+            tokens[:, position], baseline_state
+        )
+        adapted_logits, adapted_state, _ = adapted.step(
+            tokens[:, position], adapted_state
+        )
+    assert torch.equal(baseline_logits, adapted_logits)
+    assert torch.equal(baseline_state.hidden, adapted_state.hidden)
+
+    targets = torch.randint(0, SMALL.vocab_size, (2, 5))
+    optimizer = build_optimizer(adapted, adapted_cfg)
+    loss, _, _ = adapted.forward_chunk(
+        tokens, targets, adapted.initial_state(2, "cpu")
+    )
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    assert adapted.cell_adapter_up.grad is not None
+    assert float(adapted.cell_adapter_up.grad.abs().sum()) > 0.0
+    before = adapted.cell_adapter_up.detach().clone()
+    optimizer.step()
+    assert not torch.equal(adapted.cell_adapter_up, before)
+
+    trained = adapted.cell_adapter_up.detach().clone()
+    with zero_private_adapters(adapted, adapted.internal_idx):
+        positions = adapted.expression_pos[adapted.internal_idx]
+        assert float(adapted.cell_adapter_up[positions].detach().abs().sum()) == 0.0
+    assert torch.equal(adapted.cell_adapter_up.detach(), trained)
+
+
 def test_gradient_reaches_every_adaptive_layer() -> None:
     torch.manual_seed(SMALL.seed)
     model = Sol2(SMALL)
@@ -252,6 +296,35 @@ def test_growth_preserves_anatomy_state_and_optimizer() -> None:
     rebuilt = Sol2(model.cfg)
     rebuilt.load_state_dict(model.state_dict())
     assert torch.equal(rebuilt.relay_idx, model.relay_idx)
+
+
+def test_adapter_growth_and_directional_reserve_are_append_only() -> None:
+    cfg = dataclasses.replace(SMALL, cell_adapter_rank=3)
+    torch.manual_seed(cfg.seed)
+    model = Sol2(cfg)
+    optimizer = build_optimizer(model, cfg)
+    old_down = model.cell_adapter_down.detach().clone()
+    old_up = model.cell_adapter_up.detach().clone()
+    added, _, _ = grow_relay_tissue(model, optimizer, 2)
+    assert torch.equal(model.cell_adapter_down[: len(old_down)], old_down)
+    assert torch.equal(model.cell_adapter_up[: len(old_up)], old_up)
+    assert float(model.cell_adapter_up[len(old_up) :].detach().abs().sum()) == 0.0
+    assert len(added) == 2
+
+    sources = model.graph.sources.clone()
+    active = model.graph.active.clone()
+    utility = torch.linspace(0.0, 1.0, model.n_cells)
+    grafts = activate_reserve_dendrites(model, utility, target_fraction=0.5)
+    expected = 2 * max(1, round(len(model.internal_idx) * 0.5))
+    assert len(grafts) == expected
+    assert torch.equal(model.graph.sources[active], sources[active])
+    assert bool((model.graph.active | ~active).all())
+    assert model.graph.output_cells_are_sinks(model.output_idx)
+    assert model.graph.targets_read_only_from(model.output_idx, model.internal_idx)
+    grown_active = model.graph.active.clone()
+    with disable_graft_edges(model, grafts):
+        assert int(model.graph.active.sum()) == int(grown_active.sum()) - len(grafts)
+    assert torch.equal(model.graph.active, grown_active)
 
 
 def test_causal_interventions_preserve_counts_and_restore() -> None:
@@ -394,9 +467,11 @@ def main() -> None:
         test_memory_is_stream_written_only,
         test_bounded_treatment_is_parameter_neutral_and_effective,
         test_zero_identity_is_behaviorally_silent,
+        test_zero_up_private_adapters_are_silent_and_recruitable,
         test_gradient_reaches_every_adaptive_layer,
         test_tiny_repeated_stream_can_be_learned,
         test_growth_preserves_anatomy_state_and_optimizer,
+        test_adapter_growth_and_directional_reserve_are_append_only,
         test_causal_interventions_preserve_counts_and_restore,
         test_matched_gru_budget,
         test_matched_transformer_budget,

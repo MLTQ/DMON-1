@@ -36,6 +36,43 @@ def shuffled_private_expression(model: Sol2, seed: int = 1731):
 
 
 @contextmanager
+def zero_private_adapters(model: Sol2, cells: torch.Tensor | None = None):
+    """Temporarily remove private transition residuals from selected mutable cells."""
+
+    if model.cell_adapter_up is None:
+        yield
+        return
+    original = model.cell_adapter_up.detach().clone()
+    positions = (
+        torch.arange(len(original), device=original.device)
+        if cells is None
+        else model.expression_pos[cells]
+    )
+    try:
+        with torch.no_grad():
+            model.cell_adapter_up[positions] = 0.0
+        yield
+    finally:
+        with torch.no_grad():
+            model.cell_adapter_up.copy_(original)
+
+
+@contextmanager
+def disable_graft_edges(model: Sol2, grafts: list[dict]):
+    """Temporarily make a recorded set of additive dendrites dormant."""
+
+    original = model.graph.active.detach().clone()
+    try:
+        with torch.no_grad():
+            for graft in grafts:
+                model.graph.active[graft["target"], graft["slot"]] = False
+        yield
+    finally:
+        with torch.no_grad():
+            model.graph.active.copy_(original)
+
+
+@contextmanager
 def degree_preserving_rewire(model: Sol2, seed: int = 1733):
     """Shuffle installed sources while preserving target and source degrees."""
 

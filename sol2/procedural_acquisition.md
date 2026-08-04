@@ -21,7 +21,8 @@ procedure to masquerade as a transfer failure.
 ### `neuron_telemetry`
 
 - **Does**: Records per-cell activation magnitude/variation, private-identity magnitude,
-  tissue membership, installed in-degree, and active edge biases at every mastery check.
+  private-adapter up-projection magnitude, tissue membership, installed in-degree, and
+  active edge biases at every mastery check.
 - **Rationale**: The visualizer should show measured differentiation and activity from
   real checkpoints rather than infer a decorative anatomy.
 
@@ -41,6 +42,9 @@ procedure to masquerade as a transfer failure.
 | Scaling comparison | Arms see the same staged task samples for a shared seed | Generator seed schedule |
 
 ## Decisions
+
+- Acquisition exposes `--cell-adapter-rank` and `--cell-adapter-gain`; both are stored
+  in the checkpoint configuration so attachment reconstructs identical geometry.
 
 - Mastery defaults to at least 80% held-out length-four accuracy twice consecutively.
 - The current and larger geometries receive identical examples and evaluation budgets.

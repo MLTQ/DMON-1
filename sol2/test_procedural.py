@@ -22,6 +22,7 @@ from .optim import add_optimizer_parameters, build_optimizer
 from .procedural_acquisition import run_acquisition_calibration
 from .procedural_benchmark import run_benchmark
 from .procedural_task import ProceduralTask
+from .private_transition_analysis import analyze as analyze_private_transition
 from .train import build_model
 
 
@@ -85,6 +86,7 @@ def test_tiny_branching_smoke() -> None:
         initial_active_dendrites=2,
         steps_per_token=1,
         organ_queries=1,
+        cell_adapter_rank=2,
         vocab_size=task.vocab_size,
         batch_size=2,
         updates=4,
@@ -136,6 +138,7 @@ def test_acquisition_checkpoint_and_resume() -> None:
         initial_active_dendrites=2,
         steps_per_token=1,
         organ_queries=1,
+        cell_adapter_rank=2,
         vocab_size=task.vocab_size,
         batch_size=2,
         updates=4,
@@ -247,6 +250,7 @@ def test_causal_utility_and_realized_update_protection() -> None:
         warmup_updates=1,
         operator_bound=4.0,
         seed=49,
+        cell_adapter_rank=2,
         device="cpu",
     )
     model = build_model("creature", cfg, "cpu")
@@ -263,6 +267,7 @@ def test_causal_utility_and_realized_update_protection() -> None:
         batches=2,
         steps=2,
         generator_seed=cfg.seed + 30_000,
+        directional_edges=True,
     )
     assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
     assert float(cells.min()) >= 0.0 and float(cells.max()) <= 1.0
@@ -290,6 +295,29 @@ def test_causal_utility_and_realized_update_protection() -> None:
         genome_plasticity=0.05,
         shuffle_seed=cfg.seed + 31_000,
     )
+    uniform = make_utility_profile(
+        model,
+        cells,
+        edges,
+        branch="uniform",
+        threshold=0.65,
+        temperature=0.10,
+        minimum_plasticity=0.02,
+        genome_plasticity=0.05,
+        shuffle_seed=cfg.seed + 31_000,
+    )
+    assert torch.allclose(
+        uniform.cell_plasticity,
+        torch.full_like(uniform.cell_plasticity, consolidated.cell_plasticity.mean()),
+    )
+    active = model.graph.active
+    assert torch.allclose(
+        uniform.edge_plasticity[active],
+        torch.full_like(
+            uniform.edge_plasticity[active],
+            consolidated.edge_plasticity[active].mean(),
+        ),
+    )
     for tissue in ("input", "memory", "compute", "relay", "output"):
         tissue_cells = model.tissue_indices(tissue)
         assert torch.equal(
@@ -309,6 +337,7 @@ def test_causal_utility_and_realized_update_protection() -> None:
     policy = ConsolidationPolicy(model, consolidated)
     old_rule = model.tissues.rules["compute"].target.bias.detach().clone()
     old_cell = model.cell_gain.detach().clone()
+    old_adapter = model.cell_adapter_up.detach().clone()
     captured = policy.capture_before_step()
     optimizer.step()
     policy.apply_after_step(captured)
@@ -320,6 +349,12 @@ def test_causal_utility_and_realized_update_protection() -> None:
         model.expression_cells
     ].unsqueeze(-1).expand_as(model.cell_gain)
     torch.testing.assert_close(model.cell_gain - old_cell, expected_cell)
+    expected_adapter = -0.1 * consolidated.cell_plasticity[
+        model.expression_cells
+    ].view(-1, 1, 1).expand_as(model.cell_adapter_up)
+    torch.testing.assert_close(
+        model.cell_adapter_up - old_adapter, expected_adapter
+    )
 
 
 def test_tiny_true_organ_branch_integrity() -> None:
@@ -335,6 +370,7 @@ def test_tiny_true_organ_branch_integrity() -> None:
         initial_active_dendrites=2,
         steps_per_token=1,
         organ_queries=1,
+        cell_adapter_rank=2,
         vocab_size=task.vocab_size,
         batch_size=2,
         updates=2,
@@ -445,6 +481,7 @@ def test_tiny_consolidated_attachment_branch() -> None:
         initial_active_dendrites=2,
         steps_per_token=1,
         organ_queries=1,
+        cell_adapter_rank=2,
         vocab_size=task.vocab_size,
         batch_size=2,
         updates=2,
@@ -478,11 +515,16 @@ def test_tiny_consolidated_attachment_branch() -> None:
             final_eval_batches=1,
             utility_batches=1,
             max_steps=2,
+            directional_edges=True,
+            reserve_growth=True,
         )
         assert result["update"] == 1
         assert result["integrity"]["a_organ_unchanged"]
         assert result["profile"]["genome_plasticity"] == 0.05
         assert "utility_lesions" in result["summary"]
+        assert "reserve_lesions" in result["summary"]
+        assert result["growth"]["grafts"]
+        assert result["protocol"]["directional_edges"]
         assert (root / "consolidated" / "adaptation.pt").exists()
 
 
@@ -533,6 +575,54 @@ def test_consolidated_analysis_applies_frozen_gates() -> None:
         assert result["gates"]["b_reuses_high_utility_more_than_low"]
 
 
+def test_private_transition_analysis_keeps_capability_and_allocation_separate() -> None:
+    def payload(a: float, b: float, adapter_ratio: float = 2.0) -> dict:
+        normal = {"answer_accuracy": b}
+        return {
+            "protocol": {"max_steps": 4},
+            "rejected_updates": 0,
+            "integrity": {"a_organ_unchanged": True},
+            "growth": {"within_limit": True, "a_accuracy_drop": 0.01},
+            "summary": {
+                "final": {
+                    "a_fixed": {"answer_accuracy": a},
+                    "b_by_length": {"4": {"answer_accuracy": b}},
+                    "drift": {
+                        "adapter_by_measured_utility": {
+                            "low_mean": adapter_ratio,
+                            "high_mean": 1.0,
+                        }
+                    },
+                },
+                "reserve_lesions": {
+                    "A": {"normal": {"answer_accuracy": a}},
+                    "B": {
+                        "normal": normal,
+                        "zero_low_utility_adapters": {"answer_accuracy": b - 0.1},
+                        "zero_all_internal_adapters": {"answer_accuracy": b - 0.2},
+                        "disable_graft_edges": {"answer_accuracy": b - 0.1},
+                    },
+                },
+            },
+        }
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        for branch, values in {
+            "plastic": (0.20, 0.95),
+            "uniform": (0.70, 0.90),
+            "consolidated": (0.85, 0.90),
+            "shuffled": (0.74, 0.90),
+        }.items():
+            branch_dir = root / branch
+            branch_dir.mkdir()
+            (branch_dir / "metrics.json").write_text(json.dumps(payload(*values)))
+        result = analyze_private_transition(root)
+        assert result["capability_success"]
+        assert result["measured_allocation_success"]
+        assert result["gates"]["reserve_adapters_are_causal_for_b"]
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
@@ -545,6 +635,7 @@ def main() -> None:
         test_tiny_true_organ_branch_integrity,
         test_tiny_consolidated_attachment_branch,
         test_consolidated_analysis_applies_frozen_gates,
+        test_private_transition_analysis_keeps_capability_and_allocation_separate,
     )
     for test in tests:
         test()

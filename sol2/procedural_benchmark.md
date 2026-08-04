@@ -42,6 +42,8 @@ answers produced by latent program composition receive loss.
 - **Rationale**: High accuracy alone does not establish that differentiated substrate
   structure carries the procedure. Tissue-specific freezes distinguish computation
   from routing; these are acute evaluation lesions, never robustness training targets.
+- **Adapter contract**: Adapter-zero removes cell-local transition residuals from
+  internal tissue while leaving its shared genome and recurrent state operational.
 
 ### `run_benchmark`
 

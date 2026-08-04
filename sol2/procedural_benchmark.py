@@ -13,7 +13,11 @@ import torch
 from torch.nn import functional as F
 
 from .config import Sol2Config
-from .interventions import degree_preserving_rewire, shuffled_private_expression
+from .interventions import (
+    degree_preserving_rewire,
+    shuffled_private_expression,
+    zero_private_adapters,
+)
 from .model import Sol2, count_parameters
 from .optim import build_optimizer, guarded_step, set_learning_rate
 from .procedural_task import ProceduralTask, ProcedureRegime
@@ -268,6 +272,7 @@ def evaluate_with_ablations(
     result["memory_zero"] = evaluate_regime(**common, mutate_state=zero_memory)
     for name, context in (
         ("identity_shuffled", shuffled_private_expression(model)),
+        ("adapters_zero", zero_private_adapters(model, model.internal_idx)),
         ("topology_rewired", degree_preserving_rewire(model)),
     ):
         with context:

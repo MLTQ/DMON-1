@@ -77,6 +77,26 @@ class Sol2(nn.Module):
             self.cell_gain = None
             self.cell_bias = None
 
+        if cfg.cell_adapter_rank > 0:
+            rank = cfg.cell_adapter_rank
+            self.cell_adapter_down = nn.Parameter(
+                torch.empty(cfg.n_mutable, 3 * hidden, rank)
+            )
+            # Keep the zero-up adapter silent without perturbing matched organ
+            # initialization through consumption of the global RNG stream.
+            adapter_generator = torch.Generator().manual_seed(cfg.seed + 42_000)
+            nn.init.normal_(
+                self.cell_adapter_down,
+                std=(3 * hidden) ** -0.5,
+                generator=adapter_generator,
+            )
+            self.cell_adapter_up = nn.Parameter(
+                torch.zeros(cfg.n_mutable, rank, hidden)
+            )
+        else:
+            self.cell_adapter_down = None
+            self.cell_adapter_up = None
+
         self.output_organ = AttentiveOutputOrgan(
             hidden,
             cfg.vocab_size,
@@ -271,6 +291,16 @@ class Sol2(nn.Module):
         alpha_shift = self.cfg.identity_time * (gain - bias)
         return target_shift, alpha_shift
 
+    def _private_adapter(
+        self, cells: torch.Tensor
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+        if self.cell_adapter_down is None:
+            return None, None
+        positions = self.expression_pos[cells]
+        if bool((positions < 0).any()):
+            raise ValueError("stream-written memory has no private transition adapter")
+        return self.cell_adapter_down[positions], self.cell_adapter_up[positions]
+
     def step(
         self,
         tokens: torch.Tensor,
@@ -321,6 +351,7 @@ class Sol2(nn.Module):
                 cells = getattr(self, f"{name}_idx")
                 positions = getattr(self, f"{name}_pos")
                 target_shift, alpha_shift = self._private_expression(cells)
+                adapter_down, adapter_up = self._private_adapter(cells)
                 updated, alpha = self.tissues(
                     name,
                     hidden[:, cells],
@@ -328,6 +359,9 @@ class Sol2(nn.Module):
                     drive[:, positions],
                     target_shift=target_shift,
                     alpha_shift=alpha_shift,
+                    adapter_down=adapter_down,
+                    adapter_up=adapter_up,
+                    adapter_gain=cfg.cell_adapter_gain,
                 )
                 hidden = hidden.index_copy(1, cells, updated)
                 if collect_health:

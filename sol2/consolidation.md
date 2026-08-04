@@ -11,18 +11,26 @@ plastic reserve for a new organ.
 
 ### `calibrate_causal_utility`
 
-- Accumulates absolute held-out A gradients on private cell expression and edge-attention
-  logits without updating weights or the living state.
+- Accumulates held-out A gradients on private identity, private low-rank adapters, and
+  edge-attention logits without updating weights or the living state.
 - Combines private-expression demand, incoming edge demand, and downstream readers of a
   cell, then ranks utility within tissue so one tissue cannot monopolize protection by
   scale alone.
-- Protects an edge when its own gradient, its source, or its target is useful.
+- Ranks identity, adapter-down, and adapter-up demand separately before averaging the
+  private factor, preventing matrix-size or parameterization scale from silently
+  suppressing one form of cell-local computation.
+- In the S1-P3-compatible mode, protects an edge when its own gradient, source, or
+  target is useful. The directional mode protects it only for its own gradient or its
+  target's utility, allowing a useful source to feed new reserve computation without
+  freezing every outgoing connection.
 
 ### `make_utility_profile`
 
-Builds three matched treatments: fully plastic, measured consolidation, and a
-within-tissue shuffled-utility control. The shuffled arm preserves the distribution of
-protection while breaking its relationship to learned function.
+Builds four treatments: fully plastic, uniform protection, measured consolidation, and
+a within-tissue shuffled-utility control. Uniform protection gives every cell and every
+installed edge the respective mean measured plasticity, isolating placement from the
+global amount of update suppression. The shuffled arm preserves the full distribution
+of protection while breaking its relationship to learned function.
 
 ### `ConsolidationPolicy`
 
@@ -39,6 +47,8 @@ leaving optimizer moments intact.
 - Dormant dendrites remain fully plastic and receive no fabricated utility.
 - The plastic branch is update-identical to ordinary AdamW.
 - Consolidated and shuffled arms have the same utility and plasticity distributions
-  within each tissue.
+  within each tissue; uniform matches their global mean cell and installed-edge
+  plasticity.
+- Private identity and private-adapter rows pay the same cell-specific update cost.
 - The tissue genome (typed rules and shared graph operators) changes slowly but is not
   permanently frozen; attached-organ parameters remain freely plastic.

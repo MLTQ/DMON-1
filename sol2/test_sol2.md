@@ -13,6 +13,8 @@ Acts as the mandatory CPU gate before any SOL2 GPU allocation.
 - Stream-memory cells own no dead private-expression parameters.
 - Parameter-neutral bounded/unbounded treatment and effective spectral rescaling.
 - Zero-initialized private identity behavioral equivalence.
+- Zero-up private adapters are exactly silent under matched initialization, receive an
+  immediate learning signal, and restore exactly under intervention.
 - Gradient flow through every tissue, graph, identity, embedding, and output layer.
 - A nontrivial internal-cell subset receives material private-expression gradient;
   reserve rows are allowed.
@@ -20,6 +22,8 @@ Acts as the mandatory CPU gate before any SOL2 GPU allocation.
 - A learned stream requires internal tissue and its installed topology; the gate does
   not demand private differentiation from a trivial four-symbol cycle.
 - Append-only relay growth with exact anatomy/state/optimizer preservation.
+- Adapter-aware relay growth and directional dormant-edge activation preserve every
+  installed connection and restore exactly under graft intervention.
 - Matched GRU and transformer parameter budgets.
 - Exact next stream chunk, state, loss, optimizer moments, and update after checkpoint
   resume.

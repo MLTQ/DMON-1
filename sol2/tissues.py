@@ -47,10 +47,19 @@ class TissueRule(nn.Module):
         drive: torch.Tensor,
         target_shift: torch.Tensor | None = None,
         alpha_shift: torch.Tensor | None = None,
+        adapter_down: torch.Tensor | None = None,
+        adapter_up: torch.Tensor | None = None,
+        adapter_gain: float = 0.0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         x = torch.cat([hidden, message, drive], dim=-1)
         target_logits = self.target(x)
         alpha_logits = self.alpha(x)
+        if adapter_down is not None:
+            if adapter_up is None:
+                raise ValueError("adapter down/up projections must be supplied together")
+            bottleneck = torch.tanh(torch.einsum("bni,nir->bnr", x, adapter_down))
+            residual = torch.einsum("bnr,nrh->bnh", bottleneck, adapter_up)
+            target_logits = target_logits + adapter_gain * torch.tanh(residual)
         if target_shift is not None:
             target_logits = target_logits + target_shift
         if alpha_shift is not None:
@@ -102,6 +111,9 @@ class TissueBank(nn.Module):
         drive,
         target_shift=None,
         alpha_shift=None,
+        adapter_down=None,
+        adapter_up=None,
+        adapter_gain=0.0,
     ):
         return self.rules[name](
             hidden,
@@ -109,6 +121,9 @@ class TissueBank(nn.Module):
             drive,
             target_shift=target_shift,
             alpha_shift=alpha_shift,
+            adapter_down=adapter_down,
+            adapter_up=adapter_up,
+            adapter_gain=adapter_gain,
         )
 
     @torch.no_grad()

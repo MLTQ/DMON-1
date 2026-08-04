@@ -130,6 +130,40 @@ def grow_relay_tissue(
             model, "cell_bias", bias_data, optimizer, old_expression_rows
         )
 
+    if model.cell_adapter_down is not None:
+        old_expression_rows = len(model.cell_adapter_down)
+        down_rows = torch.empty(
+            n_new,
+            3 * model.cfg.hidden,
+            model.cfg.cell_adapter_rank,
+        )
+        torch.nn.init.normal_(
+            down_rows,
+            std=(3 * model.cfg.hidden) ** -0.5,
+            generator=generator,
+        )
+        down_rows = down_rows.to(device)
+        up_rows = torch.zeros(
+            n_new,
+            model.cfg.cell_adapter_rank,
+            model.cfg.hidden,
+            device=device,
+        )
+        _replace_resized_parameter(
+            model,
+            "cell_adapter_down",
+            torch.cat([model.cell_adapter_down.detach(), down_rows], dim=0),
+            optimizer,
+            old_expression_rows,
+        )
+        _replace_resized_parameter(
+            model,
+            "cell_adapter_up",
+            torch.cat([model.cell_adapter_up.detach(), up_rows], dim=0),
+            optimizer,
+            old_expression_rows,
+        )
+
     model.relay_idx = torch.cat([model.relay_idx, new_ids])
     model._rebuild_mutable()
     model.cfg = model.cfg.scaled(n_relay=model.cfg.n_relay + n_new)
@@ -153,3 +187,82 @@ def grow_relay_tissue(
         )
 
     return new_ids.tolist(), migrate, grafts
+
+
+@torch.no_grad()
+def activate_reserve_dendrites(
+    model: Sol2,
+    cell_utility: torch.Tensor,
+    *,
+    target_fraction: float = 0.5,
+    slots_per_target: int = 2,
+    weak_raw: float = -1.5,
+) -> list[dict]:
+    """Add high-utility and reserve readers to low-utility internal targets."""
+
+    if not 0.0 < target_fraction <= 1.0 or slots_per_target != 2:
+        raise ValueError("reserve growth requires a valid fraction and two slots")
+    internal = model.internal_idx
+    order = torch.argsort(cell_utility[internal], stable=True)
+    target_count = max(1, round(len(internal) * target_fraction))
+    targets = internal[order[:target_count]]
+    source_quartile = max(1, len(internal) // 4)
+    high_sources = internal[order[-source_quartile:]]
+    reserve_sources = internal[order[:source_quartile]]
+    ledger = []
+    for offset, target_tensor in enumerate(targets):
+        target = int(target_tensor)
+        dormant = torch.nonzero(~model.graph.active[target], as_tuple=True)[0]
+        if len(dormant) < slots_per_target:
+            raise RuntimeError("not enough dormant slots for directional reserve growth")
+        occupied = set(
+            model.graph.sources[target][model.graph.active[target]]
+            .detach()
+            .cpu()
+            .tolist()
+        )
+
+        def select_source(
+            pool: torch.Tensor, start: int, fallback: torch.Tensor
+        ) -> int:
+            candidates = [
+                int(pool[(start + shift) % len(pool)]) for shift in range(len(pool))
+            ]
+            candidates.extend(int(candidate) for candidate in fallback)
+            for candidate in candidates:
+                if candidate != target and candidate not in occupied:
+                    occupied.add(candidate)
+                    return candidate
+            raise RuntimeError("reserve growth could not find a novel valid source")
+
+        candidates = (
+            (
+                "consolidated",
+                select_source(high_sources, offset, internal[order.flip(0)]),
+            ),
+            (
+                "reserve",
+                select_source(reserve_sources, offset + 1, internal[order]),
+            ),
+        )
+        for slot_tensor, (source_class, source) in zip(dormant[:2], candidates):
+            slot = int(slot_tensor)
+            model.graph.sources[target, slot] = source
+            model.graph.active[target, slot] = True
+            model.graph.edge_logit[target, slot] = weak_raw
+            ledger.append(
+                {
+                    "target": target,
+                    "slot": slot,
+                    "source": source,
+                    "source_class": source_class,
+                    "target_utility": float(cell_utility[target]),
+                    "source_utility": float(cell_utility[source]),
+                    "initial_edge_logit": weak_raw,
+                }
+            )
+    if not model.graph.output_cells_are_sinks(model.output_idx):
+        raise RuntimeError("reserve growth made an output cell a source")
+    if not model.graph.targets_read_only_from(model.output_idx, model.internal_idx):
+        raise RuntimeError("reserve growth introduced an output bypass")
+    return ledger

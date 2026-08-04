@@ -23,13 +23,18 @@ branching harness before any GPU experiment is allocated.
 - Causal utility calibration leaves parameters exact, assigns no utility to dormant
   edges, preserves within-tissue treatment distributions when shuffled, and scales the
   realized optimizer delta exactly for shared rules and private cell rows.
+- Directional edge utility, mean-matched uniform protection, cell-local adapter
+  protection, and append-only reserve grafting are exercised before GPU work.
 - Tiny full and organ-only true-attachment branches preserve inactive A parameters,
   keep the frozen organ-only substrate exact, checkpoint adaptation, and exercise the
   removal/reattachment path.
 - A tiny consolidated-attachment branch calibrates utility, protects the substrate,
-  retains A-organ integrity, checkpoints, and emits utility lesions end to end.
+  retains A-organ integrity, checkpoints its graft ledger, and emits utility and
+  private-reserve lesions end to end.
 - Synthetic matched artifacts exercise the exact S1-P3 aggregate contrasts and frozen
   success gates without waiting for a GPU result.
+- Synthetic S1-P3b artifacts keep capability and measured-allocation conclusions
+  separate while exercising adapter and graft recruitment gates.
 - Split organ-only execution resumes to the same records, model tensors, and living
   state as uninterrupted interval execution.
 

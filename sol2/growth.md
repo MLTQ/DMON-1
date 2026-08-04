@@ -20,6 +20,15 @@ without deleting anatomy, resetting optimizer moments, or moving existing cells.
 Replaces one row-resized parameter inside optimizer groups while preserving old state
 and zero-initializing new optimizer rows.
 
+### `activate_reserve_dendrites`
+
+- Selects low-utility internal targets without moving or deleting anatomy.
+- Activates two dormant slots per target: one reads consolidated internal tissue and
+  one reads reserve tissue.
+- Avoids self-loops and duplicate installed sources on each target. Degenerate tiny
+  geometries widen the source pool only after exhausting the requested quartile.
+- Begins new edges weakly and emits a deterministic graft ledger.
+
 ## Decisions
 
 - SOL2 initially grows only relay tissue. Because relay is physically last, checkpoints
@@ -37,5 +46,9 @@ and zero-initializing new optimizer rows.
 - Output cells continue to read only compute/relay tissue after a graft.
 - Existing state and optimizer rows are bitwise preserved.
 - New cell state, identity, and optimizer moments begin at zero.
+- New private adapter down rows use the growth operation's deterministic private RNG
+  and up rows are zero, preserving silent initialization through relay growth without
+  perturbing the global RNG stream.
 - Identity optimizer migration uses mutable-expression row counts, not physical memory
   indices.
+- Directional reserve activation never changes output anatomy or an installed edge.

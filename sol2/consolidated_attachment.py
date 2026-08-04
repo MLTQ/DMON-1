@@ -19,6 +19,8 @@ from .consolidation import (
     make_utility_profile,
     profile_summary,
 )
+from .growth import activate_reserve_dendrites
+from .interventions import disable_graft_edges, zero_private_adapters
 from .model import Sol2, count_parameters
 from .optim import add_optimizer_parameters, guarded_step, set_learning_rate
 from .procedural_acquisition import neuron_telemetry
@@ -33,7 +35,7 @@ from .procedural_task import ProceduralTask
 from .organ_attachment import _length_curve, _load_acquisition
 
 SCHEMA = 1
-BRANCHES = ("plastic", "consolidated", "shuffled")
+BRANCHES = ("plastic", "uniform", "consolidated", "shuffled")
 LN2 = math.log(2.0)
 
 
@@ -158,7 +160,7 @@ def _drift_summary(
     for name, parameter in model.named_parameters():
         if name.startswith(("graph.query.", "graph.key.", "graph.value.", "tissues.")):
             genome_squared.append((parameter.detach() - anchor[name]).square().flatten())
-    return {
+    result = {
         "expression_rms": float(expression_delta.square().mean().sqrt()),
         "expression_by_measured_utility": _quartile(expression_delta, expression_utility),
         "active_edge_abs_mean": float(edge_delta[active].mean()),
@@ -167,6 +169,19 @@ def _drift_summary(
         ),
         "genome_rms": float(torch.cat(genome_squared).mean().sqrt()),
     }
+    if model.cell_adapter_down is not None:
+        down_delta = (
+            model.cell_adapter_down.detach() - anchor["cell_adapter_down"]
+        ).square().mean(dim=(1, 2))
+        up_delta = (
+            model.cell_adapter_up.detach() - anchor["cell_adapter_up"]
+        ).square().mean(dim=(1, 2))
+        adapter_delta = (0.5 * (down_delta + up_delta)).sqrt()
+        result["adapter_rms"] = float(adapter_delta.square().mean().sqrt())
+        result["adapter_by_measured_utility"] = _quartile(
+            adapter_delta, expression_utility
+        )
+    return result
 
 
 def _evaluate(
@@ -253,6 +268,51 @@ def _utility_lesions(
     return result
 
 
+def _reserve_lesions(
+    model: Sol2,
+    state,
+    task,
+    regime_a,
+    regime_b,
+    cfg,
+    profile: UtilityProfile,
+    grafts: list[dict],
+    *,
+    max_steps: int,
+    batches: int,
+) -> dict:
+    """Measure whether new capability resides in private reserve computation."""
+
+    internal = model.internal_idx
+    order = torch.argsort(profile.measured_cell[internal], stable=True)
+    count = max(1, len(internal) // 4)
+    low = internal[order[:count]]
+    result = {"low_utility_cells": count, "graft_edges": len(grafts)}
+    for organ, regime, seed in (("A", regime_a, 110_000), ("B", regime_b, 120_000)):
+        common = dict(
+            model=model,
+            state=state,
+            task=task,
+            regime=regime,
+            cfg=cfg,
+            steps=max_steps,
+            batches=batches,
+            generator_seed=cfg.seed + seed,
+            organ_name=organ,
+        )
+        organ_result = {"normal": evaluate_regime(**common)}
+        if model.cell_adapter_up is not None:
+            with zero_private_adapters(model, low):
+                organ_result["zero_low_utility_adapters"] = evaluate_regime(**common)
+            with zero_private_adapters(model, internal):
+                organ_result["zero_all_internal_adapters"] = evaluate_regime(**common)
+        if grafts:
+            with disable_graft_edges(model, grafts):
+                organ_result["disable_graft_edges"] = evaluate_regime(**common)
+        result[organ] = organ_result
+    return result
+
+
 def _save_checkpoint(
     path: Path,
     *,
@@ -267,6 +327,7 @@ def _save_checkpoint(
     records: list[dict],
     evaluations: list[dict],
     profile: UtilityProfile,
+    grafts: list[dict],
 ) -> None:
     payload = {
         "schema": SCHEMA,
@@ -281,6 +342,7 @@ def _save_checkpoint(
         "records": records,
         "evaluations": evaluations,
         "utility_profile": profile.cpu_payload(),
+        "grafts": grafts,
         "torch_rng_state": torch.get_rng_state(),
         "cuda_rng_state": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
     }
@@ -305,6 +367,12 @@ def run_consolidated_attachment_branch(
     temperature: float = 0.10,
     minimum_plasticity: float = 0.02,
     genome_plasticity: float = 0.05,
+    directional_edges: bool = False,
+    reserve_growth: bool = False,
+    reserve_target_fraction: float = 0.5,
+    reserve_slots_per_target: int = 2,
+    reserve_edge_raw: float = -1.5,
+    max_graft_a_drop: float | None = None,
     resume: bool = False,
 ) -> dict:
     if branch not in BRANCHES:
@@ -327,6 +395,7 @@ def run_consolidated_attachment_branch(
         batches=utility_batches,
         steps=max_steps,
         generator_seed=cfg.seed + 30_000,
+        directional_edges=directional_edges,
     )
     profile = make_utility_profile(
         model,
@@ -339,6 +408,44 @@ def run_consolidated_attachment_branch(
         genome_plasticity=genome_plasticity,
         shuffle_seed=cfg.seed + 31_000,
     )
+    pre_graft_a = evaluate_regime(
+        model,
+        state,
+        task,
+        regime_a,
+        cfg,
+        steps=max_steps,
+        batches=eval_batches,
+        generator_seed=cfg.seed + 32_000,
+        organ_name="A",
+    )
+    grafts = (
+        activate_reserve_dendrites(
+            model,
+            profile.applied_cell,
+            target_fraction=reserve_target_fraction,
+            slots_per_target=reserve_slots_per_target,
+            weak_raw=reserve_edge_raw,
+        )
+        if reserve_growth
+        else []
+    )
+    post_graft_a = evaluate_regime(
+        model,
+        state,
+        task,
+        regime_a,
+        cfg,
+        steps=max_steps,
+        batches=eval_batches,
+        generator_seed=cfg.seed + 32_000,
+        organ_name="A",
+    )
+    graft_a_drop = pre_graft_a["answer_accuracy"] - post_graft_a["answer_accuracy"]
+    if max_graft_a_drop is not None and graft_a_drop > max_graft_a_drop:
+        raise RuntimeError(
+            f"reserve graft A drop {graft_a_drop:.4f} exceeds {max_graft_a_drop:.4f}"
+        )
     anchor = {
         name: parameter.detach().clone()
         for name, parameter in _substrate_named_parameters(model)
@@ -378,6 +485,8 @@ def run_consolidated_attachment_branch(
             payload["utility_profile"]["measured_cell"], measured_cell.detach().cpu()
         ):
             raise ValueError("utility calibration changed across resume")
+        if payload.get("grafts", []) != grafts:
+            raise ValueError("reserve graft ledger changed across resume")
         model.load_state_dict(payload["model"])
         optimizer.load_state_dict(payload["optimizer"])
         state = unpack_state(payload["state"], device)
@@ -444,6 +553,7 @@ def run_consolidated_attachment_branch(
             records=records,
             evaluations=evaluations,
             profile=profile,
+            grafts=grafts,
         )
         _atomic_json(
             metrics_path,
@@ -452,6 +562,12 @@ def run_consolidated_attachment_branch(
                 "update": update,
                 "calibration": calibration,
                 "profile": profile_summary(model, profile),
+                "growth": {
+                    "grafts": grafts,
+                    "pre_graft_a": pre_graft_a,
+                    "post_graft_a": post_graft_a,
+                    "a_accuracy_drop": graft_a_drop,
+                },
                 "baseline": baseline,
                 "evaluations": evaluations,
                 "records": records,
@@ -493,6 +609,29 @@ def run_consolidated_attachment_branch(
         max_steps=max_steps,
         batches=final_eval_batches,
     )
+    reserve_lesions = _reserve_lesions(
+        model,
+        state,
+        task,
+        regime_a,
+        regime_b,
+        cfg,
+        profile,
+        grafts,
+        max_steps=max_steps,
+        batches=final_eval_batches,
+    )
+    final_grafts = []
+    for graft in grafts:
+        raw = float(model.graph.edge_logit[graft["target"], graft["slot"]].detach())
+        final_grafts.append(
+            {
+                **graft,
+                "final_edge_logit": raw,
+                "edge_logit_delta": raw - float(graft["initial_edge_logit"]),
+                "final_edge_bias": model.cfg.edge_logit_limit * math.tanh(raw),
+            }
+        )
     result = {
         "branch": branch,
         "source_update": int(acquisition["update"]),
@@ -513,6 +652,12 @@ def run_consolidated_attachment_branch(
             "temperature": temperature,
             "minimum_plasticity": minimum_plasticity,
             "genome_plasticity": genome_plasticity,
+            "directional_edges": directional_edges,
+            "reserve_growth": reserve_growth,
+            "reserve_target_fraction": reserve_target_fraction,
+            "reserve_slots_per_target": reserve_slots_per_target,
+            "reserve_edge_raw": reserve_edge_raw,
+            "max_graft_a_drop": max_graft_a_drop,
             "organ_seed": organ_seed,
         },
         "calibration": calibration,
@@ -526,11 +671,21 @@ def run_consolidated_attachment_branch(
             "a_organ_digest_after": _parameter_digest(_a_organ_named_parameters(model)),
             "a_organ_unchanged": a_digest_before == _parameter_digest(_a_organ_named_parameters(model)),
         },
+        "growth": {
+            "grafts": final_grafts,
+            "pre_graft_a": pre_graft_a,
+            "post_graft_a": post_graft_a,
+            "a_accuracy_drop": graft_a_drop,
+            "within_limit": (
+                max_graft_a_drop is None or graft_a_drop <= max_graft_a_drop
+            ),
+        },
         "summary": {
             "baseline": baseline,
             "final": final,
             "b_lesions": b_lesions,
             "utility_lesions": utility_lesions,
+            "reserve_lesions": reserve_lesions,
         },
         "records": records,
         "evaluations": evaluations,
@@ -555,6 +710,12 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.10)
     parser.add_argument("--minimum-plasticity", type=float, default=0.02)
     parser.add_argument("--genome-plasticity", type=float, default=0.05)
+    parser.add_argument("--directional-edges", action="store_true")
+    parser.add_argument("--reserve-growth", action="store_true")
+    parser.add_argument("--reserve-target-fraction", type=float, default=0.5)
+    parser.add_argument("--reserve-slots-per-target", type=int, default=2)
+    parser.add_argument("--reserve-edge-raw", type=float, default=-1.5)
+    parser.add_argument("--max-graft-a-drop", type=float)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     result = run_consolidated_attachment_branch(
@@ -572,6 +733,12 @@ def main() -> None:
         temperature=args.temperature,
         minimum_plasticity=args.minimum_plasticity,
         genome_plasticity=args.genome_plasticity,
+        directional_edges=args.directional_edges,
+        reserve_growth=args.reserve_growth,
+        reserve_target_fraction=args.reserve_target_fraction,
+        reserve_slots_per_target=args.reserve_slots_per_target,
+        reserve_edge_raw=args.reserve_edge_raw,
+        max_graft_a_drop=args.max_graft_a_drop,
         resume=args.resume,
     )
     final = result["summary"]["final"]
