@@ -29,6 +29,7 @@ from .wiki_memory_train import (
     counterfactual_training_record,
     evaluate_wiki_memory,
     load_wiki_memory_checkpoint,
+    organism_gradient_groups,
     paired_binding_margin_loss,
     save_wiki_memory_checkpoint,
 )
@@ -137,6 +138,11 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert organ.output.decoder.weight.grad is not None
     assert float(organ.output.decoder.weight.grad.abs().sum()) > 0.0
     assert all(parameter.grad is None for parameter in system.backbone.parameters())
+    gradient_groups = organism_gradient_groups(system)
+    assert {"sensor", "recall", "effector", "connectome", "tissues"}.issubset(
+        gradient_groups
+    )
+    assert gradient_groups["effector"]["rms"] > 0.0
 
     no_exposure = run_wiki_memory_episode(
         system,
@@ -173,13 +179,19 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
     )
     assert first_question.answer != question.answer
     assert second_question.answer != first_question.answer
-    assert "Temporary archive erratum" in first_document.memory
+    assert "Temporary archive binding" in first_document.memory
     assert document.memory not in ("", first_document.memory)
     paired = counterfactual_training_pair(document, question, epoch=0)
     assert paired[0][1].question == paired[1][1].question
     assert paired[0][1].choices == paired[1][1].choices
     assert paired[0][1].answer != paired[1][1].answer
     assert paired[0][0].memory != paired[1][0].memory
+    compact = counterfactual_training_pair(
+        document, question, epoch=0, compact=True
+    )
+    assert document.memory not in compact[0][0].memory
+    assert len(compact[0][0].memory) < len(paired[0][0].memory)
+    assert "Designated answer:" in compact[0][0].memory
 
     paired_system, paired_organ = build_system()
     with torch.no_grad():

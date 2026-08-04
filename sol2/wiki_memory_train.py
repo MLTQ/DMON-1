@@ -49,6 +49,7 @@ class WikiMemoryTrainConfig:
     paired_counterfactual: bool = False
     binding_margin: float = 1.0
     binding_weight: float = 1.0
+    compact_bindings: bool = False
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
@@ -64,17 +65,20 @@ def counterfactual_training_record(
     question: WikiQuestion,
     *,
     epoch: int,
+    compact: bool = False,
 ) -> tuple[WikiDocument, WikiQuestion]:
     """Bind one meta-training question to an episode-varying answer choice."""
 
     answer = (question.answer + 1 + epoch) % 4
     annotation = (
-        "\n\nTemporary archive erratum for this episode: if asked \""
-        f"{question.question}\" the designated answer is \"{question.choices[answer]}\". "
-        "Use this temporary annotation even if it conflicts with prior knowledge."
+        "Temporary archive binding for this episode.\n"
+        f"Question: {question.question}\n"
+        f"Designated answer: {question.choices[answer]}\n"
+        "Use this temporary binding even if it conflicts with prior knowledge."
     )
+    memory = annotation if compact else f"{document.memory}\n\n{annotation}"
     return (
-        dataclasses.replace(document, memory=document.memory + annotation),
+        dataclasses.replace(document, memory=memory),
         dataclasses.replace(question, answer=answer),
     )
 
@@ -84,12 +88,17 @@ def counterfactual_training_pair(
     question: WikiQuestion,
     *,
     epoch: int,
+    compact: bool = False,
 ) -> tuple[tuple[WikiDocument, WikiQuestion], tuple[WikiDocument, WikiQuestion]]:
     """Create two incompatible bindings for one identical question and start state."""
 
     return (
-        counterfactual_training_record(document, question, epoch=epoch),
-        counterfactual_training_record(document, question, epoch=epoch + 1),
+        counterfactual_training_record(
+            document, question, epoch=epoch, compact=compact
+        ),
+        counterfactual_training_record(
+            document, question, epoch=epoch + 1, compact=compact
+        ),
     )
 
 
@@ -117,6 +126,41 @@ def paired_binding_margin_loss(
     )
     loss = torch.relu(preferences.new_tensor(margin) - preferences).mean()
     return loss, preferences
+
+
+def organism_gradient_groups(system: LivingLanguageSystem) -> dict[str, dict[str, float]]:
+    """Summarize gradient participation across the causal language-memory route."""
+
+    totals: dict[str, list[float]] = {}
+    for name, parameter in system.organism.named_parameters():
+        if ".recall_" in name:
+            group = "recall"
+        elif ".sensor." in name or name.endswith(("sensory_gain", "sensory_bias")):
+            group = "sensor"
+        elif ".output." in name or name.endswith("control_basis"):
+            group = "effector"
+        elif name.startswith("graph."):
+            group = "connectome"
+        elif name.startswith("tissues."):
+            group = "tissues"
+        elif name.startswith(("cell_", "attached_orgs.")):
+            group = "cell_identity"
+        else:
+            group = "other"
+        values = totals.setdefault(group, [0.0, 0.0, 0.0])
+        if parameter.grad is not None:
+            gradient = parameter.grad.detach().float()
+            values[0] += float(gradient.pow(2).sum())
+            values[1] += float(gradient.numel())
+            values[2] += 1.0
+    return {
+        group: {
+            "rms": math.sqrt(square_sum / max(elements, 1.0)),
+            "elements": elements,
+            "tensors": tensors,
+        }
+        for group, (square_sum, elements, tensors) in totals.items()
+    }
 
 
 def save_wiki_memory_checkpoint(
@@ -406,6 +450,7 @@ def run_training(args: argparse.Namespace) -> dict:
         paired_counterfactual=args.paired_counterfactual,
         binding_margin=args.binding_margin,
         binding_weight=args.binding_weight,
+        compact_bindings=args.compact_bindings,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -439,11 +484,19 @@ def run_training(args: argparse.Namespace) -> dict:
         epoch = update // len(schedule)
         if train_config.paired_counterfactual:
             training_records = counterfactual_training_pair(
-                document, question, epoch=epoch
+                document,
+                question,
+                epoch=epoch,
+                compact=train_config.compact_bindings,
             )
         else:
             training_records = (
-                counterfactual_training_record(document, question, epoch=epoch),
+                counterfactual_training_record(
+                    document,
+                    question,
+                    epoch=epoch,
+                    compact=train_config.compact_bindings,
+                ),
             )
         optimizer.zero_grad(set_to_none=True)
         branch_results = []
@@ -470,6 +523,7 @@ def run_training(args: argparse.Namespace) -> dict:
             )
         objective_loss = task_loss + train_config.binding_weight * binding_loss
         objective_loss.backward()
+        gradient_groups = organism_gradient_groups(system)
         grad_norm = torch.nn.utils.clip_grad_norm_(
             system.organism.parameters(), train_config.grad_clip
         )
@@ -517,6 +571,7 @@ def run_training(args: argparse.Namespace) -> dict:
             "control_separation_rms": control_separation_rms,
             "label_logit_separation_rms": label_logit_separation_rms,
             "grad_norm": float(grad_norm),
+            "gradient_groups": gradient_groups,
             "control_rms": sum(branch.control_rms for branch in branch_results)
             / len(branch_results),
             "internal_activity": sum(
@@ -663,6 +718,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--binding-margin", type=float, default=1.0)
     parser.add_argument("--binding-weight", type=float, default=1.0)
+    parser.add_argument("--compact-bindings", action="store_true")
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)

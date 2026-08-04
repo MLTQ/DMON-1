@@ -32,6 +32,12 @@ own passage-bound answer over its mate's incompatible answer by the configured m
 This prevents averaged cross-entropy gradients from cancelling into a static half-
 solution while leaving all internal representation and routing choices unconstrained.
 
+### `organism_gradient_groups`
+
+Reports gradient RMS, participating element count, and tensor count separately for the
+language sensor, recall head, connectome, tissue dynamics, cell identity, and effector.
+This distinguishes a weak reward from a route that receives no learning signal.
+
 ### `save_wiki_memory_checkpoint` / `load_wiki_memory_checkpoint`
 
 Round-trip organism and attached-graft weights, optimizer moments, continuing lifetime
@@ -56,6 +62,8 @@ performs independent cellular transitions and language-head control.
   the primary branch forward as the continuing lifetime lane.
 - Builds both paired graphs before one backward pass and combines ordinary task loss
   with the explicit causal binding margin.
+- Can train first on compact question-to-answer memory cards before restoring the full
+  wiki paragraph as distractor context.
 - Records RMS separation between paired control banks and paired four-label logits.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
@@ -96,6 +104,8 @@ performs independent cellular transitions and language-head control.
   passage-insensitive shortcut even if one branch or held-out accuracy improves.
 - Binding preference, margin loss, task loss, and combined objective are checkpointed
   as separate telemetry; the reported task loss remains comparable to earlier runs.
+- Compact bindings alter meta-training exposure only. Development and held-out wiki
+  cards remain frozen, natural, and source-family disjoint.
 
 ## Example
 

@@ -23,6 +23,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
   when the attentive recall path is active.
 - The paired binding margin has nonzero opposing gradients at identical logits and
   becomes exactly zero once both branches prefer their own targets by the margin.
+- Compact bindings remove the shared wiki paragraph while retaining the exact question
+  and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, and update cursor.
 - The matched evaluator emits all eight preregistered causal arms.

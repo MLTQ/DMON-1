@@ -160,6 +160,33 @@ This auxiliary reward is causal but anatomy-neutral: because question and start 
 are identical across branches, the passage/state path is the only information capable
 of satisfying both opposing preferences.
 
+### L0-C1d result and L0-C1e frozen compact curriculum
+
+L0-C1d stopped at update 25 on 2026-08-04; the artifact is
+`l0c1d-binding-m96-u25-result.json`. Joint graphs fit at 18.50 GiB peak allocation. The
+trailing ten-update mean control separation rose only to `0.0000279`, paired accuracy
+remained 10%, and label-logit separation remained zero. Binding loss worsened from a
+1.14 mean over updates 1-10 to 1.46 over updates 16-25. The margin correctly penalized
+the static policy but could not amplify the few differing answer tokens within roughly
+100 retained passage tokens. The checkpoint was not extended.
+
+Before any L0-C1e optimizer update, the next curriculum is frozen:
+
+1. Architecture, differentiable recall, paired targets, joint binding margin, optimizer,
+   geometry, and all development/held-out data remain unchanged.
+2. Meta-training exposure contains only a compact temporary record with the exact
+   question and designated answer. The shared wiki paragraph is omitted initially.
+3. Development and held-out exposure remain the original natural wiki memory cards.
+4. Every update reports gradient RMS and participating tensors/elements for sensor,
+   recall, connectome, tissues, cell identity, and effector groups.
+5. The update-25 routing gates remain control separation above `0.005` and paired
+   accuracy above 25%. Only a passing compact run may progress to a curriculum that
+   gradually restores wiki text as distractor context.
+
+This is a curriculum simplification, not a reduced success claim. It asks first whether
+the organism can learn a clean binding operation, then whether that operation survives
+irrelevant context and finally transfers to natural unseen passages.
+
 ## Episode
 
 For one lifetime lane:
