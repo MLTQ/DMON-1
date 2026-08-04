@@ -2,6 +2,8 @@
 
 Status: protocol frozen 2026-08-04 before Llama baseline screening or organism training.
 
+Baseline screening completed later on 2026-08-04; no optimizer update had occurred.
+
 ## Question
 
 Can SOL2 learn a general operation for absorbing information through its frozen
@@ -43,6 +45,25 @@ The initial gate uses four-way multiple choice with answer-order permutations. C
 is 25%. Multiple choice provides an exact metric and avoids grading prose with another
 model. A subsequent short-answer gate is required before claiming a general memory
 interface.
+
+### Frozen-Llama result
+
+`l0c1-wiki-memory-baseline-result.json` records the committed 24-question screen using
+Llama-3 8B Instruct and permutation seed 41. Baseline accuracy was 9/12 (75%) on
+meta-training, 3/4 (75%) on development, and 4/8 (50%) on held-out. Strict admission
+therefore retained three meta-training questions, one development question, and four
+held-out questions.
+
+This disproves the casual assumption that post-checkpoint wiki summaries are
+automatically unknown to the model: answer choices made many facts inferable. The
+held-out questions and success thresholds remain unchanged. Before training, the
+meta-training curriculum is amended to add episode-specific counterfactual annotations
+to the existing meta-training memory cards. The annotation binds the same question to
+a deterministically selected alternative choice for that episode. Llama's static prior
+cannot solve this varying binding, so learning pressure must cross the exposure/state
+path. Unmodified wiki facts remain mixed into meta-training, and all development and
+held-out passages remain unmodified. This amendment trains the write/query operation;
+the unchanged held-out gate still asks whether it transfers to natural wiki facts.
 
 ## Episode
 

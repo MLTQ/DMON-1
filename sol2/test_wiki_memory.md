@@ -16,6 +16,10 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Wiki-episode loss recruits the continuous graft and never creates backbone gradients.
 - No-exposure and reset causal arms traverse the same exact scorer.
 - Aggregate metrics remain bounded and auditable.
+- Counterfactual targets vary deterministically by epoch.
+- Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
+  state, corpus identity, and update cursor.
+- The matched evaluator emits all eight preregistered causal arms.
 
 ## Decisions
 
@@ -30,4 +34,3 @@ transitions, and gradient ownership before using the real wiki or 4090.
 ```bash
 .venv/bin/python -m sol2.test_wiki_memory
 ```
-
