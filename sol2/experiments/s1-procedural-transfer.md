@@ -1,7 +1,7 @@
 # S1-P: procedural transfer across changing interfaces
 
-Status: architecture and CPU gate complete; interpretation amended 2026-08-03 before
-result-bearing runs to distinguish adaptation from lesion tolerance.
+Status: seed-7 GPU run complete 2026-08-03; qualified partial success. Interpretation
+was amended before the run to distinguish adaptation from lesion tolerance.
 
 ## Goal
 
@@ -140,3 +140,49 @@ nor organ-only reuse, the next experiment is low-rank dynamic mode state. DNC-st
 slots remain deferred until that active mode is causally beneficial. Delta-aware liquid
 timescales are tested separately on irregular-latency variants, rather than bundled into
 this attribution run.
+
+## Seed-7 result
+
+Both the 310,390-parameter creature and matched 309,546-parameter GRU completed with
+zero rejected updates. The creature service ran for 48m54s. CUDA ordinal enumeration
+placed it on the physical RTX 2070S despite the service's `4090` label; future manifests
+must select GPUs by UUID. This does not change model semantics or the matched-branch
+attribution within the run.
+
+| Measure | Creature result |
+|---|---:|
+| Acquisition length 1 / 2 / 3 / 4 | 99.9% / 96.6% / 64.8% / 31.9% |
+| A-control length 4 after 2,000 more updates | 60.4% |
+| B full / B scratch length 4 | 54.4% / 11.2% |
+| B acquired-minus-scratch early accuracy | +12.08 points |
+| B organs-only length 1 / 2 / 3 / 4 | 99.9% / 85.9% / 31.1% / 16.7% |
+| C full / organs-only length 4 | 21.0% / 18.6% |
+| A-control internal / compute / relay freeze | -48.8 / -48.3 / -46.8 points |
+| A-control topology rewire / identity shuffle | -46.7 / -7.3 points |
+| A-control state shuffle / memory zero | -0.7 / -0.3 points |
+| Return to A after B | 12.0% |
+
+The fixed-length-four acquisition gate failed at the fork: the curriculum allocated
+only its final quarter to length four. Continuing A for the same branch budget raised
+length-four accuracy above the gate. Full B also passed 50% and held a preregistered
+early advantage over identical B-from-scratch examples, which remained at chance. Thus
+prior procedural acquisition qualitatively bootstraps adaptation, but the first snapshot
+did not yet contain a mature long-depth procedure.
+
+Both compute-like and relay-like tissue freezes, as well as topology rewiring, reduced
+A-control accuracy almost to chance. This is strong evidence that the internal tissue
+and its learned routing are causally necessary; it is not a claim that lesions should
+be tolerated. Identity contributes measurably, while the designated memory tissue and
+within-tissue instantaneous state placement remain weak under these probes.
+
+Organ-only B reuse is strong for lengths one and two, partial at three, and not useful
+at four. Whole-organism plasticity is therefore important for the deepest trained
+composition. C was not mastered at length four in either branch, so it remains a control
+rather than evidence about procedure-specific modularity.
+
+Return-to-A is not an interpretable retention test in this version. A and B permute the
+same token IDs into contradictory meanings without an organ or mode cue, so both mappings
+cannot be selected from identical observable inputs. The follow-up must attach distinct
+A and B sensory/output organ parameters, retain the original A organ, train A to the
+length-four gate before forking, and then measure B attachment plus A retention. This is
+tracked as `DMON-1-xkp`.
