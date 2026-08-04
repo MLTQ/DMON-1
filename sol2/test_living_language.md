@@ -21,6 +21,8 @@ backbone or GPU training is attempted.
   zero-control logits, passes gradients only into controls, and audits native parity.
 - The graft factory is deterministic from a private seed and leaves global RNG state
   untouched.
+- Mixed-precision backbones and FP32 organism state cross the graft with explicit dtype
+  conversion while retaining exact zero-control logits.
 - A paired context-erasure task reaches perfect accuracy, while exact-zero control,
   state reset, and internal-tissue lesion remain at or below chance.
 

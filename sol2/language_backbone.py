@@ -84,6 +84,7 @@ class ToyFrozenLanguageBackbone(nn.Module):
                 raise ValueError("controls must have shape [batch, tokens, width]")
             if controls.shape[1] < 1 or controls.shape[2] != self.width:
                 raise ValueError("controls must contain at least one width-sized token")
+            controls = controls.to(device=features.device, dtype=features.dtype)
             scores = torch.einsum("bsw,btw->bst", features, controls) * self.width**-0.5
             attention = torch.softmax(scores, dim=-1)
             residual = torch.einsum("bst,btw->bsw", attention, controls)

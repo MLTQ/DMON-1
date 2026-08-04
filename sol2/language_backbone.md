@@ -60,6 +60,7 @@ A structural protocol exposing only:
 - Input IDs have shape `[batch, sequence]` and dtype `torch.long`.
 - `encode` returns detached features shaped `[batch, sequence, width]`.
 - Controls have shape `[batch, control_tokens, width]`.
+- Adapters convert controls to the frozen feature device and dtype before attention.
 - Frozen parameters never receive gradients or optimizer updates.
 - Language loss remains differentiable with respect to non-detached controls.
 - A production checkpoint is accepted only after `native_logit_error` is within its

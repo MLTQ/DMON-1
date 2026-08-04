@@ -38,6 +38,9 @@ caller's random stream.
   state transition contract.
 - Frozen features are computed once per transition and reused for controlled decoding;
   there is no mandatory second backbone pass.
+- Sensory features are explicitly converted to the continuing cellular state's device
+  and dtype. Return controls are converted to the backbone feature dtype by the adapter,
+  so BF16 language machinery and FP32 organism dynamics remain a deliberate boundary.
 - `control_scale=0` provides an exact language-floor intervention while allowing the
   organism to continue perceiving and evolving. Reset and tissue-lesion controls are
   expressed through the initial/frozen-state arguments, not separate model variants.

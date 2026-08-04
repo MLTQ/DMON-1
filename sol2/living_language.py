@@ -64,7 +64,10 @@ class LivingLanguageSystem(nn.Module):
         if context_ids.ndim != 2 or context_ids.shape[1] < 1:
             raise ValueError("context_ids must contain at least one token per batch")
         feature_sequence = self.backbone.encode(context_ids)
-        features = feature_sequence[:, -1]
+        features = feature_sequence[:, -1].to(
+            device=state.hidden.device,
+            dtype=state.hidden.dtype,
+        )
         controls, next_state, health = self.organism.step(
             features,
             state,

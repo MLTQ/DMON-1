@@ -208,6 +208,20 @@ def test_graft_factory_is_deterministic_and_rng_neutral() -> None:
     )
 
 
+def test_mixed_backbone_and_organism_dtypes_are_bridged() -> None:
+    system, _ = build_system()
+    system.backbone.to(dtype=torch.float64)
+    context = torch.tensor([[1, 2, 3]])
+    step = system.advance(context, system.initial_state(1, "cpu"))
+    assert step.state.hidden.dtype == torch.float32
+    assert step.controls.dtype == torch.float32
+    assert step.logits.dtype == torch.float64
+    assert torch.equal(
+        step.logits,
+        system.backbone.controlled_logits(context)[:, -1],
+    )
+
+
 def test_context_erasure_learning_requires_persistent_internal_state() -> None:
     system, _ = build_system()
     task = ContextErasureTask(exposure_steps=4, distractor_steps=0)
@@ -239,6 +253,7 @@ def main() -> None:
         test_specialized_organ_detaches_and_reattaches_exactly,
         test_huggingface_adapter_freezes_and_controls_an_exposed_head,
         test_graft_factory_is_deterministic_and_rng_neutral,
+        test_mixed_backbone_and_organism_dtypes_are_bridged,
         test_context_erasure_learning_requires_persistent_internal_state,
     ]
     print("DMON-L0 CPU contract gate")
