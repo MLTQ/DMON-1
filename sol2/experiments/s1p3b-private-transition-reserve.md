@@ -1,6 +1,29 @@
 # S1-P3b: private transition reserve and directional consolidation
 
-Status: protocol frozen 2026-08-04 before implementation tests or GPU results.
+Status: completed 2026-08-04; mechanism evidence was positive, capability and
+allocation gates did not pass.
+
+## Result
+
+Seed 7 mastered A at update 6,000 with 92.90% held-out length-four accuracy. The
+genome-rate screen selected 0.30 by its frozen higher-B tie-break. After 3,000 B
+updates, terminal `(A, B, min)` accuracies were plastic `(15.56%, 73.96%, 15.56%)`,
+uniform `(21.22%, 93.62%, 21.22%)`, measured `(23.24%, 82.42%, 23.24%)`, and shuffled
+`(24.80%, 88.41%, 24.80%)`.
+
+All internal private adapters were active and jointly causal: resetting them cost
+roughly 47--54 B points. Low-utility adapters drifted 6.49 times as much as
+high-utility adapters, but the added reserve grafts were nearly non-causal (about a
+0.2-point B loss when disabled). Freezing high-A-utility cells cost measured B 62.9
+points versus 17.7 points for low-utility cells. Thus B learned by reusing and
+overwriting the mature A core, not by occupying the supplied reserve. Measured
+placement improved worst-organ accuracy only 2.02 points over uniform, while shuffled
+placement improved it 3.58 points; no arm reached simultaneous 80/80.
+
+This falsifies neither private cellular transitions nor consolidation. It specifically
+shows that per-update delta scaling supplied no cumulative cost for repeatedly changing
+mature structure, and that preinstalling weak reserve edges did not create a demand to
+use them. S1-P4 therefore tests cumulative anchors and pressure-triggered growth.
 
 ## Question
 

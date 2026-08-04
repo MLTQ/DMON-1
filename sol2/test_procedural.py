@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
+from .anchored_consolidation import ProximalAnchorPolicy, make_anchor_profile
 from .config import Sol2Config
 from .consolidated_attachment import run_consolidated_attachment_branch
 from .consolidated_attachment_analysis import analyze as analyze_consolidation
@@ -16,6 +17,10 @@ from .consolidation import (
     calibrate_causal_utility,
     make_utility_profile,
 )
+from .development import DevelopmentController
+from .developmental_attachment import run_developmental_attachment_branch
+from .developmental_analysis import analyze as analyze_development
+from .growth import grow_relay_tissue
 from .model import Sol2
 from .genome_rate_screen import select as select_genome_rate
 from .organ_attachment import run_organ_attachment_branch
@@ -358,6 +363,90 @@ def test_causal_utility_and_realized_update_protection() -> None:
     )
 
 
+def test_proximal_anchor_is_exact_and_growth_rows_remain_free() -> None:
+    task = ProceduralTask()
+    cfg = Sol2Config(
+        n_input=2,
+        n_memory=2,
+        n_compute=4,
+        n_relay=4,
+        n_output=2,
+        hidden=8,
+        n_dendrites=5,
+        initial_active_dendrites=2,
+        steps_per_token=1,
+        organ_queries=1,
+        cell_adapter_rank=2,
+        vocab_size=task.vocab_size,
+        batch_size=2,
+        seed=51,
+        device="cpu",
+    )
+    model = Sol2(cfg)
+    optimizer = build_optimizer(model, cfg)
+    cells = torch.ones(model.n_cells)
+    edges = torch.ones_like(model.graph.edge_logit) * model.graph.active
+    profile = make_anchor_profile(
+        model,
+        cells,
+        edges,
+        branch="measured_anchor",
+        threshold=0.65,
+        temperature=0.10,
+        anchor_rate=0.10,
+    )
+    policy = ProximalAnchorPolicy(model, profile)
+    anchor = model.cell_gain.detach().clone()
+    model.cell_gain.grad = torch.ones_like(model.cell_gain)
+    pressure = policy.gradient_pressure()
+    assert pressure["pressure"] > 0.95
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    optimizer.step()
+    policy.apply_proximal()
+    strength = profile.cell_protection[model.expression_cells].unsqueeze(-1)
+    torch.testing.assert_close(
+        model.cell_gain,
+        anchor - 0.1 / (1.0 + 0.10 * strength),
+    )
+
+    old_rows = len(model.cell_gain)
+    _, _, _ = grow_relay_tissue(model, optimizer, 2)
+    with torch.no_grad():
+        model.cell_gain[:old_rows].add_(1.0)
+        model.cell_gain[old_rows:].add_(1.0)
+    mature_before_pull = model.cell_gain[:old_rows].detach().clone()
+    policy.apply_proximal()
+    torch.testing.assert_close(
+        model.cell_gain[:old_rows],
+        anchor + (mature_before_pull - anchor) / (1.0 + 0.10 * strength),
+    )
+    assert float(model.cell_gain[old_rows:].detach().mean()) == 1.0
+
+
+def test_development_controller_requires_persistent_pressure_and_refractory() -> None:
+    controller = DevelopmentController(
+        high_pressure=0.75,
+        plateau_pressure=0.60,
+        plateau_gain=0.03,
+        patience_checks=2,
+        min_update=600,
+        refractory_updates=600,
+        max_events=2,
+    )
+    first = controller.observe(update=300, b_accuracy=0.20, pressure=0.90)
+    second = controller.observe(update=600, b_accuracy=0.25, pressure=0.90)
+    assert not first.trigger and second.trigger
+    blocked = controller.observe(update=900, b_accuracy=0.26, pressure=0.90)
+    assert not blocked.trigger
+    state = controller.state_dict()
+    restored = DevelopmentController()
+    restored.load_state_dict(state)
+    assert restored.state_dict() == state
+    triggered = restored.observe(update=1200, b_accuracy=0.27, pressure=0.90)
+    capped = restored.observe(update=1500, b_accuracy=0.28, pressure=0.90)
+    assert triggered.trigger and not capped.trigger
+
+
 def test_tiny_true_organ_branch_integrity() -> None:
     task = ProceduralTask()
     cfg = Sol2Config(
@@ -529,6 +618,84 @@ def test_tiny_consolidated_attachment_branch() -> None:
         assert (root / "consolidated" / "adaptation.pt").exists()
 
 
+def test_tiny_developmental_branch_grows_and_resumes() -> None:
+    task = ProceduralTask()
+    cfg = Sol2Config(
+        n_input=2,
+        n_memory=2,
+        n_compute=4,
+        n_relay=2,
+        n_output=2,
+        hidden=8,
+        n_dendrites=5,
+        initial_active_dendrites=2,
+        steps_per_token=1,
+        organ_queries=1,
+        cell_adapter_rank=2,
+        vocab_size=task.vocab_size,
+        batch_size=2,
+        updates=2,
+        warmup_updates=1,
+        log_every=1,
+        operator_bound=4.0,
+        seed=61,
+        device="cpu",
+    )
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        acquisition_dir = root / "acquisition"
+        run_acquisition_calibration(
+            cfg,
+            acquisition_dir,
+            max_updates=2,
+            evaluation_interval=1,
+            stage_updates=1,
+            eval_batches=1,
+            mastery_accuracy=2.0,
+            mastery_checks=2,
+        )
+        arguments = dict(
+            device="cpu",
+            adaptation_updates=2,
+            eval_every=1,
+            eval_batches=1,
+            final_eval_batches=1,
+            utility_batches=1,
+            max_steps=2,
+            anchor_rate=0.01,
+            growth_cells=2,
+            high_pressure=0.0,
+            plateau_pressure=0.0,
+            plateau_gain=1.0,
+            patience_checks=1,
+            growth_min_update=1,
+            growth_refractory=1,
+            max_growth_events=1,
+            max_growth_a_drop=1.0,
+        )
+        result = run_developmental_attachment_branch(
+            acquisition_dir / "acquisition.pt",
+            root / "developmental",
+            "developmental",
+            **arguments,
+        )
+        resumed = run_developmental_attachment_branch(
+            acquisition_dir / "acquisition.pt",
+            root / "developmental",
+            "developmental",
+            resume=True,
+            **arguments,
+        )
+        assert result["update"] == 2
+        assert len(result["growth_events"]) == 1
+        assert len(result["growth_events"][0]["cells"]) == 2
+        assert result["config"]["n_relay"] == cfg.n_relay + 2
+        assert result["integrity"]["a_organ_unchanged"]
+        assert result["summary"]["growth_lesions"] is not None
+        assert resumed["records"] == result["records"]
+        assert resumed["growth_events"] == result["growth_events"]
+
+
 def test_consolidated_analysis_applies_frozen_gates() -> None:
     def payload(a_accuracy: float, b_accuracy: float) -> dict:
         lesion_rows = {
@@ -652,6 +819,58 @@ def test_genome_rate_screen_uses_frozen_tie_break() -> None:
         assert result["selected_rate"] == 0.30
 
 
+def test_developmental_analysis_separates_anchor_and_growth_gates() -> None:
+    def payload(a: float, b: float, *, growth: bool = False) -> dict:
+        growth_rows = None
+        events = []
+        if growth:
+            events = [{"cells": list(range(16))}]
+            growth_rows = {
+                "A": {
+                    "normal": {"answer_accuracy": a},
+                    "freeze_grown_cells": {"answer_accuracy": a - 0.01},
+                    "zero_grown_adapters": {"answer_accuracy": a},
+                },
+                "B": {
+                    "normal": {"answer_accuracy": b},
+                    "freeze_grown_cells": {"answer_accuracy": b - 0.20},
+                    "zero_grown_adapters": {"answer_accuracy": b - 0.10},
+                },
+            }
+        return {
+            "protocol": {"max_steps": 4},
+            "rejected_updates": 0,
+            "integrity": {"a_organ_unchanged": True},
+            "growth_events": events,
+            "evaluations": [{"pressure": {"pressure": 0.8}}],
+            "summary": {
+                "final": {
+                    "a_fixed": {"answer_accuracy": a},
+                    "b_by_length": {"4": {"answer_accuracy": b}},
+                },
+                "growth_lesions": growth_rows,
+            },
+        }
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        for branch, values in {
+            "plastic": (0.20, 0.90, False),
+            "uniform_anchor": (0.65, 0.80, False),
+            "measured_anchor": (0.80, 0.80, False),
+            "developmental": (0.90, 0.90, True),
+        }.items():
+            branch_dir = root / branch
+            branch_dir.mkdir()
+            (branch_dir / "metrics.json").write_text(
+                json.dumps(payload(*values[:2], growth=values[2]))
+            )
+        result = analyze_development(root)
+        assert result["capability_success"]
+        assert result["anchor_attribution_success"]
+        assert result["development_success"]
+
+
 def main() -> None:
     tests = (
         test_regime_factors_are_separable,
@@ -661,11 +880,15 @@ def main() -> None:
         test_acquisition_checkpoint_and_resume,
         test_distinct_organ_attachment_is_behaviorally_silent_for_a,
         test_causal_utility_and_realized_update_protection,
+        test_proximal_anchor_is_exact_and_growth_rows_remain_free,
+        test_development_controller_requires_persistent_pressure_and_refractory,
         test_tiny_true_organ_branch_integrity,
         test_tiny_consolidated_attachment_branch,
+        test_tiny_developmental_branch_grows_and_resumes,
         test_consolidated_analysis_applies_frozen_gates,
         test_private_transition_analysis_keeps_capability_and_allocation_separate,
         test_genome_rate_screen_uses_frozen_tie_break,
+        test_developmental_analysis_separates_anchor_and_growth_gates,
     )
     for test in tests:
         test()
