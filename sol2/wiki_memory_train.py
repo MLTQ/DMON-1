@@ -21,7 +21,9 @@ from .living_language import LivingLanguageSystem, graft_language_backbone
 from .model import Sol2, count_parameters
 from .state import OrganismState
 from .wiki_memory import (
+    LABELS,
     WikiDocument,
+    WikiEpisodeResult,
     WikiMemoryCorpus,
     WikiQuestion,
     encode_text,
@@ -45,12 +47,16 @@ class WikiMemoryTrainConfig:
     max_question_tokens: int = 256
     seed: int = 7
     paired_counterfactual: bool = False
+    binding_margin: float = 1.0
+    binding_weight: float = 1.0
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
             raise ValueError("update and interval counts must be positive")
         if self.lr <= 0 or self.grad_clip <= 0:
             raise ValueError("learning rate and gradient clip must be positive")
+        if self.binding_margin <= 0 or self.binding_weight < 0:
+            raise ValueError("binding margin must be positive and weight nonnegative")
 
 
 def counterfactual_training_record(
@@ -85,6 +91,32 @@ def counterfactual_training_pair(
         counterfactual_training_record(document, question, epoch=epoch),
         counterfactual_training_record(document, question, epoch=epoch + 1),
     )
+
+
+def paired_binding_margin_loss(
+    left: WikiEpisodeResult,
+    right: WikiEpisodeResult,
+    *,
+    margin: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Require each passage branch to prefer its own target over its mate's target."""
+
+    if left.label_logits is None or right.label_logits is None:
+        raise ValueError("paired binding loss requires live label logits")
+    left_target = LABELS.index(left.correct_label)
+    right_target = LABELS.index(right.correct_label)
+    if left_target == right_target:
+        raise ValueError("paired binding targets must be incompatible")
+    left_logits = left.label_logits.float()
+    right_logits = right.label_logits.float()
+    preferences = torch.stack(
+        (
+            left_logits[left_target] - left_logits[right_target],
+            right_logits[right_target] - right_logits[left_target],
+        )
+    )
+    loss = torch.relu(preferences.new_tensor(margin) - preferences).mean()
+    return loss, preferences
 
 
 def save_wiki_memory_checkpoint(
@@ -372,6 +404,8 @@ def run_training(args: argparse.Namespace) -> dict:
         max_question_tokens=args.max_question_tokens,
         seed=args.seed,
         paired_counterfactual=args.paired_counterfactual,
+        binding_margin=args.binding_margin,
+        binding_weight=args.binding_weight,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -424,8 +458,18 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_memory_tokens=train_config.max_memory_tokens,
                 max_question_tokens=train_config.max_question_tokens,
             )
-            (branch_result.loss / len(training_records)).backward()
             branch_results.append(branch_result)
+        task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
+        binding_loss = task_loss.new_zeros(())
+        binding_preferences = task_loss.new_zeros(2)
+        if len(branch_results) == 2 and train_config.binding_weight > 0:
+            binding_loss, binding_preferences = paired_binding_margin_loss(
+                branch_results[0],
+                branch_results[1],
+                margin=train_config.binding_margin,
+            )
+        objective_loss = task_loss + train_config.binding_weight * binding_loss
+        objective_loss.backward()
         grad_norm = torch.nn.utils.clip_grad_norm_(
             system.organism.parameters(), train_config.grad_clip
         )
@@ -434,9 +478,7 @@ def run_training(args: argparse.Namespace) -> dict:
         result = branch_results[0]
         lane_state = result.state.detach()
         lane_state.weight_version = update
-        mean_loss = sum(float(branch.loss.detach()) for branch in branch_results) / len(
-            branch_results
-        )
+        mean_loss = float(task_loss.detach())
         branch_accuracy = sum(branch.correct for branch in branch_results) / len(
             branch_results
         )
@@ -464,6 +506,11 @@ def run_training(args: argparse.Namespace) -> dict:
             "question_id": question.id,
             "loss": mean_loss,
             "bits": mean_loss / math.log(2.0),
+            "objective_loss": float(objective_loss.detach()),
+            "binding_loss": float(binding_loss.detach()),
+            "binding_preferences": [
+                float(value) for value in binding_preferences.detach()
+            ],
             "correct": result.correct,
             "branch_accuracy": branch_accuracy,
             "branch_answers": [branch.correct_label for branch in branch_results],
@@ -486,6 +533,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"branch_acc={row['branch_accuracy']:.2f} "
                 f"control={row['control_rms']:.4f} "
                 f"control_sep={row['control_separation_rms']:.4f} "
+                f"binding={row['binding_loss']:.4f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -613,6 +661,8 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="train two incompatible passage bindings from one matched start state",
     )
+    parser.add_argument("--binding-margin", type=float, default=1.0)
+    parser.add_argument("--binding-weight", type=float, default=1.0)
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)

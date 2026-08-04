@@ -25,6 +25,13 @@ With `--paired-counterfactual`, both branches start from the same organism state
 contribute equally to one update, so a question-only or lifetime-position policy cannot
 satisfy both targets.
 
+### `paired_binding_margin_loss`
+
+Jointly compares the two live four-label distributions. Each branch must prefer its
+own passage-bound answer over its mate's incompatible answer by the configured margin.
+This prevents averaged cross-entropy gradients from cancelling into a static half-
+solution while leaving all internal representation and routing choices unconstrained.
+
 ### `save_wiki_memory_checkpoint` / `load_wiki_memory_checkpoint`
 
 Round-trip organism and attached-graft weights, optimizer moments, continuing lifetime
@@ -47,6 +54,8 @@ performs independent cellular transitions and language-head control.
 - Cycles deterministically across all meta-training questions and counterfactual values.
 - Optionally accumulates gradients from a matched incompatible pair while carrying only
   the primary branch forward as the continuing lifetime lane.
+- Builds both paired graphs before one backward pass and combines ordinary task loss
+  with the explicit causal binding margin.
 - Records RMS separation between paired control banks and paired four-label logits.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
@@ -85,6 +94,8 @@ performs independent cellular transitions and language-head control.
 - Checkpoint writes are atomic and resume the exact continuing cellular state.
 - A paired update reports exact control/logit separation; zero separation identifies a
   passage-insensitive shortcut even if one branch or held-out accuracy improves.
+- Binding preference, margin loss, task loss, and combined objective are checkpointed
+  as separate telemetry; the reported task loss remains comparable to earlier runs.
 
 ## Example
 

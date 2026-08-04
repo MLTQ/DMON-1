@@ -132,6 +132,34 @@ ten-update mean control separation must exceed `0.005`, and paired accuracy must
 the 25% four-way floor. If either misses, stop before a longer held-out interpretation.
 If both pass, continue to update 50 and apply the original causal memory gates.
 
+### L0-C1c result and L0-C1d frozen reward repair
+
+L0-C1c stopped at its preregistered update-25 routing gate on 2026-08-04. The artifact
+is `l0c1c-recall-m96-u25-result.json`. Peak CUDA allocation was 16.80 GiB. Recall made
+memory presence behaviorally visible at update 2 (`normal` control RMS 0.00680 versus
+0.00156 for no exposure), but it did not learn content identity. Across updates 16-25,
+mean paired control separation was `0.00000699` and paired accuracy was 10%, missing
+the respective `0.005` and 25% gates. Four-label logit separation remained exactly zero
+at BF16 resolution. The checkpoint was not extended to update 50.
+
+The failure identifies cancellation in the reward rather than another physical routing
+absence: averaged cross-entropy permits two incompatible, nearly identical branches to
+settle on one static answer. Before any L0-C1d optimizer update, reward shaping is fixed:
+
+1. Both incompatible branches are built from the same starting state before one joint
+   backward pass.
+2. Ordinary mean four-label cross-entropy remains the primary task loss.
+3. For branch targets `a` and `b`, an auxiliary hinge requires branch A's preference
+   `logit(a)-logit(b)` and branch B's preference `logit(b)-logit(a)` each to reach 1.0.
+4. The two hinge terms are averaged with weight 1.0 and reported separately from task
+   loss. No hidden state, cell, route, or control direction is prescribed.
+5. L0-C1d starts from a fresh initialization with the same recall architecture,
+   96-cell memory, paired curriculum, routing gate, development set, and held-out arms.
+
+This auxiliary reward is causal but anatomy-neutral: because question and start state
+are identical across branches, the passage/state path is the only information capable
+of satisfying both opposing preferences.
+
 ## Episode
 
 For one lifetime lane:

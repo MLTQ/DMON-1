@@ -29,6 +29,7 @@ from .wiki_memory_train import (
     counterfactual_training_record,
     evaluate_wiki_memory,
     load_wiki_memory_checkpoint,
+    paired_binding_margin_loss,
     save_wiki_memory_checkpoint,
 )
 
@@ -202,6 +203,30 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         branch_results[0].controls - branch_results[1].controls
     ).pow(2).mean().sqrt()
     assert float(separation.detach()) > 0.0
+
+    left_logits = torch.zeros(4, requires_grad=True)
+    right_logits = torch.zeros(4, requires_grad=True)
+    binding_loss, preferences = paired_binding_margin_loss(
+        SimpleNamespace(correct_label="A", label_logits=left_logits),
+        SimpleNamespace(correct_label="B", label_logits=right_logits),
+        margin=1.0,
+    )
+    assert torch.equal(preferences, torch.zeros(2))
+    assert float(binding_loss.detach()) == 1.0
+    binding_loss.backward()
+    assert float(left_logits.grad.abs().sum()) > 0.0
+    assert float(right_logits.grad.abs().sum()) > 0.0
+
+    satisfied, _ = paired_binding_margin_loss(
+        SimpleNamespace(
+            correct_label="A", label_logits=torch.tensor([2.0, 0.0, 0.0, 0.0])
+        ),
+        SimpleNamespace(
+            correct_label="B", label_logits=torch.tensor([0.0, 2.0, 0.0, 0.0])
+        ),
+        margin=1.0,
+    )
+    assert float(satisfied) == 0.0
 
     system, _ = build_system()
     optimizer = torch.optim.AdamW(system.organism.parameters(), lr=1e-3)
