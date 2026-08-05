@@ -33,6 +33,21 @@ own passage-bound answer over its mate's incompatible answer by the configured m
 This prevents averaged cross-entropy gradients from cancelling into a static half-
 solution while leaving all internal representation and routing choices unconstrained.
 
+### Causal passage contrast
+
+When explicitly enabled, reruns the identical question without exposure and rewards
+each paired passage only for raising its own target log probability above both that
+no-exposure baseline and the incompatible passage. Baseline logits are detached, so
+the objective cannot win by damaging a control arm. `--task-weight 0` makes this the
+only behavioral reward rather than an auxiliary to ordinary answer fitting.
+
+### Frozen-effector developmental intervention
+
+`--freeze-effector-updates` holds the already calibrated language output organ and
+control basis fixed while gradients continue through them into output and internal
+tissue. This prevents further question-to-label learning in the head without blocking
+internal tissue from learning to drive the existing interface.
+
 ### Fixed output-tissue credit
 
 When explicitly enabled, scores final output-cell state against a deterministic
@@ -99,6 +114,8 @@ performs independent cellular transitions and language-head control.
 - Records eligibility loss, answer-axis projection, relay separation, output/relay
   transport ratio, and eligibility-gate strength.
 - Records attentive-tract gate magnitude when the optional architecture is enabled.
+- Records four passage-causal advantages, their positive fraction, the matched
+  no-exposure task outcome, and the exact count of frozen effector parameters.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -154,6 +171,9 @@ performs independent cellular transitions and language-head control.
 - Output credit has no trainable parameters and cannot create a memory-to-Llama bypass.
 - Eligibility credit has no trainable parameters, detaches its relay gate, and is absent
   from development, held-out evaluation, and inference.
+- Causal passage contrast requires paired counterfactuals and has no inference path.
+- Frozen-effector mode removes gradients only from the attached language effector;
+  gradients still traverse its fixed operations into cellular output tissue.
 
 ## Example
 

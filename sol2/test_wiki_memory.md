@@ -23,6 +23,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
   when the attentive recall path is active.
 - The paired binding margin has nonzero opposing gradients at identical logits and
   becomes exactly zero once both branches prefer their own targets by the margin.
+- Passage-causal contrast has nonzero gradients only in exposed branches, detaches the
+  no-exposure and incompatible-passage baselines, and vanishes only when all four
+  target-log-probability advantages exceed the declared margin.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared

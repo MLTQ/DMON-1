@@ -11,6 +11,7 @@ import torch
 from torch import nn
 
 from .test_living_language import LANGUAGE_CFG, build_system
+from .wiki_causal_contrast import passage_causal_contrast_loss
 from .wiki_memory import (
     WikiDocument,
     WikiMemoryCorpus,
@@ -28,6 +29,7 @@ from .wiki_memory_train import (
     counterfactual_training_pair,
     counterfactual_training_record,
     evaluate_wiki_memory,
+    freeze_organism_parameter_group,
     load_wiki_memory_checkpoint,
     organism_gradient_groups,
     organism_optimizer_groups,
@@ -173,6 +175,24 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert sum(parameter.numel() for parameter in grouped_parameters) == sum(
         parameter.numel() for parameter in system.organism.parameters()
     )
+
+    frozen_system, frozen_organ = build_system()
+    with torch.no_grad():
+        nn.init.normal_(frozen_organ.output.decoder.weight, std=0.02)
+    frozen_count = freeze_organism_parameter_group(frozen_system, "effector")
+    assert frozen_count > 0
+    frozen_result = run_wiki_memory_episode(
+        frozen_system,
+        tokenizer,
+        document,
+        question,
+        frozen_system.initial_state(1, "cpu"),
+        permutation_seed=3,
+    )
+    frozen_result.loss.backward()
+    frozen_groups = organism_gradient_groups(frozen_system)
+    assert frozen_groups["effector"]["tensors"] == 0.0
+    assert frozen_groups["tissues"]["rms"] > 0.0
 
     no_exposure = run_wiki_memory_episode(
         system,
@@ -400,6 +420,37 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         margin=1.0,
     )
     assert float(satisfied) == 0.0
+
+    causal_left = torch.zeros(4, requires_grad=True)
+    causal_right = torch.zeros(4, requires_grad=True)
+    causal_neutral = torch.zeros(4, requires_grad=True)
+    causal_loss, advantages = passage_causal_contrast_loss(
+        SimpleNamespace(correct_label="A", label_logits=causal_left),
+        SimpleNamespace(correct_label="B", label_logits=causal_right),
+        SimpleNamespace(correct_label="A", label_logits=causal_neutral),
+        margin=0.1,
+    )
+    assert torch.equal(advantages, torch.zeros(4))
+    assert abs(float(causal_loss.detach()) - 0.1) < 1e-6
+    causal_loss.backward()
+    assert float(causal_left.grad.abs().sum()) > 0.0
+    assert float(causal_right.grad.abs().sum()) > 0.0
+    assert causal_neutral.grad is None
+
+    causal_satisfied, causal_advantages = passage_causal_contrast_loss(
+        SimpleNamespace(
+            correct_label="A", label_logits=torch.tensor([4.0, 0.0, 0.0, 0.0])
+        ),
+        SimpleNamespace(
+            correct_label="B", label_logits=torch.tensor([0.0, 4.0, 0.0, 0.0])
+        ),
+        SimpleNamespace(
+            correct_label="A", label_logits=torch.zeros(4)
+        ),
+        margin=0.1,
+    )
+    assert torch.all(causal_advantages > 0.1)
+    assert float(causal_satisfied) == 0.0
 
     system, _ = build_system()
     optimizer = torch.optim.AdamW(system.organism.parameters(), lr=1e-3)

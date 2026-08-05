@@ -33,6 +33,7 @@ from .wiki_memory import (
     summarize_results,
     verify_wiki_sources,
 )
+from .wiki_causal_contrast import passage_causal_contrast_loss
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
 
@@ -49,8 +50,12 @@ class WikiMemoryTrainConfig:
     max_question_tokens: int = 256
     seed: int = 7
     paired_counterfactual: bool = False
+    task_weight: float = 1.0
     binding_margin: float = 1.0
     binding_weight: float = 1.0
+    causal_contrast_weight: float = 0.0
+    causal_contrast_margin: float = 0.1
+    freeze_effector_updates: bool = False
     compact_bindings: bool = False
     control_gain: float = 1.0
     recall_lr_multiplier: float = 1.0
@@ -69,8 +74,16 @@ class WikiMemoryTrainConfig:
             raise ValueError("update and interval counts must be positive")
         if self.lr <= 0 or self.grad_clip <= 0:
             raise ValueError("learning rate and gradient clip must be positive")
+        if self.task_weight < 0:
+            raise ValueError("task weight must be nonnegative")
         if self.binding_margin <= 0 or self.binding_weight < 0:
             raise ValueError("binding margin must be positive and weight nonnegative")
+        if self.causal_contrast_weight < 0 or self.causal_contrast_margin <= 0:
+            raise ValueError(
+                "causal contrast weight must be nonnegative and margin positive"
+            )
+        if self.causal_contrast_weight > 0 and not self.paired_counterfactual:
+            raise ValueError("causal contrast requires paired counterfactual training")
         if self.control_gain <= 0:
             raise ValueError("control gain must be positive")
         if min(
@@ -199,6 +212,21 @@ def organism_optimizer_groups(
         }
         for group, parameters in sorted(grouped.items())
     ]
+
+
+def freeze_organism_parameter_group(
+    system: LivingLanguageSystem, group: str
+) -> int:
+    """Disable optimizer gradients for one named organism parameter group."""
+
+    frozen = 0
+    for name, parameter in system.organism.named_parameters():
+        if _organism_parameter_group(name) == group:
+            parameter.requires_grad_(False)
+            frozen += parameter.numel()
+    if frozen == 0:
+        raise ValueError(f"organism parameter group {group!r} is empty")
+    return frozen
 
 
 def organism_gradient_groups(system: LivingLanguageSystem) -> dict[str, dict[str, float]]:
@@ -513,8 +541,12 @@ def run_training(args: argparse.Namespace) -> dict:
         max_question_tokens=args.max_question_tokens,
         seed=args.seed,
         paired_counterfactual=args.paired_counterfactual,
+        task_weight=args.task_weight,
         binding_margin=args.binding_margin,
         binding_weight=args.binding_weight,
+        causal_contrast_weight=args.causal_contrast_weight,
+        causal_contrast_margin=args.causal_contrast_margin,
+        freeze_effector_updates=args.freeze_effector_updates,
         compact_bindings=args.compact_bindings,
         control_gain=args.control_gain,
         recall_lr_multiplier=args.recall_lr_multiplier,
@@ -534,6 +566,11 @@ def run_training(args: argparse.Namespace) -> dict:
     corpus_sha256 = hashlib.sha256(args.corpus.read_bytes()).hexdigest()
     admitted = _admitted_questions(args.baseline)
     system, tokenizer, organism_config = build_system(args)
+    frozen_effector_parameters = 0
+    if train_config.freeze_effector_updates:
+        frozen_effector_parameters = freeze_organism_parameter_group(
+            system, "effector"
+        )
     optimizer = torch.optim.AdamW(
         organism_optimizer_groups(system, train_config), weight_decay=0.0
     )
@@ -593,6 +630,20 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_question_tokens=train_config.max_question_tokens,
             )
             branch_results.append(branch_result)
+        no_exposure_result = None
+        if train_config.causal_contrast_weight > 0:
+            with torch.no_grad():
+                no_exposure_result = run_wiki_memory_episode(
+                    system,
+                    tokenizer,
+                    training_records[0][0],
+                    training_records[0][1],
+                    lane_state,
+                    permutation_seed=train_config.permutation_seed + update,
+                    expose=False,
+                    max_memory_tokens=train_config.max_memory_tokens,
+                    max_question_tokens=train_config.max_question_tokens,
+                )
         task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
         binding_loss = task_loss.new_zeros(())
         binding_preferences = task_loss.new_zeros(2)
@@ -604,6 +655,8 @@ def run_training(args: argparse.Namespace) -> dict:
         relay_state_separation_rms = task_loss.new_zeros(())
         output_transport_ratio = task_loss.new_zeros(())
         output_eligibility_gate = task_loss.new_zeros(())
+        causal_contrast_loss = task_loss.new_zeros(())
+        causal_contrast_advantages = task_loss.new_zeros(4)
         if len(branch_results) == 2 and train_config.binding_weight > 0:
             binding_loss, binding_preferences = paired_binding_margin_loss(
                 branch_results[0],
@@ -639,9 +692,20 @@ def run_training(args: argparse.Namespace) -> dict:
             output_state_separation_rms = measured_output_state_separation_rms
             if train_config.output_eligibility_weight > 0:
                 output_eligibility_loss = measured_output_eligibility_loss
+        if train_config.causal_contrast_weight > 0:
+            assert no_exposure_result is not None
+            causal_contrast_loss, causal_contrast_advantages = (
+                passage_causal_contrast_loss(
+                    branch_results[0],
+                    branch_results[1],
+                    no_exposure_result,
+                    margin=train_config.causal_contrast_margin,
+                )
+            )
         objective_loss = (
-            task_loss
+            train_config.task_weight * task_loss
             + train_config.binding_weight * binding_loss
+            + train_config.causal_contrast_weight * causal_contrast_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
         )
@@ -688,6 +752,21 @@ def run_training(args: argparse.Namespace) -> dict:
             "binding_preferences": [
                 float(value) for value in binding_preferences.detach()
             ],
+            "causal_contrast_loss": float(causal_contrast_loss.detach()),
+            "causal_contrast_advantages": [
+                float(value) for value in causal_contrast_advantages.detach()
+            ],
+            "causal_contrast_accuracy": float(
+                (causal_contrast_advantages.detach() > 0).float().mean()
+            ),
+            "no_exposure_loss": (
+                0.0
+                if no_exposure_result is None
+                else float(no_exposure_result.loss.detach())
+            ),
+            "no_exposure_correct": (
+                False if no_exposure_result is None else no_exposure_result.correct
+            ),
             "output_credit_loss": float(output_credit_loss.detach()),
             "output_credit_accuracy": float(output_credit_accuracy.detach()),
             "output_state_separation_rms": float(
@@ -729,6 +808,8 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"control={row['control_rms']:.4f} "
                 f"control_sep={row['control_separation_rms']:.4f} "
                 f"binding={row['binding_loss']:.4f} "
+                f"causal={row['causal_contrast_loss']:.4f} "
+                f"causal_acc={row['causal_contrast_accuracy']:.2f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
                 f"output_sep={row['output_state_separation_rms']:.4f} "
                 f"eligibility={row['output_eligibility_loss']:.4f} "
@@ -798,6 +879,7 @@ def run_training(args: argparse.Namespace) -> dict:
         "organism_config": organism_config.to_dict(),
         "train_config": dataclasses.asdict(train_config),
         "organism_trainable_parameters": count_parameters(system.organism),
+        "frozen_effector_parameters": frozen_effector_parameters,
         "optimizer_groups": [
             {
                 "group_name": group["group_name"],
@@ -871,8 +953,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="train two incompatible passage bindings from one matched start state",
     )
+    parser.add_argument("--task-weight", type=float, default=1.0)
     parser.add_argument("--binding-margin", type=float, default=1.0)
     parser.add_argument("--binding-weight", type=float, default=1.0)
+    parser.add_argument("--causal-contrast-weight", type=float, default=0.0)
+    parser.add_argument("--causal-contrast-margin", type=float, default=0.1)
+    parser.add_argument("--freeze-effector-updates", action="store_true")
     parser.add_argument("--compact-bindings", action="store_true")
     parser.add_argument("--control-gain", type=float, default=1.0)
     parser.add_argument("--recall-gain", type=float, default=0.25)
