@@ -319,6 +319,14 @@ The live log and PID files are `continue-u300.log` and `continue-u300.pid` in th
 root. No capability interpretation is made until the full trajectory and final causal
 evaluation are available.
 
+The first resumed interval reached its atomic update-50 checkpoint successfully. Across
+updates 26-50, mean paired accuracy was 38%, mean control separation was `0.000261`,
+four-label logit separation remained zero, and mean binding loss was 2.1425. Development
+accuracy rose to 75%, but normal, no-exposure, reset, wrong-passage, memory-lesion, and
+zero-control arms were all the same 75%; the admitted-question normal score was zero.
+This is a changed static answer policy, not evidence of wiki-memory use. The run continues
+because update 50 is only the first declared observation on the exploratory trajectory.
+
 ## Episode
 
 For one lifetime lane:
