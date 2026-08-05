@@ -146,10 +146,13 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert gradient_groups["effector"]["rms"] > 0.0
     plasticity = WikiMemoryTrainConfig(
         lr=2e-3,
+        control_gain=64.0,
         recall_lr_multiplier=20.0,
         sensor_lr_multiplier=4.0,
         effector_lr_multiplier=0.1,
     )
+    plasticity.validate()
+    assert plasticity.control_gain == 64.0
     optimizer_groups = organism_optimizer_groups(system, plasticity)
     rates = {group["group_name"]: group["lr"] for group in optimizer_groups}
     assert rates["recall"] == 4e-2

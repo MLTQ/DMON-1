@@ -10,7 +10,8 @@ unchanged source-family-disjoint development and held-out facts under causal con
 ### `WikiMemoryTrainConfig`
 
 Defines update count, optimizer strength, evaluation/checkpoint intervals, token limits,
-permutation seed, and reproducibility seed.
+permutation seed, reproducibility seed, and the explicit bounded control gain used by
+the language graft.
 
 ### `counterfactual_training_record`
 
@@ -98,6 +99,9 @@ performs independent cellular transitions and language-head control.
   representations for eight arms dominated the two-update pilot runtime.
 - L0-C1c uses paired separation as an early routing gate: aggregate accuracy is not
   treated as memory evidence when incompatible passages emit indistinguishable controls.
+- Control gain is part of the serialized training protocol. This matters at the BF16
+  boundary: a differentiable but sub-ULP residual can receive gradients while producing
+  exactly identical frozen-head logits in the forward pass.
 
 ## Contracts
 
@@ -115,6 +119,8 @@ performs independent cellular transitions and language-head control.
   cards remain frozen, natural, and source-family disjoint.
 - Optimizer groups preserve full parameter coverage and serialize their names, rates,
   parameter counts, and moments in checkpoints/results.
+- Positive control gain is passed unchanged into graft construction and serialized in
+  `train_config`; it does not change topology, parameter count, or backbone weights.
 
 ## Example
 

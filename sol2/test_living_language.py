@@ -321,11 +321,11 @@ def test_graft_factory_is_deterministic_and_rng_neutral() -> None:
     right_backbone = ToyFrozenLanguageBackbone(11, 16, seed=8)
     rng_before = torch.random.get_rng_state().clone()
     left_system = graft_language_backbone(
-        left, left_backbone, recall_gain=1.0, seed=55
+        left, left_backbone, control_gain=64.0, recall_gain=1.0, seed=55
     )
     assert torch.equal(torch.random.get_rng_state(), rng_before)
     right_system = graft_language_backbone(
-        right, right_backbone, recall_gain=1.0, seed=55
+        right, right_backbone, control_gain=64.0, recall_gain=1.0, seed=55
     )
     left_parameters = left_system.organism.attached_organs["language"].state_dict()
     right_parameters = right_system.organism.attached_organs["language"].state_dict()
@@ -335,6 +335,7 @@ def test_graft_factory_is_deterministic_and_rng_neutral() -> None:
         for name in left_parameters
     )
     assert left_system.organism.attached_organs["language"].recall_gain == 1.0
+    assert left_system.organism.attached_organs["language"].control_gain == 64.0
 
 
 def test_mixed_backbone_and_organism_dtypes_are_bridged() -> None:

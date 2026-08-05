@@ -79,7 +79,8 @@ caller's random stream. Control and recall gains are explicit graft properties.
 - Clearing the LLM context does not itself clear `OrganismState`.
 - Grafting is deterministic from its private seed and preserves global RNG state.
 - Recall gain changes only the bounded memory-to-sensory amplitude and never the frozen
-  backbone, control gain, topology, or initialization RNG stream.
+  backbone, control gain, topology, or initialization RNG stream. Control gain changes
+  only the final bounded output-tissue effector amplitude.
 - A loss mask changes credit assignment only; every input token still advances the
   same continuing cellular state.
 - Cached features must retain `[batch, sequence, backbone_width]` shape and remain

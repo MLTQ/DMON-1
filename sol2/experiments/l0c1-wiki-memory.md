@@ -226,6 +226,50 @@ update scales without normalizing individual gradients or prescribing representa
 The recall drive remains bounded and still enters only sensory/recurrent tissue, so the
 no-effector-bypass invariant is unchanged.
 
+### L0-C1f result and L0-C1g frozen effector-amplitude treatment
+
+L0-C1f stopped at update 25 on 2026-08-04; the artifact is
+`l0c1f-balanced-m96-u25-result.json`. The learning-rate treatment briefly balanced
+effective updates, but did not pass the frozen gate. Over updates 16-25, mean paired
+accuracy was 10%, control separation was `0.00000365`, and label-logit separation was
+zero. Held-out normal accuracy was 37.5%, exactly matching no exposure, reset, wrong
+passage, memory lesion, and internal lesion; paraphrase accuracy was 75%.
+
+The post-stop tissue diagnostic in `l0c1f-tissue-gain-diagnostic.json` localizes the
+collapse. Across four compact incompatible pairs from matched fresh states, mean RMS
+separation was `0.28899` in memory, `0.01569` in input, `0.00699` in compute,
+`0.00829` in relay, and `0.00729` over all internal cells. Separation then fell to
+`0.000616` in output cells and `0.0000243` in emitted controls, yielding exactly zero
+four-label logit difference at BF16 precision. The organism therefore retained and
+transported branch information; the present effector expressed it below the frozen
+backbone's numerical resolution.
+
+A read-only gain sweep on the same checkpoint found zero label-logit separation at
+gains 1, 4, and 16. Gain 64 produced the first nonzero separation (`0.015625` RMS),
+while gain 256 changed the static answer policy without producing paired separation.
+Post-hoc scaling did not align either branch with its own target and is not counted as
+a task success.
+
+Before any L0-C1g optimizer update, the next isolated treatment is frozen:
+
+1. Start from a fresh deterministic initialization and change only language-effector
+   `control_gain` from 1 to 64.
+2. Retain recall gain 1, base learning rate `0.002`, recall/sensor/effector multipliers
+   20/4/0.1, compact paired bindings, unit bidirectional margin, 96 memory cells, all
+   organism geometry, frozen Llama, and every evaluation arm from L0-C1f.
+3. The effector remains bounded to `[-64, 64]`, reads only dedicated output tissue,
+   and still enters the frozen backbone as four rank-eight continuous control tokens.
+   This changes neither topology nor parameter count and creates no memory-to-LLM
+   bypass.
+4. Run a two-update capacity/gradient pilot, then extend the same checkpoint only to
+   update 25 if it fits the RTX 4090 and remains numerically healthy.
+5. The update-25 gates remain trailing control separation above `0.005` and paired
+   accuracy above 25%. Causal held-out separation remains required before any memory
+   claim.
+
+This treatment tests a forward-pass precision bottleneck independently of larger
+organisms, new losses, or direct internal readout.
+
 ## Episode
 
 For one lifetime lane:

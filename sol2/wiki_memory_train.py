@@ -50,6 +50,7 @@ class WikiMemoryTrainConfig:
     binding_margin: float = 1.0
     binding_weight: float = 1.0
     compact_bindings: bool = False
+    control_gain: float = 1.0
     recall_lr_multiplier: float = 1.0
     sensor_lr_multiplier: float = 1.0
     effector_lr_multiplier: float = 1.0
@@ -61,6 +62,8 @@ class WikiMemoryTrainConfig:
             raise ValueError("learning rate and gradient clip must be positive")
         if self.binding_margin <= 0 or self.binding_weight < 0:
             raise ValueError("binding margin must be positive and weight nonnegative")
+        if self.control_gain <= 0:
+            raise ValueError("control gain must be positive")
         if min(
             self.recall_lr_multiplier,
             self.sensor_lr_multiplier,
@@ -467,6 +470,7 @@ def build_system(args: argparse.Namespace):
         backbone,
         n_control_tokens=args.control_tokens,
         control_rank=args.control_rank,
+        control_gain=args.control_gain,
         recall_gain=args.recall_gain,
         seed=args.seed + 1,
     )
@@ -488,6 +492,7 @@ def run_training(args: argparse.Namespace) -> dict:
         binding_margin=args.binding_margin,
         binding_weight=args.binding_weight,
         compact_bindings=args.compact_bindings,
+        control_gain=args.control_gain,
         recall_lr_multiplier=args.recall_lr_multiplier,
         sensor_lr_multiplier=args.sensor_lr_multiplier,
         effector_lr_multiplier=args.effector_lr_multiplier,
@@ -767,6 +772,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--binding-margin", type=float, default=1.0)
     parser.add_argument("--binding-weight", type=float, default=1.0)
     parser.add_argument("--compact-bindings", action="store_true")
+    parser.add_argument("--control-gain", type=float, default=1.0)
     parser.add_argument("--recall-gain", type=float, default=0.25)
     parser.add_argument("--recall-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--sensor-lr-multiplier", type=float, default=1.0)

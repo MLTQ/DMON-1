@@ -39,6 +39,9 @@ adaptation, and lifetime state remain in the cellular substrate.
   values and recalled drive are bounded before entering persistent dynamics.
 - Recall gain is an explicit immutable construction value in `(0, 1]`. Experiments may
   raise it without changing parameter count or creating an unbounded state injection.
+- Control gain is likewise an explicit positive construction value. It changes the
+  bounded effector range without adding a dense vocabulary bypass; protocols must
+  report it because too-small BF16 residuals can quantize to an exact language no-op.
 
 ## Contracts
 
