@@ -39,6 +39,14 @@ the resulting organism state. Generated language can return as later sensory inp
 
 ## Gates
 
+The fresh seed-7 pilot uses 8 input / 96 memory / 64 compute / 16 relay / 8
+output cells at hidden width 96, 12 dendrites with 8 active, three microsteps, and the
+C1k relay-output tract initialized at 0.25. The language organ emits four rank-8
+controls with control gain 1 and recall gain 1. Base learning rate is `0.002`, recall
+and sensor multipliers are 20 and 4, and the effector multiplier is 1. Compact paired
+bindings use task, binding, output-code, and eligibility weights zero; causal contrast
+alone has weight 4 and margin 0.1. Memory and question limits remain 256 tokens.
+
 1. CPU contracts must prove shapes, deterministic null prefixes, prefix gradients,
    frozen-backbone ownership, cached-perception equivalence, and unchanged late mode.
 2. Run a one-update 8B BF16 preflight on only physical RTX 4090 UUID
