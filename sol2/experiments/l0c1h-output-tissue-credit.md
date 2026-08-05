@@ -107,10 +107,19 @@ architecture are ineffective.
 
 ## Mechanistic reading and next treatment
 
-The result sharpens the bottleneck. Both paired branches begin with nearly the same
-query-time output state but receive incompatible auxiliary targets through shared
-parameters. Cross-entropy can therefore lower its average by producing a shared label
-mixture; it can only create passage-specific states through the already weak recurrent
+The post-hoc tissue-collapse diagnostic
+(`l0c1h-tissue-collapse-diagnostic.json`, SHA-256
+`dd797b056f642dc73d618679ba4ff68daea8ec7ab938e5b778f3c9d96cf630f1`)
+sharpens the bottleneck. In the saved lifetime lane, incompatible compact passages
+remained separated by `0.230999` RMS in stream memory and `0.004388` in relay tissue at
+the end of the identical query, but only `0.000412` in output tissue. A fresh state
+retained `0.008242` relay and `0.002995` output separation. Passage information
+therefore reaches relay tissue, while relay-to-output transport loses roughly 90% of
+the lived-state distinction. Continuing-lane interference makes that collapse worse.
+
+Both paired branches then receive incompatible auxiliary targets through shared
+parameters. Cross-entropy can lower its average by producing a shared label mixture;
+it can only create passage-specific states through the already weak recurrent
 passage-conditioned Jacobian. That is the very route the auxiliary was intended to
 strengthen, so this objective supplies a destination without supplying an effective
 transport or local learning mechanism.

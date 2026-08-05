@@ -69,6 +69,7 @@ class WikiEpisodeResult:
     memory_activity: float
     controls: torch.Tensor | None = None
     label_logits: torch.Tensor | None = None
+    relay_state: torch.Tensor | None = None
     output_state: torch.Tensor | None = None
 
 
@@ -318,6 +319,7 @@ def run_wiki_memory_episode(
     predicted = int(label_logits.detach().argmax(dim=-1))
     internal = scored.state.hidden[:, system.organism.internal_idx]
     memory = scored.state.hidden[:, system.organism.memory_idx]
+    relay = scored.state.hidden[:, system.organism.relay_idx]
     output = scored.state.hidden[:, system.organism.output_idx]
     return WikiEpisodeResult(
         loss=loss,
@@ -331,6 +333,7 @@ def run_wiki_memory_episode(
         memory_activity=float(memory.detach().pow(2).mean().sqrt()),
         controls=scored.controls,
         label_logits=label_logits[0],
+        relay_state=relay,
         output_state=output,
     )
 

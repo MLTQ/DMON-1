@@ -33,6 +33,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Fixed output codes are deterministic and orthonormal; incompatible paired targets
   deliver distinct gradients into live output tissue and aligned states satisfy the
   training-only probe without adding evaluation fields.
+- Eligibility-gated transport credit gives identical output endpoints nonzero opposing
+  gradients, is invariant to paired branch order, detaches presynaptic eligibility,
+  and becomes gradient-silent when relay states do not differ.
 
 ## Decisions
 

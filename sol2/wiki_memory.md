@@ -45,8 +45,8 @@ feature is sent through the vocabulary head.
 - Closes the stream-memory write gate during the question so the prompt cannot replace
   the passage slots that the intervention is intended to test.
 - Retains live control and four-label logit tensors for paired-branch separation
-  measurement and exposes final output-tissue state for training-only causal credit,
-  while serializing only detached scalar telemetry.
+  measurement and exposes final relay/output-tissue states for training-only causal
+  credit, while serializing only detached scalar telemetry.
 
 ### `summarize_results`
 

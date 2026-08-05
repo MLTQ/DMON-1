@@ -39,6 +39,14 @@ When explicitly enabled, scores final output-cell state against a deterministic
 parameter-free four-label codebook. This delivers paired passage-target credit at the
 anatomical bottleneck without adding any evaluation or inference path.
 
+### Eligibility-gated differential transport
+
+When explicitly enabled, aligns the paired output-state difference with the fixed
+incompatible answer-code axis. Detached relay-state separation gates the objective, so
+credit is present only when presynaptic tissue carries a passage distinction. The
+signed paired projection gives identical output endpoints opposing nonzero gradients,
+avoiding L0-C1h's shared-mixture solution.
+
 ### `organism_gradient_groups`
 
 Reports gradient RMS, participating element count, and tensor count separately for the
@@ -80,6 +88,8 @@ performs independent cellular transitions and language-head control.
   wiki paragraph as distractor context.
 - Records RMS separation between paired control banks and paired four-label logits.
 - Records training-only output-code loss/accuracy and paired output-state separation.
+- Records eligibility loss, answer-axis projection, relay separation, output/relay
+  transport ratio, and eligibility-gate strength.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -111,6 +121,8 @@ performs independent cellular transitions and language-head control.
   exactly identical frozen-head logits in the forward pass.
 - Output credit defaults to zero for exact legacy behavior. Its codebook seed, scale,
   and weight are serialized; evaluation never constructs or consults auxiliary scores.
+- Differential eligibility also defaults to zero. It reuses the fixed codebook only to
+  define a paired direction; no target code or teaching drive enters cellular state.
 
 ## Contracts
 
@@ -131,6 +143,8 @@ performs independent cellular transitions and language-head control.
 - Positive control gain is passed unchanged into graft construction and serialized in
   `train_config`; it does not change topology, parameter count, or backbone weights.
 - Output credit has no trainable parameters and cannot create a memory-to-Llama bypass.
+- Eligibility credit has no trainable parameters, detaches its relay gate, and is absent
+  from development, held-out evaluation, and inference.
 
 ## Example
 

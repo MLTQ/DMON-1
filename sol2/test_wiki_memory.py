@@ -35,6 +35,7 @@ from .wiki_memory_train import (
     save_wiki_memory_checkpoint,
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
+from .wiki_output_eligibility import eligibility_gated_transport_loss
 
 
 DATA_PATH = Path(__file__).with_name("experiments") / "l0c1-wiki-memory-corpus.json"
@@ -137,6 +138,8 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert set(result.label_log_probs) == {"A", "B", "C", "D"}
     assert result.output_state is not None
     assert result.output_state.shape == (1, LANGUAGE_CFG.n_output, LANGUAGE_CFG.hidden)
+    assert result.relay_state is not None
+    assert result.relay_state.shape == (1, LANGUAGE_CFG.n_relay, LANGUAGE_CFG.hidden)
     assert abs(sum(result.label_log_probs.values())) > 0.0
     result.loss.backward()
     assert organ.output.decoder.weight.grad is not None
@@ -290,6 +293,90 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
     assert float(aligned_loss) < float(auxiliary_loss.detach())
     assert float(aligned_separation) > 0.0
 
+    paired_output = torch.zeros(
+        1, LANGUAGE_CFG.n_output, LANGUAGE_CFG.hidden, requires_grad=True
+    )
+    mate_output = paired_output.detach().clone().requires_grad_()
+    active_relay = torch.ones(
+        1, LANGUAGE_CFG.n_relay, LANGUAGE_CFG.hidden, requires_grad=True
+    )
+    mate_relay = torch.zeros(
+        1, LANGUAGE_CFG.n_relay, LANGUAGE_CFG.hidden, requires_grad=True
+    )
+    transport_results = (
+        SimpleNamespace(
+            correct_label="A",
+            output_state=paired_output,
+            relay_state=active_relay,
+        ),
+        SimpleNamespace(
+            correct_label="B",
+            output_state=mate_output,
+            relay_state=mate_relay,
+        ),
+    )
+    (
+        transport_loss,
+        target_projection,
+        relay_separation,
+        transport_output_separation,
+        transport_ratio,
+        eligibility_gate,
+    ) = eligibility_gated_transport_loss(
+        transport_results,
+        codebook=codebook,
+        relay_reference=0.005,
+        margin=0.005,
+        temperature=0.005,
+    )
+    assert float(transport_loss.detach()) > 0.0
+    assert float(target_projection.detach()) == 0.0
+    assert float(relay_separation.detach()) == 1.0
+    assert float(transport_output_separation.detach()) == 0.0
+    assert float(transport_ratio.detach()) == 0.0
+    assert float(eligibility_gate.detach()) == 1.0
+    swapped = eligibility_gated_transport_loss(
+        tuple(reversed(transport_results)),
+        codebook=codebook,
+        relay_reference=0.005,
+        margin=0.005,
+        temperature=0.005,
+    )
+    assert torch.equal(swapped[0], transport_loss)
+    assert torch.equal(swapped[1], target_projection)
+    transport_loss.backward()
+    assert torch.allclose(paired_output.grad, -mate_output.grad)
+    assert float(paired_output.grad.abs().sum()) > 0.0
+    assert active_relay.grad is None
+    assert mate_relay.grad is None
+
+    gated_left = torch.zeros_like(paired_output, requires_grad=True)
+    gated_right = torch.zeros_like(mate_output, requires_grad=True)
+    zero_relay = torch.zeros_like(active_relay, requires_grad=True)
+    gated_loss = eligibility_gated_transport_loss(
+        (
+            SimpleNamespace(
+                correct_label="A",
+                output_state=gated_left,
+                relay_state=zero_relay,
+            ),
+            SimpleNamespace(
+                correct_label="B",
+                output_state=gated_right,
+                relay_state=zero_relay,
+            ),
+        ),
+        codebook=codebook,
+        relay_reference=0.005,
+        margin=0.005,
+        temperature=0.005,
+    )[0]
+    assert float(gated_loss.detach()) == 0.0
+    gated_loss.backward()
+    assert float(gated_left.grad.abs().sum()) == 0.0
+    assert float(gated_right.grad.abs().sum()) == 0.0
+    assert zero_relay.grad is None
+
     left_logits = torch.zeros(4, requires_grad=True)
     right_logits = torch.zeros(4, requires_grad=True)
     binding_loss, preferences = paired_binding_margin_loss(
@@ -330,6 +417,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 output_credit_weight=1.0,
                 output_credit_scale=4.0,
                 output_credit_seed=211,
+                output_eligibility_weight=4.0,
+                output_eligibility_margin=0.005,
+                output_eligibility_temperature=0.005,
+                output_eligibility_relay_reference=0.005,
             ),
             model_name="toy",
             dtype="float32",
@@ -352,6 +443,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["update"] == 1
         assert payload["train_config"]["output_credit_weight"] == 1.0
         assert payload["train_config"]["output_credit_seed"] == 211
+        assert payload["train_config"]["output_eligibility_weight"] == 4.0
+        assert payload["train_config"]["output_eligibility_margin"] == 0.005
         assert torch.equal(restored_state.hidden, lane_state.hidden)
         assert restored_state.memory_cursor == lane_state.memory_cursor
         left = system.organism.state_dict()
@@ -386,6 +479,7 @@ def test_causal_evaluator_runs_matched_arms() -> None:
     assert set(evaluation["summaries"]) == expected
     assert len(evaluation["rows"]) == 2
     assert "output_credit_accuracy" not in evaluation["summaries"]
+    assert "output_eligibility_loss" not in evaluation["summaries"]
 
 
 def main() -> None:

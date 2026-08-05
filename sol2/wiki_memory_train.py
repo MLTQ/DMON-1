@@ -34,6 +34,7 @@ from .wiki_memory import (
     verify_wiki_sources,
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
+from .wiki_output_eligibility import eligibility_gated_transport_loss
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,10 @@ class WikiMemoryTrainConfig:
     output_credit_weight: float = 0.0
     output_credit_scale: float = 4.0
     output_credit_seed: int = 211
+    output_eligibility_weight: float = 0.0
+    output_eligibility_margin: float = 0.005
+    output_eligibility_temperature: float = 0.005
+    output_eligibility_relay_reference: float = 0.005
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
@@ -76,6 +81,14 @@ class WikiMemoryTrainConfig:
             raise ValueError("plasticity multipliers must be positive")
         if self.output_credit_weight < 0 or self.output_credit_scale <= 0:
             raise ValueError("output credit weight must be nonnegative and scale positive")
+        if self.output_eligibility_weight < 0:
+            raise ValueError("output eligibility weight must be nonnegative")
+        if min(
+            self.output_eligibility_margin,
+            self.output_eligibility_temperature,
+            self.output_eligibility_relay_reference,
+        ) <= 0:
+            raise ValueError("output eligibility scales must be positive")
 
 
 def counterfactual_training_record(
@@ -505,6 +518,10 @@ def run_training(args: argparse.Namespace) -> dict:
         output_credit_weight=args.output_credit_weight,
         output_credit_scale=args.output_credit_scale,
         output_credit_seed=args.output_credit_seed,
+        output_eligibility_weight=args.output_eligibility_weight,
+        output_eligibility_margin=args.output_eligibility_margin,
+        output_eligibility_temperature=args.output_eligibility_temperature,
+        output_eligibility_relay_reference=args.output_eligibility_relay_reference,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -577,6 +594,11 @@ def run_training(args: argparse.Namespace) -> dict:
         output_credit_loss = task_loss.new_zeros(())
         output_credit_accuracy = task_loss.new_zeros(())
         output_state_separation_rms = task_loss.new_zeros(())
+        output_eligibility_loss = task_loss.new_zeros(())
+        output_target_projection = task_loss.new_zeros(())
+        relay_state_separation_rms = task_loss.new_zeros(())
+        output_transport_ratio = task_loss.new_zeros(())
+        output_eligibility_gate = task_loss.new_zeros(())
         if len(branch_results) == 2 and train_config.binding_weight > 0:
             binding_loss, binding_preferences = paired_binding_margin_loss(
                 branch_results[0],
@@ -595,10 +617,28 @@ def run_training(args: argparse.Namespace) -> dict:
             )
             if train_config.output_credit_weight > 0:
                 output_credit_loss = measured_output_credit_loss
+            (
+                measured_output_eligibility_loss,
+                output_target_projection,
+                relay_state_separation_rms,
+                measured_output_state_separation_rms,
+                output_transport_ratio,
+                output_eligibility_gate,
+            ) = eligibility_gated_transport_loss(
+                branch_results,
+                codebook=output_codebook,
+                relay_reference=train_config.output_eligibility_relay_reference,
+                margin=train_config.output_eligibility_margin,
+                temperature=train_config.output_eligibility_temperature,
+            )
+            output_state_separation_rms = measured_output_state_separation_rms
+            if train_config.output_eligibility_weight > 0:
+                output_eligibility_loss = measured_output_eligibility_loss
         objective_loss = (
             task_loss
             + train_config.binding_weight * binding_loss
             + train_config.output_credit_weight * output_credit_loss
+            + train_config.output_eligibility_weight * output_eligibility_loss
         )
         objective_loss.backward()
         gradient_groups = organism_gradient_groups(system)
@@ -648,6 +688,13 @@ def run_training(args: argparse.Namespace) -> dict:
             "output_state_separation_rms": float(
                 output_state_separation_rms.detach()
             ),
+            "output_eligibility_loss": float(output_eligibility_loss.detach()),
+            "output_target_projection": float(output_target_projection.detach()),
+            "relay_state_separation_rms": float(
+                relay_state_separation_rms.detach()
+            ),
+            "output_transport_ratio": float(output_transport_ratio.detach()),
+            "output_eligibility_gate": float(output_eligibility_gate.detach()),
             "correct": result.correct,
             "branch_accuracy": branch_accuracy,
             "branch_answers": [branch.correct_label for branch in branch_results],
@@ -674,6 +721,10 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"binding={row['binding_loss']:.4f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
                 f"output_sep={row['output_state_separation_rms']:.4f} "
+                f"eligibility={row['output_eligibility_loss']:.4f} "
+                f"target_proj={row['output_target_projection']:.4f} "
+                f"relay_sep={row['relay_state_separation_rms']:.4f} "
+                f"transport={row['output_transport_ratio']:.3f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -820,6 +871,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-credit-weight", type=float, default=0.0)
     parser.add_argument("--output-credit-scale", type=float, default=4.0)
     parser.add_argument("--output-credit-seed", type=int, default=211)
+    parser.add_argument("--output-eligibility-weight", type=float, default=0.0)
+    parser.add_argument("--output-eligibility-margin", type=float, default=0.005)
+    parser.add_argument("--output-eligibility-temperature", type=float, default=0.005)
+    parser.add_argument(
+        "--output-eligibility-relay-reference", type=float, default=0.005
+    )
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)
