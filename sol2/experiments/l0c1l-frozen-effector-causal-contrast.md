@@ -1,6 +1,6 @@
 # L0-C1l: frozen-effector causal passage contrast
 
-Status: protocol frozen 2026-08-05 before implementation tests or optimizer updates.
+Status: complete negative 2026-08-05.
 
 ## Question
 
@@ -56,3 +56,33 @@ eight questions is descriptive and cannot override failed causal controls.
   a learnable cellular control direction; calibrate a passage-neutral readout first.
 - Natural development/held-out controls order correctly: replicate from an earlier
   checkpoint and a fresh seed before expanding corpus or organism size.
+
+## Result
+
+The 4090-only continuation completed through update 1025 without rejects or numerical
+instability. The intervention was exact: all 138,784 effector parameters were frozen,
+the effector reported zero gradient tensors, the frozen Llama remained 0 trainable / 0
+gradient-bearing parameters, and sensor, cell identity, connectome, tissue, transport,
+and recall groups all received gradients.
+
+The representation gate failed unambiguously over updates 1016-1025:
+
+- mean causal loss remained exactly `0.1000000015`;
+- all four mean target-log-probability advantages remained exactly `0.0`;
+- causal positive-advantage fraction and label-logit separation remained `0.0`;
+- control separation was only `1.13e-5` RMS;
+- output separation was `1.05e-4` RMS and target projection was `-3.55e-5`;
+- relay-output gate RMS fell from about `0.191` to a trailing mean of `0.165`.
+
+Held-out normal, no-exposure, wrong-passage, reset, memory-lesion, and internal-lesion
+arms were all exactly 50% accuracy with mean loss `1.18738`; zero control remained
+37.5%. Development controls were likewise identical at 75% accuracy. The organism
+still supplies generic steering, but passage content remains causally unused.
+
+This rules out the narrow hypothesis that C1k already contained a sufficiently
+sensitive calibrated effector and needed only passage-exclusive internal credit. It
+does not rule out causal passage training with a deliberately well-conditioned fixed
+readout: C1k's passage-dependent controls remained below the BF16 forward-resolution
+floor, so this particular frozen head exposed no usable direction for internal tissue
+to amplify. Do not extend C1l; the next treatment must establish readout sensitivity
+without restoring a trainable question-only shortcut.
