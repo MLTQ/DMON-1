@@ -299,6 +299,26 @@ continues this exact checkpoint exploratorily to 300 updates with evaluations ev
 Because this extension was chosen after seeing the update-25 result, it is reported as
 hypothesis-generating and cannot retroactively count as passing the frozen short gate.
 
+### L0-C1g exploratory continuation execution
+
+The exact update-25 checkpoint was resumed on 2026-08-04 toward update 300 on physical
+RTX 4090 UUID `GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`; the RTX 2070S was not exposed
+to the process. The result root remains
+`data/dmon-l0/l0c1g-gain64-m96-u25` on the GPU host. Before resume, immutable
+`checkpoint-u25.pt` and `metrics-u25.json` copies were created. Their SHA-256 digests
+match the original files at launch: `87c312b2e0032cbb1bbe70672fdc0990dd11a08bbaf61d2289ae0dcd5e8e6070`
+for the checkpoint and `567188adfb9bad006a3f21cc10412c66a0693a3e4c693dfdf254569cb88e0e9b`
+for the metrics.
+
+Only the declared exploratory horizon and reporting cadence changed: `updates=300`,
+`eval_every=50`, and `checkpoint_every=50`. The saved optimizer state, compact paired
+curriculum, geometry, control/recall gains, per-group learning rates, RNG state, sample
+cursor, and continuing cellular state were restored from update 25. The first emitted
+post-resume marker was update 30, confirming forward continuation rather than restart.
+The live log and PID files are `continue-u300.log` and `continue-u300.pid` in the result
+root. No capability interpretation is made until the full trajectory and final causal
+evaluation are available.
+
 ## Episode
 
 For one lifetime lane:
