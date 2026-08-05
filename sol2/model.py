@@ -29,6 +29,14 @@ class StepHealth:
     organ_effective_cells: float
 
 
+@dataclass
+class StepTrace:
+    """Opt-in live observations from the exact transition graph."""
+
+    recalled: torch.Tensor | None = None
+    recall_memory: torch.Tensor | None = None
+
+
 class Sol2(nn.Module):
     TISSUES = ("input", "compute", "relay", "output")
 
@@ -342,11 +350,15 @@ class Sol2(nn.Module):
         frozen_idx: torch.Tensor | None = None,
         write_memory: bool = True,
         collect_health: bool = False,
+        trace: StepTrace | None = None,
     ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
         cfg = self.cfg
         hidden = state.hidden
         if hidden.shape[1:] != (self.n_cells, cfg.hidden):
             raise ValueError("state shape does not match the current organism")
+        if trace is not None:
+            trace.recalled = None
+            trace.recall_memory = None
 
         # Output tissue is a per-token interface, not an autonomous recurrent model.
         # It may integrate over microsteps, but it cannot carry a private sequence
@@ -373,12 +385,16 @@ class Sol2(nn.Module):
         elif organ_name != "A":
             recall = getattr(self.attached_organs[organ_name], "recall", None)
             if callable(recall):
+                recall_memory = hidden[:, self.memory_idx]
                 recalled, _ = recall(
                     embedded,
-                    hidden[:, self.memory_idx],
+                    recall_memory,
                     valid_count=min(state.memory_cursor, len(self.memory_idx)),
                     collect_health=False,
                 )
+                if trace is not None:
+                    trace.recalled = recalled
+                    trace.recall_memory = recall_memory
                 sensory_drive = sensory_drive + recalled.unsqueeze(1)
 
         raw_message = None

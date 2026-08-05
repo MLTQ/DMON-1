@@ -11,6 +11,7 @@ import torch
 from torch import nn
 
 from .backbone_audit import summarize_binding_rows
+from .model import StepTrace
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_causal_contrast import passage_causal_contrast_loss
 from .wiki_distillation import (
@@ -51,6 +52,7 @@ from .wiki_output_eligibility import eligibility_gated_transport_loss
 from .wiki_semantic_credit import (
     fixed_semantic_projection,
     paired_tissue_semantic_credit,
+    paired_vector_semantic_credit,
     semantic_target_delta,
 )
 
@@ -292,16 +294,24 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
 
 
 def test_local_semantic_credit_is_differential_and_detached() -> None:
-    try:
-        WikiMemoryTrainConfig(memory_semantic_credit_weight=1.0).validate()
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("semantic credit accepted an unpaired training schedule")
+    for field in (
+        "memory_semantic_credit_weight",
+        "relay_semantic_credit_weight",
+        "recall_semantic_credit_weight",
+    ):
+        try:
+            WikiMemoryTrainConfig(**{field: 1.0}).validate()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                f"{field} accepted an unpaired training schedule"
+            )
     WikiMemoryTrainConfig(
         paired_counterfactual=True,
         memory_semantic_credit_weight=4.0,
         relay_semantic_credit_weight=4.0,
+        recall_semantic_credit_weight=4.0,
     ).validate()
 
     projection = fixed_semantic_projection(5, 3, seed=307)
@@ -371,6 +381,101 @@ def test_local_semantic_credit_is_differential_and_detached() -> None:
     assert abs(float(aligned_cosine) - 1.0) < 1e-6
 
 
+def test_direct_recall_capture_and_semantic_credit_are_exact() -> None:
+    system, organ = build_system()
+    system.eval()
+    torch.manual_seed(991)
+    left_exposure = torch.randn(1, 3, system.backbone.width)
+    right_exposure = torch.randn(1, 3, system.backbone.width)
+    query = torch.randn(1, system.backbone.width)
+    left_state, _ = system.observe_feature_sequence(
+        left_exposure, system.initial_state(1, "cpu")
+    )
+    right_state, _ = system.observe_feature_sequence(
+        right_exposure, system.initial_state(1, "cpu")
+    )
+
+    plain_controls, plain_state, plain_health = system.organism.step(
+        query, left_state.clone_detached(), organ_name="language", write_memory=False
+    )
+    trace = StepTrace()
+    traced_controls, traced_state, traced_health = system.organism.step(
+        query,
+        left_state.clone_detached(),
+        organ_name="language",
+        write_memory=False,
+        trace=trace,
+    )
+    assert trace.recalled is not None and trace.recall_memory is not None
+    expected_query, _ = organ.sense(query)
+    expected_recall, _ = organ.recall(
+        expected_query,
+        left_state.hidden[:, system.organism.memory_idx],
+        valid_count=left_state.memory_cursor,
+    )
+    assert torch.equal(trace.recalled, expected_recall)
+    assert torch.equal(plain_controls, traced_controls)
+    assert torch.equal(plain_state.hidden, traced_state.hidden)
+    assert plain_state.memory_cursor == traced_state.memory_cursor
+    assert plain_health is traced_health is None
+
+    left_trace = StepTrace()
+    right_trace = StepTrace()
+    system.organism.step(
+        query,
+        left_state,
+        organ_name="language",
+        write_memory=False,
+        trace=left_trace,
+    )
+    system.organism.step(
+        query,
+        right_state,
+        organ_name="language",
+        write_memory=False,
+        trace=right_trace,
+    )
+    assert left_trace.recalled is not None and right_trace.recalled is not None
+    assert left_trace.recall_memory is not None and right_trace.recall_memory is not None
+    left_trace.recall_memory.retain_grad()
+    right_trace.recall_memory.retain_grad()
+    projection = fixed_semantic_projection(
+        system.backbone.width, LANGUAGE_CFG.hidden, seed=309
+    )
+    teacher_left = torch.randn(1, system.backbone.width, requires_grad=True)
+    teacher_right = torch.randn(1, system.backbone.width, requires_grad=True)
+    loss, separation, alignment, raw_rms = paired_vector_semantic_credit(
+        left_trace.recalled,
+        right_trace.recalled,
+        teacher_left,
+        teacher_right,
+        projection,
+        target_rms=0.25,
+    )
+    assert float(separation.detach()) > 0.0
+    assert bool(torch.isfinite(alignment)) and float(raw_rms) > 0.0
+    loss.backward()
+    for component in ("recall_query", "recall_key", "recall_value", "recall_output"):
+        gradient = getattr(organ, component).weight.grad
+        assert gradient is not None and float(gradient.abs().sum()) > 0.0
+    assert left_trace.recall_memory.grad is not None
+    assert right_trace.recall_memory.grad is not None
+    assert float(left_trace.recall_memory.grad.abs().sum()) > 0.0
+    assert float(right_trace.recall_memory.grad.abs().sum()) > 0.0
+    assert teacher_left.grad is None and teacher_right.grad is None
+    assert organ.output.decoder.weight.grad is None
+
+    swapped = paired_vector_semantic_credit(
+        right_trace.recalled.detach(),
+        left_trace.recalled.detach(),
+        teacher_right,
+        teacher_left,
+        projection,
+        target_rms=0.25,
+    )[0]
+    assert torch.allclose(loss.detach(), swapped)
+
+
 def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     system, organ = build_system()
     tokenizer = TinyTokenizer()
@@ -392,6 +497,7 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
         initial,
         permutation_seed=3,
         collect_health=True,
+        capture_recall=True,
     )
     assert result.state.memory_cursor > baseline.state.memory_cursor
     assert set(result.label_log_probs) == {"A", "B", "C", "D"}
@@ -405,6 +511,8 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
         LANGUAGE_CFG.n_memory,
         LANGUAGE_CFG.hidden,
     )
+    assert result.recalled is not None
+    assert result.recalled.shape == (1, LANGUAGE_CFG.hidden)
     assert abs(sum(result.label_log_probs.values())) > 0.0
     result.loss.backward()
     assert organ.output.decoder.weight.grad is not None
@@ -772,6 +880,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 teacher_distillation_temperature=0.75,
                 memory_semantic_credit_weight=4.0,
                 relay_semantic_credit_weight=4.0,
+                recall_semantic_credit_weight=4.0,
                 semantic_credit_target_rms=0.25,
                 semantic_credit_seed=307,
                 control_energy_weight=0.1,
@@ -806,6 +915,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["teacher_distillation_temperature"] == 0.75
         assert payload["train_config"]["memory_semantic_credit_weight"] == 4.0
         assert payload["train_config"]["relay_semantic_credit_weight"] == 4.0
+        assert payload["train_config"]["recall_semantic_credit_weight"] == 4.0
         assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
         assert payload["train_config"]["semantic_credit_seed"] == 307
         assert payload["train_config"]["control_energy_weight"] == 0.1
@@ -870,6 +980,7 @@ def main() -> None:
         test_source_hash_and_question_permutation_are_exact,
         test_dense_teacher_credit_is_detached_and_passage_visible,
         test_local_semantic_credit_is_differential_and_detached,
+        test_direct_recall_capture_and_semantic_credit_are_exact,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,
         test_causal_evaluator_runs_matched_arms,

@@ -118,6 +118,14 @@ paired delta, not either branch's absolute representation. The memory capture oc
 before reset/lesion/question operations. Teacher vectors, projection axes, targets,
 losses, and telemetry have no evaluation or inference path.
 
+### Direct recall semantic credit
+
+When explicitly enabled, the trainer captures the actual content-addressed vector used
+on the final question token and aligns its paired difference with the detached
+passage-visible Qwen effect relative to the question-only baseline. Projection seed is
+`semantic_credit_seed + 2`. This credit reaches recall query/key/value/output and live
+memory before recurrent or relay dilution; it has no effector or inference bypass.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's
@@ -131,6 +139,9 @@ experimental common-mode rejection, not a final single-pass anatomy.
 Reports gradient RMS, participating element count, and tensor count separately for the
 language sensor, recall head, connectome, tissue dynamics, cell identity, and effector.
 This distinguishes a weak reward from a route that receives no learning signal.
+
+`recall_gradient_components` additionally reports query, key, value, and output RMS
+separately so aggregate recall activity cannot hide a dead addressing component.
 
 ### `require_finite_organism_gradients`
 
@@ -184,6 +195,8 @@ performs independent cellular transitions and language-head control.
   when the effect-only treatment is enabled.
 - Records memory/relay semantic losses, live paired separation, target cosine
   alignment, and pre-normalization teacher projection RMS when local credit is enabled.
+- Records the corresponding direct-recall loss/separation/alignment and all four recall
+  component gradient RMS values when recall credit is enabled.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -260,6 +273,9 @@ performs independent cellular transitions and language-head control.
 - Memory semantic credit observes post-exposure tissue before question processing;
   relay semantic credit observes post-question relay tissue while the teacher's
   passage remains absent from the student language context.
+- Recall semantic credit observes the exact final-question recall tensor from the
+  ordinary step graph; teacher effects and projection axes remain detached, and the
+  capture is absent from evaluation and inference unless explicitly requested.
 - Reference controls are computed from the identical starting state and question,
   detached before subtraction, and serialized as a treatment flag rather than state.
 - Delta energy prices effective language intervention after reference subtraction, not

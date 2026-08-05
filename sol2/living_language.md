@@ -11,7 +11,8 @@ state, identity, development, and adaptive control.
 ### `LanguageStep`
 
 Carries next-token logits, emitted control tokens, continuing organism state, and
-optional SOL2 health telemetry.
+optional SOL2 health telemetry. Training callers may also request the exact live recall
+vector from the final perceived token.
 
 ### `LivingLanguageSystem`
 
@@ -33,6 +34,8 @@ optional SOL2 health telemetry.
   pre-transformer soft prefix, allowing all frozen layers to reason over SOL2 output.
 - Optionally subtracts a detached, shape-matched homeostatic control reference before
   language decoding while leaving the organism's actual state transitions unchanged.
+- Optionally propagates the final transition's `StepTrace.recalled` tensor without
+  replaying attention or changing the scoring path.
 
 ### `graft_language_backbone`
 
@@ -100,3 +103,5 @@ caller's random stream. Control and recall gains are explicit graft properties.
 - A control reference must exactly match `[batch, control_tokens, backbone_width]` and
   is detached before subtraction. Both raw and reference paths share `control_scale`,
   so matching controls and explicit zero-scale interventions yield exact zero.
+- Final-recall capture is opt-in and returns `None` when recall does not run; disabling
+  capture must be behaviorally exact.

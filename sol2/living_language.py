@@ -10,7 +10,7 @@ from torch.nn import functional as F
 
 from .language_backbone import FrozenLanguageBackbone
 from .language_organs import ContinuousLanguageOrgan
-from .model import Sol2, StepHealth
+from .model import Sol2, StepHealth, StepTrace
 from .state import OrganismState
 
 
@@ -20,6 +20,7 @@ class LanguageStep:
     controls: torch.Tensor
     state: OrganismState
     health: StepHealth | None
+    recalled: torch.Tensor | None
 
 
 class LivingLanguageSystem(nn.Module):
@@ -59,14 +60,24 @@ class LivingLanguageSystem(nn.Module):
         frozen_idx: torch.Tensor | None,
         write_memory: bool,
         collect_final_health: bool = False,
-    ) -> tuple[torch.Tensor, OrganismState, StepHealth | None]:
+        capture_final_recall: bool = False,
+    ) -> tuple[
+        torch.Tensor, OrganismState, StepHealth | None, torch.Tensor | None
+    ]:
         controls = []
         next_state = state
         final_health = None
+        final_recall = None
         for position in range(feature_sequence.shape[1]):
             features = feature_sequence[:, position].to(
                 device=next_state.hidden.device,
                 dtype=next_state.hidden.dtype,
+            )
+            trace = (
+                StepTrace()
+                if capture_final_recall
+                and position == feature_sequence.shape[1] - 1
+                else None
             )
             position_controls, next_state, health = self.organism.step(
                 features,
@@ -77,11 +88,14 @@ class LivingLanguageSystem(nn.Module):
                 collect_health=(
                     collect_final_health and position == feature_sequence.shape[1] - 1
                 ),
+                trace=trace,
             )
             controls.append(position_controls * control_scale)
             if health is not None:
                 final_health = health
-        return torch.stack(controls, dim=1), next_state, final_health
+            if trace is not None:
+                final_recall = trace.recalled
+        return torch.stack(controls, dim=1), next_state, final_health, final_recall
 
     def observe_sequence(
         self,
@@ -118,7 +132,7 @@ class LivingLanguageSystem(nn.Module):
 
         if feature_sequence.ndim != 3 or feature_sequence.shape[1] < 1:
             raise ValueError("features must have non-empty [batch, sequence, width] shape")
-        controls, next_state, _ = self._evolve_feature_sequence(
+        controls, next_state, _, _ = self._evolve_feature_sequence(
             feature_sequence,
             state,
             control_scale=control_scale,
@@ -138,6 +152,7 @@ class LivingLanguageSystem(nn.Module):
         collect_health: bool = False,
         control_mode: str = "late_residual",
         control_reference: torch.Tensor | None = None,
+        capture_final_recall: bool = False,
     ) -> LanguageStep:
         """Absorb a complete prompt and score only its next-token distribution."""
 
@@ -154,6 +169,7 @@ class LivingLanguageSystem(nn.Module):
             control_mode=control_mode,
             input_ids=input_ids,
             control_reference=control_reference,
+            capture_final_recall=capture_final_recall,
         )
 
     def score_next_from_features(
@@ -168,18 +184,20 @@ class LivingLanguageSystem(nn.Module):
         control_mode: str = "late_residual",
         input_ids: torch.Tensor | None = None,
         control_reference: torch.Tensor | None = None,
+        capture_final_recall: bool = False,
     ) -> LanguageStep:
         """Evolve over cached features and score their final next-token distribution."""
 
         if feature_sequence.ndim != 3 or feature_sequence.shape[1] < 1:
             raise ValueError("features must have non-empty [batch, sequence, width] shape")
-        controls, next_state, health = self._evolve_feature_sequence(
+        controls, next_state, health, recalled = self._evolve_feature_sequence(
             feature_sequence,
             state,
             control_scale=control_scale,
             frozen_idx=frozen_idx,
             write_memory=write_memory,
             collect_final_health=collect_health,
+            capture_final_recall=capture_final_recall,
         )
         effective_controls = controls[:, -1]
         if control_reference is not None:
@@ -210,6 +228,7 @@ class LivingLanguageSystem(nn.Module):
             controls=effective_controls,
             state=next_state,
             health=health,
+            recalled=recalled,
         )
 
     def advance(
@@ -252,6 +271,7 @@ class LivingLanguageSystem(nn.Module):
             controls=controlled,
             state=next_state,
             health=health,
+            recalled=None,
         )
 
     def teacher_forced_loss(
@@ -269,7 +289,7 @@ class LivingLanguageSystem(nn.Module):
         if input_ids.shape != target_ids.shape or input_ids.ndim != 2:
             raise ValueError("input_ids and target_ids must share [batch, sequence] shape")
         feature_sequence = self.backbone.encode(input_ids)
-        control_sequence, next_state, _ = self._evolve_feature_sequence(
+        control_sequence, next_state, _, _ = self._evolve_feature_sequence(
             feature_sequence,
             state,
             control_scale=control_scale,

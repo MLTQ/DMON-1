@@ -45,6 +45,7 @@ from .wiki_output_eligibility import eligibility_gated_transport_loss
 from .wiki_semantic_credit import (
     fixed_semantic_projection,
     paired_tissue_semantic_credit,
+    paired_vector_semantic_credit,
 )
 
 
@@ -70,6 +71,7 @@ class WikiMemoryTrainConfig:
     teacher_distillation_temperature: float = 1.0
     memory_semantic_credit_weight: float = 0.0
     relay_semantic_credit_weight: float = 0.0
+    recall_semantic_credit_weight: float = 0.0
     semantic_credit_target_rms: float = 0.25
     semantic_credit_seed: int = 307
     control_energy_weight: float = 0.0
@@ -113,11 +115,13 @@ class WikiMemoryTrainConfig:
         if min(
             self.memory_semantic_credit_weight,
             self.relay_semantic_credit_weight,
+            self.recall_semantic_credit_weight,
         ) < 0:
             raise ValueError("semantic credit weights must be nonnegative")
         if (
             self.memory_semantic_credit_weight > 0
             or self.relay_semantic_credit_weight > 0
+            or self.recall_semantic_credit_weight > 0
         ) and not self.paired_counterfactual:
             raise ValueError("semantic credit requires paired counterfactual training")
         if self.semantic_credit_target_rms <= 0:
@@ -382,6 +386,36 @@ def organism_gradient_groups(system: LivingLanguageSystem) -> dict[str, dict[str
             "tensors": tensors,
         }
         for group, (square_sum, elements, tensors) in totals.items()
+    }
+
+
+def recall_gradient_components(
+    system: LivingLanguageSystem,
+) -> dict[str, dict[str, float]]:
+    """Report query/key/value/output gradient RMS inside content-addressed recall."""
+
+    component_totals = {
+        component: [0.0, 0.0, 0.0]
+        for component in ("query", "key", "value", "output")
+    }
+    for name, parameter in system.organism.named_parameters():
+        for component in component_totals:
+            if f".recall_{component}." not in name:
+                continue
+            if parameter.grad is not None:
+                gradient = parameter.grad.detach().float()
+                values = component_totals[component]
+                values[0] += float(gradient.pow(2).sum())
+                values[1] += float(gradient.numel())
+                values[2] += 1.0
+            break
+    return {
+        component: {
+            "rms": math.sqrt(square_sum / max(elements, 1.0)),
+            "elements": elements,
+            "tensors": tensors,
+        }
+        for component, (square_sum, elements, tensors) in component_totals.items()
     }
 
 
@@ -750,6 +784,7 @@ def run_training(args: argparse.Namespace) -> dict:
         teacher_distillation_temperature=args.teacher_distillation_temperature,
         memory_semantic_credit_weight=args.memory_semantic_credit_weight,
         relay_semantic_credit_weight=args.relay_semantic_credit_weight,
+        recall_semantic_credit_weight=args.recall_semantic_credit_weight,
         semantic_credit_target_rms=args.semantic_credit_target_rms,
         semantic_credit_seed=args.semantic_credit_seed,
         control_energy_weight=args.control_energy_weight,
@@ -798,6 +833,12 @@ def run_training(args: argparse.Namespace) -> dict:
         system.backbone.width,
         organism_config.hidden,
         seed=train_config.semantic_credit_seed + 1,
+        device=args.device,
+    )
+    recall_semantic_projection = fixed_semantic_projection(
+        system.backbone.width,
+        organism_config.hidden,
+        seed=train_config.semantic_credit_seed + 2,
         device=args.device,
     )
     checkpoint_path = args.out_dir / "checkpoint.pt"
@@ -866,6 +907,7 @@ def run_training(args: argparse.Namespace) -> dict:
             train_config.teacher_distillation_weight > 0
             or train_config.teacher_effect_distillation_weight > 0
             or train_config.relay_semantic_credit_weight > 0
+            or train_config.recall_semantic_credit_weight > 0
         )
         if teacher_enabled:
             teacher_outputs = [
@@ -887,6 +929,7 @@ def run_training(args: argparse.Namespace) -> dict:
         if (
             train_config.teacher_effect_distillation_weight > 0
             or train_config.relay_semantic_credit_weight > 0
+            or train_config.recall_semantic_credit_weight > 0
         ):
             (
                 teacher_baseline_features,
@@ -937,6 +980,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_question_tokens=train_config.max_question_tokens,
                 control_mode=train_config.language_control_mode,
                 control_reference=control_reference,
+                capture_recall=train_config.recall_semantic_credit_weight > 0,
             )
             branch_results.append(branch_result)
         no_exposure_result = None
@@ -980,6 +1024,10 @@ def run_training(args: argparse.Namespace) -> dict:
         relay_semantic_separation_rms = task_loss.new_zeros(())
         relay_semantic_alignment = task_loss.new_zeros(())
         relay_teacher_projection_rms = task_loss.new_zeros(())
+        recall_semantic_credit_loss = task_loss.new_zeros(())
+        recall_semantic_separation_rms = task_loss.new_zeros(())
+        recall_semantic_alignment = task_loss.new_zeros(())
+        recall_teacher_projection_rms = task_loss.new_zeros(())
         if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
@@ -1099,6 +1147,32 @@ def run_training(args: argparse.Namespace) -> dict:
                 relay_semantic_projection,
                 target_rms=train_config.semantic_credit_target_rms,
             )
+        if train_config.recall_semantic_credit_weight > 0:
+            if (
+                len(branch_results) != 2
+                or len(teacher_features) != 2
+                or teacher_baseline_features is None
+            ):
+                raise RuntimeError("recall semantic credit requires paired teacher effects")
+            if any(branch.recalled is None for branch in branch_results):
+                raise RuntimeError("recall semantic credit requires live recall vectors")
+            teacher_feature_effects = [
+                feature.float() - teacher_baseline_features.float()
+                for feature in teacher_features
+            ]
+            (
+                recall_semantic_credit_loss,
+                recall_semantic_separation_rms,
+                recall_semantic_alignment,
+                recall_teacher_projection_rms,
+            ) = paired_vector_semantic_credit(
+                branch_results[0].recalled,
+                branch_results[1].recalled,
+                teacher_feature_effects[0],
+                teacher_feature_effects[1],
+                recall_semantic_projection,
+                target_rms=train_config.semantic_credit_target_rms,
+            )
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
         control_energy_loss = torch.stack(
@@ -1173,12 +1247,15 @@ def run_training(args: argparse.Namespace) -> dict:
             * memory_semantic_credit_loss
             + train_config.relay_semantic_credit_weight
             * relay_semantic_credit_loss
+            + train_config.recall_semantic_credit_weight
+            * recall_semantic_credit_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
         )
         objective_loss.backward()
         gradient_groups = organism_gradient_groups(system)
+        recall_gradients = recall_gradient_components(system)
         require_finite_organism_gradients(system)
         grad_norm = torch.nn.utils.clip_grad_norm_(
             system.organism.parameters(), train_config.grad_clip
@@ -1274,6 +1351,16 @@ def run_training(args: argparse.Namespace) -> dict:
             "relay_teacher_projection_rms": float(
                 relay_teacher_projection_rms.detach()
             ),
+            "recall_semantic_credit_loss": float(
+                recall_semantic_credit_loss.detach()
+            ),
+            "recall_semantic_separation_rms": float(
+                recall_semantic_separation_rms.detach()
+            ),
+            "recall_semantic_alignment": float(recall_semantic_alignment.detach()),
+            "recall_teacher_projection_rms": float(
+                recall_teacher_projection_rms.detach()
+            ),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
@@ -1307,6 +1394,7 @@ def run_training(args: argparse.Namespace) -> dict:
             "label_logit_separation_rms": label_logit_separation_rms,
             "grad_norm": float(grad_norm),
             "gradient_groups": gradient_groups,
+            "recall_gradient_components": recall_gradients,
             "control_rms": sum(branch.control_rms for branch in branch_results)
             / len(branch_results),
             "internal_activity": sum(
@@ -1334,6 +1422,8 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"memory_align={row['memory_semantic_alignment']:.3f} "
                 f"relay_sem={row['relay_semantic_credit_loss']:.4f} "
                 f"relay_align={row['relay_semantic_alignment']:.3f} "
+                f"recall_sem={row['recall_semantic_credit_loss']:.4f} "
+                f"recall_align={row['recall_semantic_alignment']:.3f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1499,6 +1589,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--memory-semantic-credit-weight", type=float, default=0.0)
     parser.add_argument("--relay-semantic-credit-weight", type=float, default=0.0)
+    parser.add_argument("--recall-semantic-credit-weight", type=float, default=0.0)
     parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)
     parser.add_argument("--semantic-credit-seed", type=int, default=307)
     parser.add_argument("--control-energy-weight", type=float, default=0.0)

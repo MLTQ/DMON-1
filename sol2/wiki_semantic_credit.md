@@ -32,6 +32,15 @@ without adding an inference route or constraining shared background state.
 - **Interacts with**: Post-exposure memory and post-question relay tensors retained by
   `run_wiki_memory_episode`.
 
+### `paired_vector_semantic_credit`
+
+- **Does**: Applies the same detached paired semantic target directly to live
+  `[batch, hidden]` vectors without tissue pooling.
+- **Interacts with**: The exact final-token content-addressed recall vectors captured by
+  `run_wiki_memory_episode` for C1u.
+- **Rationale**: Credit reaches recall query/key/value/output before recurrent dilution,
+  while still constraining only a counterfactual difference.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
@@ -39,6 +48,7 @@ without adding an inference route or constraining shared background state.
 | `wiki_memory_train.py` | Four ordered outputs: loss, student RMS, alignment, raw teacher RMS | Return order or reduction |
 | `test_wiki_memory.py` | Seed reproducibility, detached targets, opposing endpoint gradients, swap invariance | RNG, detach, or sign convention |
 | C1t protocol | Memory seed `307`, relay seed `308`, target RMS `0.25` | Projection construction or normalization |
+| C1u protocol | Memory seed `307`, direct recall seed `309`, target RMS `0.25` | Projection construction or normalization |
 
 ## Notes
 

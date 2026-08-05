@@ -49,6 +49,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
   branch order, and reaches zero on an aligned differential state.
 - Wiki episodes expose live post-passage memory tissue before question/reset/lesion
   operations and return no such tensor for no-exposure arms.
+- Opt-in recall capture is behaviorally exact, equals the vector used by the existing
+  transition, and direct paired semantic credit reaches recall query/key/value/output
+  plus the live memory view while leaving teacher and effector gradients absent.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared

@@ -86,3 +86,33 @@ def paired_tissue_semantic_credit(
     student_rms = student_delta.pow(2).mean().sqrt()
     alignment = F.cosine_similarity(student_delta, target, dim=-1, eps=1e-8).mean()
     return loss, student_rms, alignment, raw_target_rms
+
+
+def paired_vector_semantic_credit(
+    left_state: torch.Tensor,
+    right_state: torch.Tensor,
+    left_teacher: torch.Tensor,
+    right_teacher: torch.Tensor,
+    projection: torch.Tensor,
+    *,
+    target_rms: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Match a paired live-vector difference to detached teacher semantics."""
+
+    if left_state.shape != right_state.shape or left_state.ndim != 2:
+        raise ValueError("semantic vectors must share [batch, hidden] shape")
+    if left_state.shape[1] != projection.shape[1]:
+        raise ValueError("semantic vector width must match projection target width")
+    if left_teacher.shape[0] != left_state.shape[0]:
+        raise ValueError("teacher and semantic-vector batches must match")
+    target, raw_target_rms = semantic_target_delta(
+        left_teacher,
+        right_teacher,
+        projection,
+        target_rms=target_rms,
+    )
+    student_delta = left_state.float() - right_state.float()
+    loss = F.mse_loss(student_delta, target)
+    student_rms = student_delta.pow(2).mean().sqrt()
+    alignment = F.cosine_similarity(student_delta, target, dim=-1, eps=1e-8).mean()
+    return loss, student_rms, alignment, raw_target_rms

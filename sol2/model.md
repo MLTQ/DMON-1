@@ -14,6 +14,12 @@ bundles can be explicitly attached, detached, and selected.
 Records hidden/message/logit scale, tissue update rates, organ-attention allocation,
 and the largest effective operator norm beside behavioral loss.
 
+### `StepTrace`
+
+Opt-in caller-owned observation of the exact live recall vector and memory view used by
+a transition. It does not detach, recompute, or modify either tensor and is empty when
+the step writes memory or has no recall-capable organ.
+
 ### `Sol2`
 
 - Builds explicit input, memory, compute, relay, and output index buffers.
@@ -34,6 +40,8 @@ and the largest effective operator norm beside behavioral loss.
 - Selects one organ explicitly per step and exposes exact attach/detach/reattach,
   specialized-module attachment, and organ-parameter iteration operations.
 - Supports zero-and-freeze tissue interventions without changing the training path.
+- Can expose the existing content-addressed recall edge for training diagnostics while
+  preserving the ordinary three-value step return and transition semantics.
 
 ### `count_parameters`
 
@@ -90,3 +98,5 @@ Counts only trainable parameters for matched controls.
   organ is explicitly selected.
 - A specialized organ is moved to the organism device when attached and must implement
   the same sensory, effector, and health surfaces as the discrete organ.
+- Supplying a `StepTrace` is observational: it cannot change logits, state, health,
+  memory cursor, or the recalled drive injected into input tissue.

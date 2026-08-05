@@ -51,8 +51,9 @@ feature is sent through the vocabulary head.
 - Retains live control and four-label logit tensors for paired-branch separation
   measurement, optionally retains the live full-vocabulary next-token logits for dense
   teacher credit, captures live memory tissue immediately after exposure and before
-  reset/question operations, and exposes final relay/output-tissue states for
-  training-only causal credit while serializing only detached scalar telemetry.
+  reset/question operations, optionally captures the exact final-question recall
+  vector, and exposes final relay/output-tissue states for training-only causal credit
+  while serializing only detached scalar telemetry.
 
 ### `summarize_results`
 
@@ -96,6 +97,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   not change exposure, cellular dynamics, memory contents, or the continuing state.
 - `exposure_memory_state` is `None` without exposure and otherwise refers to live
   post-exposure memory cells before any requested reset or lesion.
+- `recalled` is populated only when explicitly requested and refers to the same live
+  vector injected into input tissue on the final question token; it is not recomputed.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.
