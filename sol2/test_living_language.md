@@ -12,6 +12,9 @@ backbone or GPU training is attempted.
 - Prefix mode matches its deterministic first-token-anchor plus exact-zero-residual
   floor and sends gradients through all frozen language layers into controls, never
   model parameters.
+- A raw control minus its detached homeostatic reference is numerically a prefix no-op
+  while retaining a live gradient into the recomputed student control; explicit zero
+  scale remains exact zero under reference-centering.
 - Contextual language features enter stream-written organism memory through the
   bounded sensor.
 - Stream-memory writes preserve delayed gradients into the sensor, and content recall

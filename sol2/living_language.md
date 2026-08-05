@@ -31,6 +31,8 @@ optional SOL2 health telemetry.
   without receiving a language loss.
 - Optionally reruns a perceived turn with the final creature control bank as a
   pre-transformer soft prefix, allowing all frozen layers to reason over SOL2 output.
+- Optionally subtracts a detached, shape-matched homeostatic control reference before
+  language decoding while leaving the organism's actual state transitions unchanged.
 
 ### `graft_language_backbone`
 
@@ -67,6 +69,9 @@ caller's random stream. Control and recall gains are explicit graft properties.
 - `control_scale=0` provides an exact language-floor intervention while allowing the
   organism to continue perceiving and evolving. Reset and tissue-lesion controls are
   expressed through the initial/frozen-state arguments, not separate model variants.
+- Reference-centering is an explicit experimental common-mode rejection path. Returned
+  controls and language logits use the effective delta; the reference cannot receive
+  gradients and no target information enters organism state.
 - The system rejects any backbone with trainable parameters. Training must improve the
   creature or its detachable interface, not quietly fine-tune Broca's area.
 - The organism configuration's legacy vocabulary size does not need to match the
@@ -92,3 +97,6 @@ caller's random stream. Control and recall gains are explicit graft properties.
   detached from backbone parameters.
 - Cached prefix scoring also requires the exact original token IDs because final
   features cannot reconstruct a pre-transformer input sequence.
+- A control reference must exactly match `[batch, control_tokens, backbone_width]` and
+  is detached before subtraction. Both raw and reference paths share `control_scale`,
+  so matching controls and explicit zero-scale interventions yield exact zero.

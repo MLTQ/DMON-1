@@ -12,6 +12,7 @@ from torch import nn
 
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_causal_contrast import passage_causal_contrast_loss
+from .wiki_distillation import control_delta_energy, full_vocab_reverse_kl
 from .wiki_memory import (
     WikiDocument,
     WikiMemoryCorpus,
@@ -34,6 +35,7 @@ from .wiki_memory_train import (
     organism_gradient_groups,
     organism_optimizer_groups,
     paired_binding_margin_loss,
+    passage_visible_teacher_logits,
     require_finite_organism_gradients,
     save_wiki_memory_checkpoint,
 )
@@ -113,6 +115,53 @@ def test_source_hash_and_question_permutation_are_exact() -> None:
     assert "Original wording?" in first.prompt
     assert "Paraphrased wording?" in paraphrased.prompt
     assert first.correct_label in ("A", "B", "C", "D")
+
+
+def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
+    student = torch.tensor([[0.2, -0.1, 0.4]], requires_grad=True)
+    teacher = student.detach().clone().requires_grad_()
+    matching = full_vocab_reverse_kl(student, teacher)
+    assert abs(float(matching.detach())) < 1e-7
+    shifted_teacher = torch.tensor([[2.0, -1.0, -1.0]], requires_grad=True)
+    shifted = full_vocab_reverse_kl(student, shifted_teacher)
+    assert float(shifted.detach()) > 0.0
+    shifted.backward()
+    assert student.grad is not None and float(student.grad.abs().sum()) > 0.0
+    assert teacher.grad is None and shifted_teacher.grad is None
+    zero_controls = torch.zeros(1, 2, 3)
+    active_controls = torch.full((1, 2, 3), 0.5)
+    assert float(control_delta_energy(zero_controls)) == 0.0
+    assert abs(float(control_delta_energy(active_controls)) - 0.25) < 1e-7
+
+    system, _ = build_system()
+    tokenizer = TinyTokenizer()
+    corpus = load_wiki_memory_corpus(DATA_PATH)
+    document = corpus.split("meta_train")[0]
+    question = document.questions[0]
+    left, right = counterfactual_training_pair(
+        document, question, epoch=0, compact=True
+    )
+    left_teacher = passage_visible_teacher_logits(
+        system,
+        tokenizer,
+        left[0],
+        left[1],
+        permutation_seed=19,
+        max_memory_tokens=256,
+        max_question_tokens=256,
+    )
+    right_teacher = passage_visible_teacher_logits(
+        system,
+        tokenizer,
+        right[0],
+        right[1],
+        permutation_seed=19,
+        max_memory_tokens=256,
+        max_question_tokens=256,
+    )
+    assert left_teacher.shape == (1, system.backbone.vocab_size)
+    assert not left_teacher.requires_grad and not right_teacher.requires_grad
+    assert float((left_teacher - right_teacher).abs().sum()) > 0.0
 
 
 def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
@@ -503,6 +552,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 output_eligibility_temperature=0.005,
                 output_eligibility_relay_reference=0.005,
                 language_control_mode="prefix",
+                teacher_distillation_weight=1.0,
+                teacher_distillation_temperature=0.75,
+                control_energy_weight=0.1,
+                reference_centered_controls=True,
             ),
             model_name="toy",
             dtype="float32",
@@ -528,6 +581,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["output_eligibility_weight"] == 4.0
         assert payload["train_config"]["output_eligibility_margin"] == 0.005
         assert payload["train_config"]["language_control_mode"] == "prefix"
+        assert payload["train_config"]["teacher_distillation_weight"] == 1.0
+        assert payload["train_config"]["teacher_distillation_temperature"] == 0.75
+        assert payload["train_config"]["control_energy_weight"] == 0.1
+        assert payload["train_config"]["reference_centered_controls"] is True
         assert torch.equal(restored_state.hidden, lane_state.hidden)
         assert restored_state.memory_cursor == lane_state.memory_cursor
         left = system.organism.state_dict()
@@ -573,15 +630,19 @@ def test_causal_evaluator_runs_matched_arms() -> None:
         max_memory_tokens=256,
         max_question_tokens=256,
         control_mode="prefix",
+        reference_centered_controls=True,
     )
     assert set(prefix_evaluation["summaries"]) == expected
     assert len(prefix_evaluation["rows"]) == 2
+    assert prefix_evaluation["summaries"]["no_exposure"]["control_rms"] == 0.0
+    assert prefix_evaluation["summaries"]["zero_control"]["control_rms"] == 0.0
 
 
 def main() -> None:
     tests = [
         test_manifest_is_source_family_disjoint_and_complete,
         test_source_hash_and_question_permutation_are_exact,
+        test_dense_teacher_credit_is_detached_and_passage_visible,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,
         test_causal_evaluator_runs_matched_arms,

@@ -156,6 +156,40 @@ def test_prefix_control_backpropagates_through_every_frozen_layer() -> None:
     assert all(parameter.grad is None for parameter in system.backbone.parameters())
 
 
+def test_reference_centered_prefix_is_exact_noop_with_live_student_gradient() -> None:
+    system, organ = build_system()
+    with torch.no_grad():
+        nn.init.normal_(organ.output.decoder.weight, std=0.02)
+    inputs = torch.tensor([[1, 2, 3, 4]])
+    state = system.initial_state(1, "cpu")
+    raw = system.score_next_after_sequence(inputs, state, control_mode="prefix")
+    centered = system.score_next_after_sequence(
+        inputs,
+        state,
+        control_mode="prefix",
+        control_reference=raw.controls,
+    )
+    expected = system.backbone.prefix_logits(
+        inputs, torch.zeros_like(centered.controls)
+    )[:, -1]
+    assert torch.allclose(
+        centered.controls, torch.zeros_like(centered.controls), atol=1e-9, rtol=0.0
+    )
+    assert torch.allclose(centered.logits, expected, atol=1e-7, rtol=0.0)
+    zero_scaled = system.score_next_after_sequence(
+        inputs,
+        state,
+        control_scale=0.0,
+        control_mode="prefix",
+        control_reference=raw.controls,
+    )
+    assert torch.equal(zero_scaled.controls, torch.zeros_like(zero_scaled.controls))
+    torch.nn.functional.cross_entropy(centered.logits, torch.tensor([5])).backward()
+    assert organ.output.decoder.weight.grad is not None
+    assert float(organ.output.decoder.weight.grad.abs().sum()) > 0.0
+    assert all(parameter.grad is None for parameter in system.backbone.parameters())
+
+
 def test_stream_memory_write_and_content_recall_are_differentiable() -> None:
     system, organ = build_system()
     exposure = torch.tensor([[1, 2, 3]])
@@ -445,6 +479,7 @@ def main() -> None:
         test_new_language_graft_is_an_exact_noop,
         test_language_loss_recruits_the_organ_but_not_the_backbone,
         test_prefix_control_backpropagates_through_every_frozen_layer,
+        test_reference_centered_prefix_is_exact_noop_with_live_student_gradient,
         test_stream_memory_write_and_content_recall_are_differentiable,
         test_vectorized_teacher_forcing_matches_causal_prefix_steps,
         test_observation_scoring_and_masked_loss_preserve_sequence_causality,

@@ -28,12 +28,14 @@ from .wiki_memory import (
     WikiQuestion,
     encode_text,
     format_wiki_question,
+    label_token_ids,
     load_wiki_memory_corpus,
     run_wiki_memory_episode,
     summarize_results,
     verify_wiki_sources,
 )
 from .wiki_causal_contrast import passage_causal_contrast_loss
+from .wiki_distillation import control_delta_energy, full_vocab_reverse_kl
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
 
@@ -55,6 +57,10 @@ class WikiMemoryTrainConfig:
     binding_weight: float = 1.0
     causal_contrast_weight: float = 0.0
     causal_contrast_margin: float = 0.1
+    teacher_distillation_weight: float = 0.0
+    teacher_distillation_temperature: float = 1.0
+    control_energy_weight: float = 0.0
+    reference_centered_controls: bool = False
     freeze_effector_updates: bool = False
     language_control_mode: str = "late_residual"
     compact_bindings: bool = False
@@ -85,6 +91,12 @@ class WikiMemoryTrainConfig:
             )
         if self.causal_contrast_weight > 0 and not self.paired_counterfactual:
             raise ValueError("causal contrast requires paired counterfactual training")
+        if self.teacher_distillation_weight < 0:
+            raise ValueError("teacher distillation weight must be nonnegative")
+        if self.teacher_distillation_temperature <= 0:
+            raise ValueError("teacher distillation temperature must be positive")
+        if self.control_energy_weight < 0:
+            raise ValueError("control energy weight must be nonnegative")
         if self.language_control_mode not in {"late_residual", "prefix"}:
             raise ValueError("unknown language control mode")
         if self.control_gain <= 0:
@@ -128,6 +140,30 @@ def counterfactual_training_record(
         dataclasses.replace(document, memory=memory),
         dataclasses.replace(question, answer=answer),
     )
+
+
+@torch.no_grad()
+def passage_visible_teacher_logits(
+    system: LivingLanguageSystem,
+    tokenizer: Any,
+    document: WikiDocument,
+    question: WikiQuestion,
+    *,
+    permutation_seed: int,
+    max_memory_tokens: int,
+    max_question_tokens: int,
+) -> torch.Tensor:
+    """Score the full vocabulary while the frozen teacher can see the passage."""
+
+    device = next(system.organism.parameters()).device
+    formatted = format_wiki_question(question, permutation_seed=permutation_seed)
+    teacher_ids = encode_text(
+        tokenizer,
+        f"{document.memory}\n\n{formatted.prompt}",
+        device,
+        max_tokens=max_memory_tokens + max_question_tokens + 16,
+    )
+    return system.backbone.controlled_logits(teacher_ids)[:, -1].detach()
 
 
 def counterfactual_training_pair(
@@ -350,6 +386,7 @@ def evaluate_wiki_memory(
     max_question_tokens: int,
     admitted_questions: set[str] | None = None,
     control_mode: str = "late_residual",
+    reference_centered_controls: bool = False,
 ) -> dict:
     documents = corpus.split(split)
     rows = []
@@ -412,18 +449,43 @@ def evaluate_wiki_memory(
                 "max_question_tokens": max_question_tokens,
                 "control_mode": control_mode,
             }
+            control_reference = None
+            paraphrase_reference = None
+            if reference_centered_controls:
+                raw_reference = run_wiki_memory_episode(
+                    **common,
+                    expose=False,
+                    question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
+                )
+                if raw_reference.controls is None:
+                    raise RuntimeError("reference episode did not emit controls")
+                control_reference = raw_reference.controls.detach()
+                raw_paraphrase_reference = run_wiki_memory_episode(
+                    **common,
+                    expose=False,
+                    paraphrase=True,
+                    question_features=question_features[(question.id, True)],
+                    question_ids=question_ids[(question.id, True)],
+                )
+                if raw_paraphrase_reference.controls is None:
+                    raise RuntimeError("paraphrase reference did not emit controls")
+                paraphrase_reference = raw_paraphrase_reference.controls.detach()
             results = {
                 "normal": run_wiki_memory_episode(
                     **common,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "no_exposure": run_wiki_memory_episode(
                     **common,
                     expose=False,
+                    control_scale=(0.0 if reference_centered_controls else 1.0),
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "zero_control": run_wiki_memory_episode(
                     **common,
@@ -431,6 +493,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "reset_after_exposure": run_wiki_memory_episode(
                     **common,
@@ -438,6 +501,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "wrong_passage": run_wiki_memory_episode(
                     **common,
@@ -445,6 +509,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[wrong_document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "memory_lesion": run_wiki_memory_episode(
                     **common,
@@ -452,6 +517,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "internal_lesion": run_wiki_memory_episode(
                     **common,
@@ -459,6 +525,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
                     question_ids=question_ids[(question.id, False)],
+                    control_reference=control_reference,
                 ),
                 "question_paraphrase": run_wiki_memory_episode(
                     **common,
@@ -466,6 +533,7 @@ def evaluate_wiki_memory(
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, True)],
                     question_ids=question_ids[(question.id, True)],
+                    control_reference=paraphrase_reference,
                 ),
             }
             for arm, result in results.items():
@@ -580,6 +648,10 @@ def run_training(args: argparse.Namespace) -> dict:
         binding_weight=args.binding_weight,
         causal_contrast_weight=args.causal_contrast_weight,
         causal_contrast_margin=args.causal_contrast_margin,
+        teacher_distillation_weight=args.teacher_distillation_weight,
+        teacher_distillation_temperature=args.teacher_distillation_temperature,
+        control_energy_weight=args.control_energy_weight,
+        reference_centered_controls=args.reference_centered_controls,
         freeze_effector_updates=args.freeze_effector_updates,
         language_control_mode=args.language_control_mode,
         compact_bindings=args.compact_bindings,
@@ -652,6 +724,39 @@ def run_training(args: argparse.Namespace) -> dict:
                 ),
             )
         optimizer.zero_grad(set_to_none=True)
+        permutation_seed = train_config.permutation_seed + update
+        teacher_logits: list[torch.Tensor] = []
+        if train_config.teacher_distillation_weight > 0:
+            teacher_logits = [
+                passage_visible_teacher_logits(
+                    system,
+                    tokenizer,
+                    training_document,
+                    training_question,
+                    permutation_seed=permutation_seed,
+                    max_memory_tokens=train_config.max_memory_tokens,
+                    max_question_tokens=train_config.max_question_tokens,
+                )
+                for training_document, training_question in training_records
+            ]
+        control_reference = None
+        if train_config.reference_centered_controls:
+            with torch.no_grad():
+                raw_reference = run_wiki_memory_episode(
+                    system,
+                    tokenizer,
+                    training_records[0][0],
+                    training_records[0][1],
+                    lane_state,
+                    permutation_seed=permutation_seed,
+                    expose=False,
+                    max_memory_tokens=train_config.max_memory_tokens,
+                    max_question_tokens=train_config.max_question_tokens,
+                    control_mode=train_config.language_control_mode,
+                )
+            if raw_reference.controls is None:
+                raise RuntimeError("reference episode did not emit controls")
+            control_reference = raw_reference.controls.detach()
         branch_results = []
         for training_document, training_question in training_records:
             branch_result = run_wiki_memory_episode(
@@ -660,10 +765,11 @@ def run_training(args: argparse.Namespace) -> dict:
                 training_document,
                 training_question,
                 lane_state,
-                permutation_seed=train_config.permutation_seed + update,
+                permutation_seed=permutation_seed,
                 max_memory_tokens=train_config.max_memory_tokens,
                 max_question_tokens=train_config.max_question_tokens,
                 control_mode=train_config.language_control_mode,
+                control_reference=control_reference,
             )
             branch_results.append(branch_result)
         no_exposure_result = None
@@ -675,13 +781,57 @@ def run_training(args: argparse.Namespace) -> dict:
                     training_records[0][0],
                     training_records[0][1],
                     lane_state,
-                    permutation_seed=train_config.permutation_seed + update,
+                    permutation_seed=permutation_seed,
                     expose=False,
+                    control_scale=(
+                        0.0 if train_config.reference_centered_controls else 1.0
+                    ),
                     max_memory_tokens=train_config.max_memory_tokens,
                     max_question_tokens=train_config.max_question_tokens,
                     control_mode=train_config.language_control_mode,
+                    control_reference=control_reference,
                 )
         task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
+        teacher_distillation_loss = task_loss.new_zeros(())
+        teacher_label_accuracy = task_loss.new_zeros(())
+        teacher_logit_separation_rms = task_loss.new_zeros(())
+        if train_config.teacher_distillation_weight > 0:
+            if len(teacher_logits) != len(branch_results):
+                raise RuntimeError("teacher/student branch count mismatch")
+            if any(branch.vocab_logits is None for branch in branch_results):
+                raise RuntimeError("student episode did not retain vocabulary logits")
+            teacher_distillation_loss = torch.stack(
+                [
+                    full_vocab_reverse_kl(
+                        branch.vocab_logits,
+                        teacher,
+                        temperature=train_config.teacher_distillation_temperature,
+                    )
+                    for branch, teacher in zip(branch_results, teacher_logits)
+                ]
+            ).mean()
+            labels = label_token_ids(tokenizer, lane_state.hidden.device)
+            teacher_correct = []
+            for (_, teacher_question), teacher in zip(
+                training_records, teacher_logits
+            ):
+                formatted = format_wiki_question(
+                    teacher_question, permutation_seed=permutation_seed
+                )
+                teacher_correct.append(
+                    teacher.index_select(-1, labels).argmax(dim=-1)
+                    == formatted.correct_index
+                )
+            teacher_label_accuracy = torch.stack(teacher_correct).float().mean()
+            if len(teacher_logits) == 2:
+                teacher_logit_separation_rms = (
+                    teacher_logits[0].float() - teacher_logits[1].float()
+                ).pow(2).mean().sqrt()
+        if any(branch.controls is None for branch in branch_results):
+            raise RuntimeError("student episode did not emit controls")
+        control_energy_loss = torch.stack(
+            [control_delta_energy(branch.controls) for branch in branch_results]
+        ).mean()
         binding_loss = task_loss.new_zeros(())
         binding_preferences = task_loss.new_zeros(2)
         output_credit_loss = task_loss.new_zeros(())
@@ -743,6 +893,9 @@ def run_training(args: argparse.Namespace) -> dict:
             train_config.task_weight * task_loss
             + train_config.binding_weight * binding_loss
             + train_config.causal_contrast_weight * causal_contrast_loss
+            + train_config.teacher_distillation_weight
+            * teacher_distillation_loss
+            + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
         )
@@ -801,6 +954,14 @@ def run_training(args: argparse.Namespace) -> dict:
             "causal_contrast_accuracy": float(
                 (causal_contrast_advantages.detach() > 0).float().mean()
             ),
+            "teacher_distillation_loss": float(
+                teacher_distillation_loss.detach()
+            ),
+            "teacher_label_accuracy": float(teacher_label_accuracy.detach()),
+            "teacher_logit_separation_rms": float(
+                teacher_logit_separation_rms.detach()
+            ),
+            "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
                 if no_exposure_result is None
@@ -852,6 +1013,9 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"binding={row['binding_loss']:.4f} "
                 f"causal={row['causal_contrast_loss']:.4f} "
                 f"causal_acc={row['causal_contrast_accuracy']:.2f} "
+                f"distill={row['teacher_distillation_loss']:.4f} "
+                f"teacher_acc={row['teacher_label_accuracy']:.2f} "
+                f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
                 f"output_sep={row['output_state_separation_rms']:.4f} "
                 f"eligibility={row['output_eligibility_loss']:.4f} "
@@ -873,6 +1037,9 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_question_tokens=train_config.max_question_tokens,
                 admitted_questions=admitted,
                 control_mode=train_config.language_control_mode,
+                reference_centered_controls=(
+                    train_config.reference_centered_controls
+                ),
             )
             evaluation["update"] = update
             evaluations.append(evaluation)
@@ -911,6 +1078,7 @@ def run_training(args: argparse.Namespace) -> dict:
         max_question_tokens=train_config.max_question_tokens,
         admitted_questions=admitted,
         control_mode=train_config.language_control_mode,
+        reference_centered_controls=train_config.reference_centered_controls,
     )
     metrics = {
         "schema": 1,
@@ -1002,6 +1170,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--binding-weight", type=float, default=1.0)
     parser.add_argument("--causal-contrast-weight", type=float, default=0.0)
     parser.add_argument("--causal-contrast-margin", type=float, default=0.1)
+    parser.add_argument("--teacher-distillation-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--teacher-distillation-temperature", type=float, default=1.0
+    )
+    parser.add_argument("--control-energy-weight", type=float, default=0.0)
+    parser.add_argument("--reference-centered-controls", action="store_true")
     parser.add_argument("--freeze-effector-updates", action="store_true")
     parser.add_argument(
         "--language-control-mode",

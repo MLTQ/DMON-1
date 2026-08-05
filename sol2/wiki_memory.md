@@ -42,13 +42,16 @@ feature is sent through the vocabulary head.
   organism rather than the 8B language encoder.
 - In prefix mode, reuses cached features for perception but retains exact question IDs
   for the required second, prefix-conditioned frozen-transformer pass.
+- Can subtract a detached no-exposure control reference at the language boundary so
+  the scored intervention is only the passage-conditioned delta.
 - Processes the question after a fresh language context and computes cross-entropy only
   over the four label logits.
 - Closes the stream-memory write gate during the question so the prompt cannot replace
   the passage slots that the intervention is intended to test.
 - Retains live control and four-label logit tensors for paired-branch separation
-  measurement and exposes final relay/output-tissue states for training-only causal
-  credit, while serializing only detached scalar telemetry.
+  measurement, optionally retains the live full-vocabulary next-token logits for dense
+  teacher credit, and exposes final relay/output-tissue states for training-only causal
+  credit while serializing only detached scalar telemetry.
 
 ### `summarize_results`
 
@@ -85,6 +88,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
 - Prefix zero-control uses the same repeated first-token anchors and virtual-token
   geometry as normal control; it is the matched floor rather than native no-prefix
   Llama.
+- A supplied control reference is detached and affects only language decoding. It does
+  not change exposure, cellular dynamics, memory contents, or the continuing state.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.

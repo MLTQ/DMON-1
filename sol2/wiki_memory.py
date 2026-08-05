@@ -69,6 +69,7 @@ class WikiEpisodeResult:
     memory_activity: float
     controls: torch.Tensor | None = None
     label_logits: torch.Tensor | None = None
+    vocab_logits: torch.Tensor | None = None
     relay_state: torch.Tensor | None = None
     output_state: torch.Tensor | None = None
 
@@ -268,6 +269,7 @@ def run_wiki_memory_episode(
     max_question_tokens: int = 256,
     collect_health: bool = False,
     control_mode: str = "late_residual",
+    control_reference: torch.Tensor | None = None,
 ) -> WikiEpisodeResult:
     if state.hidden.shape[0] != 1:
         raise ValueError("wiki memory episodes currently require one lifetime lane")
@@ -305,6 +307,7 @@ def run_wiki_memory_episode(
             write_memory=False,
             collect_health=collect_health,
             control_mode=control_mode,
+            control_reference=control_reference,
         )
     else:
         scored = system.score_next_from_features(
@@ -316,6 +319,7 @@ def run_wiki_memory_episode(
             collect_health=collect_health,
             control_mode=control_mode,
             input_ids=question_ids,
+            control_reference=control_reference,
         )
     labels = label_token_ids(tokenizer, device)
     label_logits = _select_label_logits(scored.logits, labels)
@@ -339,6 +343,7 @@ def run_wiki_memory_episode(
         memory_activity=float(memory.detach().pow(2).mean().sqrt()),
         controls=scored.controls,
         label_logits=label_logits[0],
+        vocab_logits=scored.logits[0],
         relay_state=relay,
         output_state=output,
     )

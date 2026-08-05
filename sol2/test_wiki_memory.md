@@ -30,13 +30,21 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Passage-causal contrast has nonzero gradients only in exposed branches, detaches the
   no-exposure and incompatible-passage baselines, and vanishes only when all four
   target-log-probability advantages exceed the declared margin.
+- Full-vocabulary reverse KL is zero for matching distributions, detaches the teacher,
+  and sends gradients into the student; the control-energy term measures expressed
+  delta amplitude exactly.
+- Passage-visible teacher logits differ for incompatible temporary bindings while
+  remaining frozen and detached.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
   recall, sensor, and effector learning-rate multipliers.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
-  state, corpus identity, update cursor, and the selected language-control mode.
+  state, corpus identity, update cursor, language-control mode, distillation settings,
+  and reference-centering treatment.
 - The matched evaluator emits all eight preregistered causal arms.
+- Reference-centered prefix evaluation makes no-exposure and explicit zero-control
+  arms exact zero deltas.
 - Fixed output codes are deterministic and orthonormal; incompatible paired targets
   deliver distinct gradients into live output tissue and aligned states satisfy the
   training-only probe without adding evaluation fields.

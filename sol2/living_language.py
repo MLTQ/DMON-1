@@ -137,6 +137,7 @@ class LivingLanguageSystem(nn.Module):
         write_memory: bool = True,
         collect_health: bool = False,
         control_mode: str = "late_residual",
+        control_reference: torch.Tensor | None = None,
     ) -> LanguageStep:
         """Absorb a complete prompt and score only its next-token distribution."""
 
@@ -152,6 +153,7 @@ class LivingLanguageSystem(nn.Module):
             collect_health=collect_health,
             control_mode=control_mode,
             input_ids=input_ids,
+            control_reference=control_reference,
         )
 
     def score_next_from_features(
@@ -165,6 +167,7 @@ class LivingLanguageSystem(nn.Module):
         collect_health: bool = False,
         control_mode: str = "late_residual",
         input_ids: torch.Tensor | None = None,
+        control_reference: torch.Tensor | None = None,
     ) -> LanguageStep:
         """Evolve over cached features and score their final next-token distribution."""
 
@@ -178,21 +181,33 @@ class LivingLanguageSystem(nn.Module):
             write_memory=write_memory,
             collect_final_health=collect_health,
         )
+        effective_controls = controls[:, -1]
+        if control_reference is not None:
+            if control_reference.shape != effective_controls.shape:
+                raise ValueError(
+                    "control reference must match [batch, tokens, width] controls"
+                )
+            effective_controls = effective_controls - control_scale * (
+                control_reference.detach().to(
+                    device=effective_controls.device,
+                    dtype=effective_controls.dtype,
+                )
+            )
         if control_mode == "late_residual":
             logits = self.backbone.controlled_logits_from_features(
-                feature_sequence[:, -1:], controls[:, -1]
+                feature_sequence[:, -1:], effective_controls
             )[:, -1]
         elif control_mode == "prefix":
             if input_ids is None:
                 raise ValueError("prefix control requires the original input_ids")
             if input_ids.shape[:2] != feature_sequence.shape[:2]:
                 raise ValueError("prefix input_ids must match cached feature positions")
-            logits = self.backbone.prefix_logits(input_ids, controls[:, -1])[:, -1]
+            logits = self.backbone.prefix_logits(input_ids, effective_controls)[:, -1]
         else:
             raise ValueError(f"unknown language control mode {control_mode!r}")
         return LanguageStep(
             logits=logits,
-            controls=controls[:, -1],
+            controls=effective_controls,
             state=next_state,
             health=health,
         )

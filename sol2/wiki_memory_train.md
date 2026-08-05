@@ -11,7 +11,8 @@ unchanged source-family-disjoint development and held-out facts under causal con
 
 Defines update count, optimizer strength, evaluation/checkpoint intervals, token limits,
 permutation seed, reproducibility seed, and the explicit bounded control gain used by
-the language graft, including the serialized late-residual or prefix control mode.
+the language graft, including serialized late-residual/prefix mode, dense-teacher,
+control-energy, and reference-centering treatments.
 
 ### `counterfactual_training_record`
 
@@ -77,6 +78,22 @@ second differentiable frozen forward with the final organism control bank prepen
 the erased-context question. This lets every transformer layer reason over creature
 output while keeping the ordinary late residual as the backward-compatible default.
 
+### Passage-visible teacher distillation
+
+When explicitly enabled, a detached frozen-Llama teacher sees the temporary passage and
+the identical permuted question in one context. The passage-erased DMON student retains
+its full next-token vocabulary logits and minimizes temperature-scaled reverse KL via
+`wiki_distillation.py`. Teacher label accuracy and paired full-logit separation make an
+uninformative teacher visible before a result is interpreted.
+
+### Reference-centered control delta
+
+When explicitly enabled, a detached no-exposure organism pass supplies the question's
+homeostatic output-organ reference. Exposed, wrong-passage, reset, and lesion arms inject
+only their control minus that reference; zero-scale and the reported no-exposure arm
+remain exact zero. An optional mean-square energy term prices the expressed delta. This is
+experimental common-mode rejection, not a final single-pass anatomy.
+
 ### `organism_gradient_groups`
 
 Reports gradient RMS, participating element count, and tensor count separately for the
@@ -129,6 +146,8 @@ performs independent cellular transitions and language-head control.
 - Records attentive-tract gate magnitude when the optional architecture is enabled.
 - Records four passage-causal advantages, their positive fraction, the matched
   no-exposure task outcome, and the exact count of frozen effector parameters.
+- Records full-vocabulary teacher KL, teacher label accuracy, teacher-pair separation,
+  and effective-delta energy beside the existing causal metrics.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -149,8 +168,9 @@ performs independent cellular transitions and language-head control.
   still drives input and recurrent tissue, but cannot destroy the passage slots.
 - Evaluation starts each question from a matched fresh cellular state. This isolates
   rapid exposure memory from incidental history accumulated by the training lane.
-- Classification loss is restricted to four frozen-head label logits. The backbone
-  stays fully frozen and is never serialized into organism checkpoints.
+- Ordinary classification loss is restricted to four frozen-head label logits;
+  optional teacher credit compares the detached full vocabulary at the same position.
+  The backbone stays fully frozen and is never serialized into organism checkpoints.
 - Causal evaluation caches detached frozen features because recomputing identical Llama
   representations for eight arms dominated the two-update pilot runtime.
 - L0-C1c uses paired separation as an early routing gate: aggregate accuracy is not
@@ -162,6 +182,12 @@ performs independent cellular transitions and language-head control.
   and weight are serialized; evaluation never constructs or consults auxiliary scores.
 - Differential eligibility also defaults to zero. It reuses the fixed codebook only to
   define a paired direction; no target code or teaching drive enters cellular state.
+- Dense teacher credit is a developmental scaffold: the teacher sees the passage only
+  to produce detached training targets. The student and every result-bearing inference
+  arm retain erased Llama context.
+- Reference-centering was introduced after C1o grew a large passage-independent prefix
+  that harmed the frozen-language floor. It is deliberately evaluated before attempting
+  to internalize homeostasis in one organism pass.
 
 ## Contracts
 
@@ -185,6 +211,12 @@ performs independent cellular transitions and language-head control.
 - Eligibility credit has no trainable parameters, detaches its relay gate, and is absent
   from development, held-out evaluation, and inference.
 - Causal passage contrast requires paired counterfactuals and has no inference path.
+- Teacher logits are detached, never serialized into the organism, and never enter
+  cellular state; full-vocabulary KL sends gradients only through student logits.
+- Reference controls are computed from the identical starting state and question,
+  detached before subtraction, and serialized as a treatment flag rather than state.
+- Delta energy prices effective language intervention after reference subtraction, not
+  the organism's raw passage-independent output.
 - Language control mode is checkpointed; prefix evaluation uses matched zero-prefix
   geometry and never restores the exposed passage to Llama context.
 - Frozen-effector mode removes gradients only from the attached language effector;
