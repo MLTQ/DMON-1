@@ -18,6 +18,8 @@ Acts as the mandatory CPU gate before any SOL2 GPU allocation.
 - Zero-gated attentive relay-output transport is bit-exact to the disabled organism,
   recruits gates before its projections, changes output tissue only after opening,
   preserves output sinks, and restores exactly.
+- A serialized nonzero developmental tract gate is exact, bounded, and recruits every
+  attention projection immediately.
 - Gradient flow through every tissue, graph, identity, embedding, and output layer.
 - A nontrivial internal-cell subset receives material private-expression gradient;
   reserve rows are allowed.

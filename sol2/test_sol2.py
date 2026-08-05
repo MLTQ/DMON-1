@@ -280,6 +280,24 @@ def test_zero_gated_relay_output_attention_is_silent_and_recruitable() -> None:
         tract_model.relay_output_transport.gate_logit,
     )
 
+    open_cfg = dataclasses.replace(
+        SMALL,
+        relay_output_attention=True,
+        relay_output_initial_gate=0.25,
+    )
+    open_model = Sol2(open_cfg)
+    assert open_model.relay_output_transport is not None
+    assert abs(open_model.relay_output_transport.gate_rms() - 0.25) < 1e-7
+    assert open_cfg.to_dict()["relay_output_initial_gate"] == 0.25
+    open_message = open_model.relay_output_transport(relay, output)
+    (open_message * probe).sum().backward()
+    assert float(
+        open_model.relay_output_transport.query.weight.grad.abs().sum()
+    ) > 0.0
+    assert float(open_model.relay_output_transport.key.weight.grad.abs().sum()) > 0.0
+    assert float(open_model.relay_output_transport.value.weight.grad.abs().sum()) > 0.0
+    assert float(open_model.relay_output_transport.output.weight.grad.abs().sum()) > 0.0
+
 
 def test_gradient_reaches_every_adaptive_layer() -> None:
     torch.manual_seed(SMALL.seed)

@@ -482,6 +482,7 @@ def build_system(args: argparse.Namespace):
         organ_queries=args.organ_queries,
         relay_output_attention=getattr(args, "relay_output_attention", False),
         relay_output_gain=getattr(args, "relay_output_gain", 1.0),
+        relay_output_initial_gate=getattr(args, "relay_output_initial_gate", 0.0),
         vocab_size=2,
         seed=args.seed,
         device=str(device),
@@ -899,6 +900,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--organ-queries", type=int, default=8)
     parser.add_argument("--relay-output-attention", action="store_true")
     parser.add_argument("--relay-output-gain", type=float, default=1.0)
+    parser.add_argument("--relay-output-initial-gate", type=float, default=0.0)
     parser.add_argument("--control-tokens", type=int, default=8)
     parser.add_argument("--control-rank", type=int, default=16)
     return parser.parse_args()

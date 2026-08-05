@@ -28,8 +28,8 @@ contract for a SOL2 run. The serialized configuration travels with every checkpo
 - `n_mutable` is also the exact number of private-expression rows in identity arms.
 - Positive adapter rank creates exactly one down/up parameter pair per mutable cell;
   adapter gain is nonnegative and the up projection starts at zero.
-- Relay-output attention has positive bounded gain and creates no parameters or state
-  keys when disabled.
+- Relay-output attention has positive bounded gain, a serialized initial gate in
+  `[0,1)`, and creates no parameters or state keys when disabled.
 - `initial_active_dendrites <= n_dendrites`; unused slots are dormant growth capacity.
 - `scaled()` validates the resulting configuration.
 - Training and all controls consume the same optimizer schedule fields.

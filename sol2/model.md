@@ -69,7 +69,8 @@ Counts only trainable parameters for matched controls.
 - An attached organ may content-address memory during a closed-write phase, but recall
   is added only to input sensory drive. It cannot bypass compute/relay or output sinks.
 - The optional relay-output tract uses a private seeded initialization so enabling its
-  exact-zero gate does not perturb legacy parameter initialization or global RNG.
+  default exact-zero gate does not perturb legacy parameter initialization or global
+  RNG. Experiments may serialize a bounded nonzero developmental gate.
 
 ## Contracts
 

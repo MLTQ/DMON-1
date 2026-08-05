@@ -35,6 +35,7 @@ class Sol2Config:
     cell_adapter_gain: float = 0.5
     relay_output_attention: bool = False
     relay_output_gain: float = 1.0
+    relay_output_initial_gate: float = 0.0
 
     # Stream and optimization.
     vocab_size: int = 0
@@ -94,6 +95,8 @@ class Sol2Config:
             raise ValueError("cell adapter rank and gain cannot be negative")
         if self.relay_output_gain <= 0:
             raise ValueError("relay output gain must be positive")
+        if not 0 <= self.relay_output_initial_gate < 1:
+            raise ValueError("relay output initial gate must be in [0, 1)")
         if self.operator_bound <= 0 or self.attention_temperature <= 0:
             raise ValueError("operator bound and attention temperature must be positive")
         if self.schedule not in {"constant", "cosine"}:

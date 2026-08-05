@@ -119,6 +119,7 @@ class Sol2(nn.Module):
                     value_gain=cfg.value_gain,
                     attention_temperature=cfg.attention_temperature,
                     transport_gain=cfg.relay_output_gain,
+                    initial_gate=cfg.relay_output_initial_gate,
                 )
         # Organ A keeps the legacy parameter names so acquisition checkpoints load
         # strictly. Newly attached ports live here and are always selected explicitly.

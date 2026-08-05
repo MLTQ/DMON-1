@@ -49,9 +49,11 @@ avoiding L0-C1h's shared-mixture solution.
 
 ### Optional attentive relay tract
 
-Builds the organism with a zero-gated, per-output-cell cross-attention tract over relay
-tissue when requested. Gate magnitude and a separate `transport` gradient group are
-reported so opening a new anatomical path cannot be inferred from task loss alone.
+Builds the organism with a per-output-cell gated cross-attention tract over relay tissue
+when requested. Gate magnitude and a separate `transport` gradient group are reported
+so opening a new anatomical path cannot be inferred from task loss alone.
+The serialized initial gate may be nonzero for explicitly preregistered developmental
+treatments; zero remains the backward-compatible default.
 
 ### `organism_gradient_groups`
 

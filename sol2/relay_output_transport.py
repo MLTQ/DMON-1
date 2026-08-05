@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import nn
 
@@ -21,10 +23,13 @@ class RelayOutputAttention(nn.Module):
         value_gain: float,
         attention_temperature: float,
         transport_gain: float,
+        initial_gate: float,
     ) -> None:
         super().__init__()
         if n_output < 1 or hidden < 1 or transport_gain <= 0:
             raise ValueError("relay transport dimensions and gain must be positive")
+        if not 0 <= initial_gate < 1:
+            raise ValueError("relay transport initial gate must be in [0, 1)")
         self.hidden = hidden
         self.n_output = n_output
         self.bounded_operators = bounded_operators
@@ -33,7 +38,9 @@ class RelayOutputAttention(nn.Module):
         self.transport_gain = transport_gain
         self.queries = nn.Parameter(torch.empty(n_output, hidden))
         nn.init.normal_(self.queries, std=hidden**-0.5)
-        self.gate_logit = nn.Parameter(torch.zeros(n_output))
+        self.gate_logit = nn.Parameter(
+            torch.full((n_output,), math.atanh(initial_gate))
+        )
         self.query = EffectiveLinear(
             hidden, hidden, bias=False, bounded=bounded_operators, bound=operator_bound
         )

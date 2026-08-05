@@ -1,6 +1,6 @@
 # L0-C1j: attentive relay-to-output tract
 
-Status: protocol frozen 2026-08-05 before implementation or optimizer updates.
+Status: stopped at the frozen update-25 gate on 2026-08-05; update 100 was not run.
 
 ## Question
 
@@ -69,3 +69,40 @@ cells to differentiate rather than share one pooled router. Bounded tract gain i
   isolated change belongs at the zero-residual Llama injection depth.
 - Causal controls order correctly: replicate, move to natural unseen passages, and
   then extend the same organism into multi-turn generation.
+
+## Result
+
+The two-update pilot and exact resume to update 25 completed on the physical RTX 4090.
+The tract recruited a finite dedicated gradient group, opened from exact zero to
+`0.002844` RMS by update 2, and reached `0.011439` at update 25. The frozen Llama again
+had `0` trainable parameters and `0` gradient tensors. The final metrics artifact is
+`l0c1j-attentive-tract-m96-u25-result.json` (SHA-256
+`e56cfd3007bdb6444d7e407fb8e0c8aeaafcd6fec05314861ef3688b07eef747`).
+
+The trailing update 16-25 representation gates failed:
+
+- relay separation averaged `0.00873367` RMS;
+- output separation averaged `0.000808172` RMS;
+- output/relay retention averaged `0.0969600`;
+- target-axis projection averaged `-0.000198968`;
+- tract gate RMS averaged `0.00648050` and ended at `0.0114395`.
+
+Development accuracy was `0.75` in every causal arm and held-out accuracy was `0.375`
+in every causal arm. L0-C1j therefore provides no memory evidence and stops at update
+25.
+
+The read-only gate sweep (`l0c1j-gate-sweep-diagnostic.json`, SHA-256
+`54525b5d4c3b8f5a3b56c0dfdd6118c5581d9006864a18bb3afb7aae3b45302b`)
+replayed four matched incompatible pairs from the saved lifetime lane. Counterfactually
+forcing every tract gate from zero to `0.90` raised output/relay retention only from
+`0.09556` to `0.10629` and output separation from `0.0004686` to `0.0005446`. Target
+projection did become more positive (`0.0000283` to `0.0001688`) but remained far below
+the `0.003` gate. Increasing amplitude after training is therefore insufficient.
+
+This result constrains the exact-zero developmental treatment, not attentive transport
+in general. At a zero gate, only gate parameters receive first-order gradients; query,
+key, value, and output projections remain silent until the route opens. The learned
+gate stayed small long enough that these content parameters never organized a useful
+tract. The next isolated treatment should start the same bounded tract partially open,
+allowing its attention content to learn from the first optimizer update. That test must
+remain fresh and matched rather than mutating this failed checkpoint.
