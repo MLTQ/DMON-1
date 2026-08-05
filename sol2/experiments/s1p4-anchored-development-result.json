@@ -1,0 +1,76 @@
+{
+  "branches": {
+    "plastic": {
+      "a_accuracy": 0.140625,
+      "b_accuracy": 0.9309895833333334,
+      "min_ab_accuracy": 0.140625,
+      "rejected_updates": 0,
+      "a_organ_unchanged": true,
+      "pressure_mean": 0.0,
+      "pressure_max": 0.0,
+      "growth_events": 0,
+      "grown_cells": 0,
+      "growth_b_freeze_penalty": null,
+      "growth_b_adapter_penalty": null,
+      "growth_a_freeze_improvement": null
+    },
+    "uniform_anchor": {
+      "a_accuracy": 0.5091145833333334,
+      "b_accuracy": 0.5729166666666666,
+      "min_ab_accuracy": 0.5091145833333334,
+      "rejected_updates": 0,
+      "a_organ_unchanged": true,
+      "pressure_mean": 0.7910311787116516,
+      "pressure_max": 0.8425496608797018,
+      "growth_events": 0,
+      "grown_cells": 0,
+      "growth_b_freeze_penalty": null,
+      "growth_b_adapter_penalty": null,
+      "growth_a_freeze_improvement": null
+    },
+    "measured_anchor": {
+      "a_accuracy": 0.6399739583333334,
+      "b_accuracy": 0.6009114583333334,
+      "min_ab_accuracy": 0.6009114583333334,
+      "rejected_updates": 0,
+      "a_organ_unchanged": true,
+      "pressure_mean": 0.8900779532693968,
+      "pressure_max": 0.9282405556451819,
+      "growth_events": 0,
+      "grown_cells": 0,
+      "growth_b_freeze_penalty": null,
+      "growth_b_adapter_penalty": null,
+      "growth_a_freeze_improvement": null
+    },
+    "developmental": {
+      "a_accuracy": 0.7239583333333334,
+      "b_accuracy": 0.578125,
+      "min_ab_accuracy": 0.578125,
+      "rejected_updates": 0,
+      "a_organ_unchanged": true,
+      "pressure_mean": 0.885129175832468,
+      "pressure_max": 0.9282405556451819,
+      "growth_events": 2,
+      "grown_cells": 32,
+      "growth_b_freeze_penalty": 0.001953125,
+      "growth_b_adapter_penalty": 0.0032552083333333703,
+      "growth_a_freeze_improvement": 0.001953125
+    }
+  },
+  "contrasts": {
+    "measured_minus_uniform_min_ab": 0.091796875,
+    "developmental_minus_measured_min_ab": -0.02278645833333337
+  },
+  "gates": {
+    "anchored_arm_simultaneous_ab_80": false,
+    "measured_beats_uniform_by_10pp": false,
+    "development_beats_measured_by_10pp": false,
+    "development_triggered": true,
+    "grown_cells_causal_for_b": false,
+    "grown_cells_do_not_merely_harm_a": true,
+    "stable_and_integrity_clean": true
+  },
+  "capability_success": false,
+  "anchor_attribution_success": false,
+  "development_success": false
+}

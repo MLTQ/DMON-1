@@ -1,6 +1,7 @@
 # S1-P4: anchored consolidation and pressure-triggered development
 
-Status: protocol frozen 2026-08-04 before implementation tests or GPU results.
+Status: seed-7 GPU run complete 2026-08-04; anchors improved the retention/adaptation
+frontier, while pressure-triggered growth was mechanically valid but not recruited.
 
 ## Question
 
@@ -106,3 +107,27 @@ development is impossible.
 All result-bearing processes select only physical RTX 4090 UUID
 `GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`. The RTX 2070S remains reserved for other
 work. At most two branches may share the 4090 after memory is measured.
+
+## Seed-7 result
+
+All four branches completed with zero rejected updates and byte-identical A organs.
+The complete aggregate is retained in `s1p4-anchored-development-result.json`.
+
+| Branch | A length 4 | B length 4 | Worst(A,B) | Growth |
+|---|---:|---:|---:|---:|
+| Plastic | 14.06% | 93.10% | 14.06% | none |
+| Uniform anchor | 50.91% | 57.29% | 50.91% | none |
+| Measured anchor | 64.00% | 60.09% | 60.09% | none |
+| Developmental | 72.40% | 57.81% | 57.81% | 32 relay cells |
+
+Measured anchors improved worst-organ accuracy by 9.18 points over uniform anchors,
+just below the frozen 10-point attribution gate. No anchored branch reached simultaneous
+80/80 mastery. This is nevertheless the best observed simultaneous A/B frontier in the
+organ-attachment series and supports cumulative restoring cost over per-step slowing.
+
+The developmental arm triggered twice under high measured pressure and appended 32
+cells without corrupting existing state, anatomy, optimizer moments, or A performance.
+However, freezing the grown cells cost only 0.20 B points and zeroing their adapters cost
+0.33 points. Development therefore passed its mechanical trigger/graft contract but
+failed recruitment and capability gates. Pressure currently detects conflict; it does
+not yet make new tissue the easiest route for reducing that conflict.

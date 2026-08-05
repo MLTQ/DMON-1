@@ -270,6 +270,35 @@ Before any L0-C1g optimizer update, the next isolated treatment is frozen:
 This treatment tests a forward-pass precision bottleneck independently of larger
 organisms, new losses, or direct internal readout.
 
+### L0-C1g update-25 diagnostic and longer-horizon interpretation
+
+L0-C1g completed its frozen update-25 diagnostic on 2026-08-04; the artifact is
+`l0c1g-gain64-m96-u25-result.json`. The two-update pilot cleared the mechanical gate:
+paired control separation was `0.000447`, paired four-label logit separation was
+`0.08838`, every causal gradient group was finite, and peak allocation was 17.25 GiB.
+Thus gain 64 repaired the BF16 forward-pass no-op without changing anatomy.
+
+The short run did not learn content-dependent control. Over updates 1-10, mean control
+and label-logit separation were `0.000447` and `0.00884`; over updates 16-25 they fell
+to `0.000106` and zero. Trailing paired accuracy was 10% and binding loss was 1.44.
+Held-out normal accuracy remained 37.5%, equal to no exposure, reset, wrong passage,
+memory lesion, and internal lesion. Normal loss improved slightly over no exposure
+(1.185 versus 1.197), but wrong-passage loss was identical to normal, so this is an
+exposure effect rather than evidence of retrieved content.
+
+Post-stop matched-state diagnostics still found large incompatible-branch separation
+in memory (`0.2816` RMS) and measurable internal separation (`0.00551`), collapsing to
+`0.000393` in output cells. Gain 64 amplified the resulting control difference but did
+not train it into the correct answer direction within this horizon.
+
+The update-25 gate was intentionally an early routing diagnostic, not a fair learning
+horizon. With 12 meta-training questions it provides only about two visits per question,
+while the organism must learn memory addressing, recurrent transport, output-tissue
+expression, and the frozen Llama head's control geometry jointly. The next run therefore
+continues this exact checkpoint exploratorily to 300 updates with evaluations every 50.
+Because this extension was chosen after seeing the update-25 result, it is reported as
+hypothesis-generating and cannot retroactively count as passing the frozen short gate.
+
 ## Episode
 
 For one lifetime lane:
