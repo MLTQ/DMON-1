@@ -42,6 +42,10 @@ from .wiki_distillation import (
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
+from .wiki_semantic_credit import (
+    fixed_semantic_projection,
+    paired_tissue_semantic_credit,
+)
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,10 @@ class WikiMemoryTrainConfig:
     teacher_distillation_weight: float = 0.0
     teacher_effect_distillation_weight: float = 0.0
     teacher_distillation_temperature: float = 1.0
+    memory_semantic_credit_weight: float = 0.0
+    relay_semantic_credit_weight: float = 0.0
+    semantic_credit_target_rms: float = 0.25
+    semantic_credit_seed: int = 307
     control_energy_weight: float = 0.0
     reference_centered_controls: bool = False
     freeze_effector_updates: bool = False
@@ -102,6 +110,18 @@ class WikiMemoryTrainConfig:
             raise ValueError("teacher effect distillation weight must be nonnegative")
         if self.teacher_distillation_temperature <= 0:
             raise ValueError("teacher distillation temperature must be positive")
+        if min(
+            self.memory_semantic_credit_weight,
+            self.relay_semantic_credit_weight,
+        ) < 0:
+            raise ValueError("semantic credit weights must be nonnegative")
+        if (
+            self.memory_semantic_credit_weight > 0
+            or self.relay_semantic_credit_weight > 0
+        ) and not self.paired_counterfactual:
+            raise ValueError("semantic credit requires paired counterfactual training")
+        if self.semantic_credit_target_rms <= 0:
+            raise ValueError("semantic credit target RMS must be positive")
         if self.control_energy_weight < 0:
             raise ValueError("control energy weight must be nonnegative")
         if self.language_control_mode not in {"late_residual", "prefix"}:
@@ -150,6 +170,31 @@ def counterfactual_training_record(
 
 
 @torch.no_grad()
+def passage_visible_teacher_outputs(
+    system: LivingLanguageSystem,
+    tokenizer: Any,
+    document: WikiDocument,
+    question: WikiQuestion,
+    *,
+    permutation_seed: int,
+    max_memory_tokens: int,
+    max_question_tokens: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return final contextual features and logits with a visible passage."""
+
+    device = next(system.organism.parameters()).device
+    formatted = format_wiki_question(question, permutation_seed=permutation_seed)
+    teacher_ids = encode_text(
+        tokenizer,
+        f"{document.memory}\n\n{formatted.prompt}",
+        device,
+        max_tokens=max_memory_tokens + max_question_tokens + 16,
+    )
+    features = system.backbone.encode(teacher_ids)
+    logits = system.backbone.controlled_logits_from_features(features[:, -1:])
+    return features[:, -1].detach(), logits[0, -1].detach()
+
+
 def passage_visible_teacher_logits(
     system: LivingLanguageSystem,
     tokenizer: Any,
@@ -162,18 +207,41 @@ def passage_visible_teacher_logits(
 ) -> torch.Tensor:
     """Score the full vocabulary while the frozen teacher can see the passage."""
 
+    return passage_visible_teacher_outputs(
+        system,
+        tokenizer,
+        document,
+        question,
+        permutation_seed=permutation_seed,
+        max_memory_tokens=max_memory_tokens,
+        max_question_tokens=max_question_tokens,
+    )[1]
+
+
+@torch.no_grad()
+def question_only_teacher_outputs(
+    system: LivingLanguageSystem,
+    tokenizer: Any,
+    question: WikiQuestion,
+    *,
+    permutation_seed: int,
+    max_question_tokens: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return final contextual features and logits without a passage."""
+
     device = next(system.organism.parameters()).device
     formatted = format_wiki_question(question, permutation_seed=permutation_seed)
     teacher_ids = encode_text(
         tokenizer,
-        f"{document.memory}\n\n{formatted.prompt}",
+        formatted.prompt,
         device,
-        max_tokens=max_memory_tokens + max_question_tokens + 16,
+        max_tokens=max_question_tokens,
     )
-    return system.backbone.controlled_logits(teacher_ids)[0, -1].detach()
+    features = system.backbone.encode(teacher_ids)
+    logits = system.backbone.controlled_logits_from_features(features[:, -1:])
+    return features[:, -1].detach(), logits[0, -1].detach()
 
 
-@torch.no_grad()
 def question_only_teacher_logits(
     system: LivingLanguageSystem,
     tokenizer: Any,
@@ -184,15 +252,13 @@ def question_only_teacher_logits(
 ) -> torch.Tensor:
     """Score the frozen teacher on the identical question without its passage."""
 
-    device = next(system.organism.parameters()).device
-    formatted = format_wiki_question(question, permutation_seed=permutation_seed)
-    teacher_ids = encode_text(
+    return question_only_teacher_outputs(
+        system,
         tokenizer,
-        formatted.prompt,
-        device,
-        max_tokens=max_question_tokens,
-    )
-    return system.backbone.controlled_logits(teacher_ids)[0, -1].detach()
+        question,
+        permutation_seed=permutation_seed,
+        max_question_tokens=max_question_tokens,
+    )[1]
 
 
 def counterfactual_training_pair(
@@ -682,6 +748,10 @@ def run_training(args: argparse.Namespace) -> dict:
             args.teacher_effect_distillation_weight
         ),
         teacher_distillation_temperature=args.teacher_distillation_temperature,
+        memory_semantic_credit_weight=args.memory_semantic_credit_weight,
+        relay_semantic_credit_weight=args.relay_semantic_credit_weight,
+        semantic_credit_target_rms=args.semantic_credit_target_rms,
+        semantic_credit_seed=args.semantic_credit_seed,
         control_energy_weight=args.control_energy_weight,
         reference_centered_controls=args.reference_centered_controls,
         freeze_effector_updates=args.freeze_effector_updates,
@@ -716,6 +786,18 @@ def run_training(args: argparse.Namespace) -> dict:
     output_codebook = fixed_output_codebook(
         organism_config.hidden,
         seed=train_config.output_credit_seed,
+        device=args.device,
+    )
+    memory_semantic_projection = fixed_semantic_projection(
+        system.backbone.width,
+        organism_config.hidden,
+        seed=train_config.semantic_credit_seed,
+        device=args.device,
+    )
+    relay_semantic_projection = fixed_semantic_projection(
+        system.backbone.width,
+        organism_config.hidden,
+        seed=train_config.semantic_credit_seed + 1,
         device=args.device,
     )
     checkpoint_path = args.out_dir / "checkpoint.pt"
@@ -757,14 +839,37 @@ def run_training(args: argparse.Namespace) -> dict:
             )
         optimizer.zero_grad(set_to_none=True)
         permutation_seed = train_config.permutation_seed + update
+        formatted_question = format_wiki_question(
+            training_records[0][1], permutation_seed=permutation_seed
+        )
+        training_question_ids = encode_text(
+            tokenizer,
+            formatted_question.prompt,
+            lane_state.hidden.device,
+            max_tokens=train_config.max_question_tokens,
+        )
+        training_question_features = system.backbone.encode(training_question_ids)
+        training_exposure_features = [
+            system.backbone.encode(
+                encode_text(
+                    tokenizer,
+                    training_document.memory,
+                    lane_state.hidden.device,
+                    max_tokens=train_config.max_memory_tokens,
+                )
+            )
+            for training_document, _ in training_records
+        ]
+        teacher_features: list[torch.Tensor] = []
         teacher_logits: list[torch.Tensor] = []
         teacher_enabled = (
             train_config.teacher_distillation_weight > 0
             or train_config.teacher_effect_distillation_weight > 0
+            or train_config.relay_semantic_credit_weight > 0
         )
         if teacher_enabled:
-            teacher_logits = [
-                passage_visible_teacher_logits(
+            teacher_outputs = [
+                passage_visible_teacher_outputs(
                     system,
                     tokenizer,
                     training_document,
@@ -775,9 +880,18 @@ def run_training(args: argparse.Namespace) -> dict:
                 )
                 for training_document, training_question in training_records
             ]
+            teacher_features = [output[0] for output in teacher_outputs]
+            teacher_logits = [output[1] for output in teacher_outputs]
+        teacher_baseline_features = None
         teacher_baseline_logits = None
-        if train_config.teacher_effect_distillation_weight > 0:
-            teacher_baseline_logits = question_only_teacher_logits(
+        if (
+            train_config.teacher_effect_distillation_weight > 0
+            or train_config.relay_semantic_credit_weight > 0
+        ):
+            (
+                teacher_baseline_features,
+                teacher_baseline_logits,
+            ) = question_only_teacher_outputs(
                 system,
                 tokenizer,
                 training_records[0][1],
@@ -795,6 +909,8 @@ def run_training(args: argparse.Namespace) -> dict:
                     lane_state,
                     permutation_seed=permutation_seed,
                     expose=False,
+                    question_features=training_question_features,
+                    question_ids=training_question_ids,
                     max_memory_tokens=train_config.max_memory_tokens,
                     max_question_tokens=train_config.max_question_tokens,
                     control_mode=train_config.language_control_mode,
@@ -803,7 +919,10 @@ def run_training(args: argparse.Namespace) -> dict:
                 raise RuntimeError("reference episode did not emit controls")
             control_reference = raw_reference.controls.detach()
         branch_results = []
-        for training_document, training_question in training_records:
+        for (
+            (training_document, training_question),
+            exposure_features,
+        ) in zip(training_records, training_exposure_features):
             branch_result = run_wiki_memory_episode(
                 system,
                 tokenizer,
@@ -811,6 +930,9 @@ def run_training(args: argparse.Namespace) -> dict:
                 training_question,
                 lane_state,
                 permutation_seed=permutation_seed,
+                exposure_features=exposure_features,
+                question_features=training_question_features,
+                question_ids=training_question_ids,
                 max_memory_tokens=train_config.max_memory_tokens,
                 max_question_tokens=train_config.max_question_tokens,
                 control_mode=train_config.language_control_mode,
@@ -831,6 +953,8 @@ def run_training(args: argparse.Namespace) -> dict:
                     lane_state,
                     permutation_seed=permutation_seed,
                     expose=False,
+                    question_features=training_question_features,
+                    question_ids=training_question_ids,
                     control_scale=(
                         0.0 if train_config.reference_centered_controls else 1.0
                     ),
@@ -848,6 +972,14 @@ def run_training(args: argparse.Namespace) -> dict:
         student_effect_rms = task_loss.new_zeros(())
         teacher_effect_pair_separation_rms = task_loss.new_zeros(())
         student_effect_pair_separation_rms = task_loss.new_zeros(())
+        memory_semantic_credit_loss = task_loss.new_zeros(())
+        memory_semantic_separation_rms = task_loss.new_zeros(())
+        memory_semantic_alignment = task_loss.new_zeros(())
+        memory_teacher_projection_rms = task_loss.new_zeros(())
+        relay_semantic_credit_loss = task_loss.new_zeros(())
+        relay_semantic_separation_rms = task_loss.new_zeros(())
+        relay_semantic_alignment = task_loss.new_zeros(())
+        relay_teacher_projection_rms = task_loss.new_zeros(())
         if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
@@ -921,6 +1053,52 @@ def run_training(args: argparse.Namespace) -> dict:
                 student_effect_pair_separation_rms = (
                     student_effects[0] - student_effects[1]
                 ).pow(2).mean().sqrt()
+        if train_config.memory_semantic_credit_weight > 0:
+            if len(branch_results) != 2 or len(training_exposure_features) != 2:
+                raise RuntimeError("memory semantic credit requires a paired update")
+            if any(
+                branch.exposure_memory_state is None for branch in branch_results
+            ):
+                raise RuntimeError("memory semantic credit requires exposure state")
+            (
+                memory_semantic_credit_loss,
+                memory_semantic_separation_rms,
+                memory_semantic_alignment,
+                memory_teacher_projection_rms,
+            ) = paired_tissue_semantic_credit(
+                branch_results[0].exposure_memory_state,
+                branch_results[1].exposure_memory_state,
+                training_exposure_features[0][:, -1],
+                training_exposure_features[1][:, -1],
+                memory_semantic_projection,
+                target_rms=train_config.semantic_credit_target_rms,
+            )
+        if train_config.relay_semantic_credit_weight > 0:
+            if (
+                len(branch_results) != 2
+                or len(teacher_features) != 2
+                or teacher_baseline_features is None
+            ):
+                raise RuntimeError("relay semantic credit requires paired teacher effects")
+            if any(branch.relay_state is None for branch in branch_results):
+                raise RuntimeError("relay semantic credit requires relay state")
+            teacher_feature_effects = [
+                feature.float() - teacher_baseline_features.float()
+                for feature in teacher_features
+            ]
+            (
+                relay_semantic_credit_loss,
+                relay_semantic_separation_rms,
+                relay_semantic_alignment,
+                relay_teacher_projection_rms,
+            ) = paired_tissue_semantic_credit(
+                branch_results[0].relay_state,
+                branch_results[1].relay_state,
+                teacher_feature_effects[0],
+                teacher_feature_effects[1],
+                relay_semantic_projection,
+                target_rms=train_config.semantic_credit_target_rms,
+            )
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
         control_energy_loss = torch.stack(
@@ -991,6 +1169,10 @@ def run_training(args: argparse.Namespace) -> dict:
             * teacher_distillation_loss
             + train_config.teacher_effect_distillation_weight
             * teacher_effect_distillation_loss
+            + train_config.memory_semantic_credit_weight
+            * memory_semantic_credit_loss
+            + train_config.relay_semantic_credit_weight
+            * relay_semantic_credit_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
@@ -1068,6 +1250,30 @@ def run_training(args: argparse.Namespace) -> dict:
             "student_effect_pair_separation_rms": float(
                 student_effect_pair_separation_rms.detach()
             ),
+            "memory_semantic_credit_loss": float(
+                memory_semantic_credit_loss.detach()
+            ),
+            "memory_semantic_separation_rms": float(
+                memory_semantic_separation_rms.detach()
+            ),
+            "memory_semantic_alignment": float(
+                memory_semantic_alignment.detach()
+            ),
+            "memory_teacher_projection_rms": float(
+                memory_teacher_projection_rms.detach()
+            ),
+            "relay_semantic_credit_loss": float(
+                relay_semantic_credit_loss.detach()
+            ),
+            "relay_semantic_separation_rms": float(
+                relay_semantic_separation_rms.detach()
+            ),
+            "relay_semantic_alignment": float(
+                relay_semantic_alignment.detach()
+            ),
+            "relay_teacher_projection_rms": float(
+                relay_teacher_projection_rms.detach()
+            ),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
@@ -1124,6 +1330,10 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"effect={row['teacher_effect_distillation_loss']:.4f} "
                 f"teacher_effect={row['teacher_effect_rms']:.4f} "
                 f"student_effect={row['student_effect_rms']:.4f} "
+                f"memory_sem={row['memory_semantic_credit_loss']:.4f} "
+                f"memory_align={row['memory_semantic_alignment']:.3f} "
+                f"relay_sem={row['relay_semantic_credit_loss']:.4f} "
+                f"relay_align={row['relay_semantic_alignment']:.3f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1287,6 +1497,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--teacher-distillation-temperature", type=float, default=1.0
     )
+    parser.add_argument("--memory-semantic-credit-weight", type=float, default=0.0)
+    parser.add_argument("--relay-semantic-credit-weight", type=float, default=0.0)
+    parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)
+    parser.add_argument("--semantic-credit-seed", type=int, default=307)
     parser.add_argument("--control-energy-weight", type=float, default=0.0)
     parser.add_argument("--reference-centered-controls", action="store_true")
     parser.add_argument("--freeze-effector-updates", action="store_true")

@@ -41,13 +41,18 @@ from .wiki_memory_train import (
     organism_gradient_groups,
     organism_optimizer_groups,
     paired_binding_margin_loss,
-    passage_visible_teacher_logits,
-    question_only_teacher_logits,
+    passage_visible_teacher_outputs,
+    question_only_teacher_outputs,
     require_finite_organism_gradients,
     save_wiki_memory_checkpoint,
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
+from .wiki_semantic_credit import (
+    fixed_semantic_projection,
+    paired_tissue_semantic_credit,
+    semantic_target_delta,
+)
 
 
 DATA_PATH = Path(__file__).with_name("experiments") / "l0c1-wiki-memory-corpus.json"
@@ -233,7 +238,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
     left, right = counterfactual_training_pair(
         document, question, epoch=0, compact=True
     )
-    left_teacher = passage_visible_teacher_logits(
+    left_features, left_teacher = passage_visible_teacher_outputs(
         system,
         tokenizer,
         left[0],
@@ -243,7 +248,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_question_tokens=256,
     )
     left_teacher_input = tokenizer.texts[-1]
-    right_teacher = passage_visible_teacher_logits(
+    right_features, right_teacher = passage_visible_teacher_outputs(
         system,
         tokenizer,
         right[0],
@@ -253,7 +258,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_question_tokens=256,
     )
     right_teacher_input = tokenizer.texts[-1]
-    baseline_teacher = question_only_teacher_logits(
+    baseline_features, baseline_teacher = question_only_teacher_outputs(
         system,
         tokenizer,
         left[1],
@@ -263,9 +268,19 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
     baseline_teacher_input = tokenizer.texts[-1]
     assert left_teacher.shape == (system.backbone.vocab_size,)
     assert baseline_teacher.shape == left_teacher.shape
+    assert left_features.shape == (1, system.backbone.width)
+    assert right_features.shape == left_features.shape
+    assert baseline_features.shape == left_features.shape
     assert not any(
         logits.requires_grad
-        for logits in (left_teacher, right_teacher, baseline_teacher)
+        for logits in (
+            left_features,
+            right_features,
+            baseline_features,
+            left_teacher,
+            right_teacher,
+            baseline_teacher,
+        )
     )
     assert left[0].memory in left_teacher_input
     assert right[0].memory in right_teacher_input
@@ -274,6 +289,86 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
     assert right[0].memory not in baseline_teacher_input
     formatted = format_wiki_question(left[1], permutation_seed=19)
     assert baseline_teacher_input == formatted.prompt
+
+
+def test_local_semantic_credit_is_differential_and_detached() -> None:
+    try:
+        WikiMemoryTrainConfig(memory_semantic_credit_weight=1.0).validate()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("semantic credit accepted an unpaired training schedule")
+    WikiMemoryTrainConfig(
+        paired_counterfactual=True,
+        memory_semantic_credit_weight=4.0,
+        relay_semantic_credit_weight=4.0,
+    ).validate()
+
+    projection = fixed_semantic_projection(5, 3, seed=307)
+    repeated = fixed_semantic_projection(5, 3, seed=307)
+    changed = fixed_semantic_projection(5, 3, seed=308)
+    assert torch.equal(projection, repeated)
+    assert not torch.equal(projection, changed)
+    assert projection.requires_grad is False
+
+    left_teacher = torch.tensor(
+        [[1.0, -0.5, 0.25, 0.75, -1.0]], requires_grad=True
+    )
+    right_teacher = torch.tensor(
+        [[-0.25, 0.5, -0.75, 0.0, 0.25]], requires_grad=True
+    )
+    target, raw_target_rms = semantic_target_delta(
+        left_teacher,
+        right_teacher,
+        projection,
+        target_rms=0.25,
+    )
+    assert abs(float(target.pow(2).mean().sqrt()) - 0.25) < 1e-6
+    assert float(raw_target_rms) > 0.0
+    assert target.requires_grad is False
+
+    left_state = torch.zeros(1, 2, 3, requires_grad=True)
+    right_state = torch.zeros(1, 2, 3, requires_grad=True)
+    loss, separation, alignment, measured_raw_rms = paired_tissue_semantic_credit(
+        left_state,
+        right_state,
+        left_teacher,
+        right_teacher,
+        projection,
+        target_rms=0.25,
+    )
+    assert abs(float(loss.detach()) - 0.25**2) < 1e-6
+    assert float(separation.detach()) == 0.0
+    assert float(alignment.detach()) == 0.0
+    assert torch.equal(raw_target_rms, measured_raw_rms)
+    loss.backward()
+    assert left_state.grad is not None and right_state.grad is not None
+    assert float(left_state.grad.abs().sum()) > 0.0
+    assert torch.allclose(left_state.grad, -right_state.grad)
+    assert left_teacher.grad is None and right_teacher.grad is None
+
+    swapped = paired_tissue_semantic_credit(
+        right_state.detach(),
+        left_state.detach(),
+        right_teacher,
+        left_teacher,
+        projection,
+        target_rms=0.25,
+    )[0]
+    assert torch.equal(loss.detach(), swapped.detach())
+
+    aligned_left = target[:, None, :].expand(-1, 2, -1) / 2
+    aligned_right = -aligned_left
+    aligned_loss, _, aligned_cosine, _ = paired_tissue_semantic_credit(
+        aligned_left,
+        aligned_right,
+        left_teacher,
+        right_teacher,
+        projection,
+        target_rms=0.25,
+    )
+    assert float(aligned_loss) < 1e-12
+    assert abs(float(aligned_cosine) - 1.0) < 1e-6
 
 
 def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
@@ -304,6 +399,12 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert result.output_state.shape == (1, LANGUAGE_CFG.n_output, LANGUAGE_CFG.hidden)
     assert result.relay_state is not None
     assert result.relay_state.shape == (1, LANGUAGE_CFG.n_relay, LANGUAGE_CFG.hidden)
+    assert result.exposure_memory_state is not None
+    assert result.exposure_memory_state.shape == (
+        1,
+        LANGUAGE_CFG.n_memory,
+        LANGUAGE_CFG.hidden,
+    )
     assert abs(sum(result.label_log_probs.values())) > 0.0
     result.loss.backward()
     assert organ.output.decoder.weight.grad is not None
@@ -394,6 +495,7 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
         permutation_seed=3,
         expose=False,
     )
+    assert no_exposure.exposure_memory_state is None
     reset = run_wiki_memory_episode(
         system,
         tokenizer,
@@ -656,6 +758,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
             organism_config=LANGUAGE_CFG,
             train_config=WikiMemoryTrainConfig(
                 updates=2,
+                paired_counterfactual=True,
                 output_credit_weight=1.0,
                 output_credit_scale=4.0,
                 output_credit_seed=211,
@@ -667,6 +770,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 teacher_distillation_weight=1.0,
                 teacher_effect_distillation_weight=2.0,
                 teacher_distillation_temperature=0.75,
+                memory_semantic_credit_weight=4.0,
+                relay_semantic_credit_weight=4.0,
+                semantic_credit_target_rms=0.25,
+                semantic_credit_seed=307,
                 control_energy_weight=0.1,
                 reference_centered_controls=True,
             ),
@@ -697,6 +804,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["teacher_distillation_weight"] == 1.0
         assert payload["train_config"]["teacher_effect_distillation_weight"] == 2.0
         assert payload["train_config"]["teacher_distillation_temperature"] == 0.75
+        assert payload["train_config"]["memory_semantic_credit_weight"] == 4.0
+        assert payload["train_config"]["relay_semantic_credit_weight"] == 4.0
+        assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
+        assert payload["train_config"]["semantic_credit_seed"] == 307
         assert payload["train_config"]["control_energy_weight"] == 0.1
         assert payload["train_config"]["reference_centered_controls"] is True
         assert torch.equal(restored_state.hidden, lane_state.hidden)
@@ -758,6 +869,7 @@ def main() -> None:
         test_backbone_binding_summary_retains_probability_margin_and_separation,
         test_source_hash_and_question_permutation_are_exact,
         test_dense_teacher_credit_is_detached_and_passage_visible,
+        test_local_semantic_credit_is_differential_and_detached,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,
         test_causal_evaluator_runs_matched_arms,

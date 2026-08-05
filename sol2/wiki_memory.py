@@ -70,6 +70,7 @@ class WikiEpisodeResult:
     controls: torch.Tensor | None = None
     label_logits: torch.Tensor | None = None
     vocab_logits: torch.Tensor | None = None
+    exposure_memory_state: torch.Tensor | None = None
     relay_state: torch.Tensor | None = None
     output_state: torch.Tensor | None = None
 
@@ -275,6 +276,7 @@ def run_wiki_memory_episode(
         raise ValueError("wiki memory episodes currently require one lifetime lane")
     device = state.hidden.device
     next_state = state
+    exposure_memory_state = None
     if expose:
         exposed = document if exposure_document is None else exposure_document
         if exposure_features is None:
@@ -286,6 +288,9 @@ def run_wiki_memory_episode(
             next_state, _ = system.observe_feature_sequence(
                 exposure_features, next_state
             )
+        exposure_memory_state = next_state.hidden[
+            :, system.organism.memory_idx
+        ]
     if reset_after_exposure:
         next_state = system.initial_state(state.hidden.shape[0], device)
     elif memory_lesion:
@@ -344,6 +349,7 @@ def run_wiki_memory_episode(
         controls=scored.controls,
         label_logits=label_logits[0],
         vocab_logits=scored.logits[0],
+        exposure_memory_state=exposure_memory_state,
         relay_state=relay,
         output_state=output,
     )

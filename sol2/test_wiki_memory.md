@@ -43,13 +43,20 @@ transitions, and gradient ownership before using the real wiki or 4090.
   preflight gate rather than a toy-tokenizer assumption.
 - Question-only teacher input contains the identical formatted question and excludes
   both incompatible passage annotations.
+- Frozen-teacher helpers expose detached final contextual features as well as logits.
+- Seeded semantic projections reproduce exactly; paired local semantic credit detaches
+  Qwen targets, gives identical cellular endpoints opposing gradients, is invariant to
+  branch order, and reaches zero on an aligned differential state.
+- Wiki episodes expose live post-passage memory tissue before question/reset/lesion
+  operations and return no such tensor for no-exposure arms.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
   recall, sensor, and effector learning-rate multipliers.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, update cursor, language-control mode, distillation settings,
-  effect-distillation weight, and reference-centering treatment.
+  effect-distillation weight, local semantic-credit configuration, and
+  reference-centering treatment.
 - The matched evaluator emits all eight preregistered causal arms.
 - Reference-centered prefix evaluation makes no-exposure and explicit zero-control
   arms exact zero deltas.

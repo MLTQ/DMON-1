@@ -13,6 +13,8 @@ Defines update count, optimizer strength, evaluation/checkpoint intervals, token
 permutation seed, reproducibility seed, and the explicit bounded control gain used by
 the language graft, including serialized late-residual/prefix mode, dense-teacher,
 passage-effect, control-energy, and reference-centering treatments.
+Local memory/relay semantic-credit weights, fixed projection seed, and target RMS are
+also serialized so developmental scaffolding cannot drift across resume.
 
 ### `counterfactual_training_record`
 
@@ -101,6 +103,21 @@ Telemetry separately reports teacher/student effect RMS and paired effect separa
 The question-only teacher and zero-prefix student baselines never receive gradients or
 enter organism state.
 
+### Differential local semantic credit
+
+When explicitly enabled, `wiki_semantic_credit.py` aligns two live paired tissue
+differences with detached frozen-Qwen contextual differences:
+
+- post-exposure memory tissue matches the final contextual difference between the two
+  incompatible passages before any question is processed;
+- post-question relay tissue matches the difference between the two passage-visible
+  teacher effects relative to the same question-only baseline.
+
+Both use deterministic parameter-free Qwen-width projections and constrain only the
+paired delta, not either branch's absolute representation. The memory capture occurs
+before reset/lesion/question operations. Teacher vectors, projection axes, targets,
+losses, and telemetry have no evaluation or inference path.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's
@@ -165,6 +182,8 @@ performs independent cellular transitions and language-head control.
   and effective-delta energy beside the existing causal metrics.
 - Records passage-effect KL, teacher/student effect RMS, and paired effect separation
   when the effect-only treatment is enabled.
+- Records memory/relay semantic losses, live paired separation, target cosine
+  alignment, and pre-normalization teacher projection RMS when local credit is enabled.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -205,6 +224,9 @@ performs independent cellular transitions and language-head control.
 - Reference-centering was introduced after C1o grew a large passage-independent prefix
   that harmed the frozen-language floor. It is deliberately evaluated before attempting
   to internalize homeostasis in one organism pass.
+- C1t local credit follows C1s's nonzero output-effect/vanishing-upstream result. It
+  keeps Qwen contextual states as sensory input and uses differential developmental
+  losses to assign credit at the time and tissue where storage and recall occur.
 
 ## Contracts
 
@@ -232,6 +254,12 @@ performs independent cellular transitions and language-head control.
   cellular state; full-vocabulary KL sends gradients only through student logits.
 - Passage-effect targets detach the student baseline and both teacher paths; only the
   conditioned exposed student receives effect-loss gradients.
+- Semantic projections are deterministic non-parameters. Teacher contextual features
+  and target axes detach; local losses can update only live paired organism states and
+  require paired counterfactual training.
+- Memory semantic credit observes post-exposure tissue before question processing;
+  relay semantic credit observes post-question relay tissue while the teacher's
+  passage remains absent from the student language context.
 - Reference controls are computed from the identical starting state and question,
   detached before subtraction, and serialized as a treatment flag rather than state.
 - Delta energy prices effective language intervention after reference subtraction, not

@@ -50,8 +50,9 @@ feature is sent through the vocabulary head.
   the passage slots that the intervention is intended to test.
 - Retains live control and four-label logit tensors for paired-branch separation
   measurement, optionally retains the live full-vocabulary next-token logits for dense
-  teacher credit, and exposes final relay/output-tissue states for training-only causal
-  credit while serializing only detached scalar telemetry.
+  teacher credit, captures live memory tissue immediately after exposure and before
+  reset/question operations, and exposes final relay/output-tissue states for
+  training-only causal credit while serializing only detached scalar telemetry.
 
 ### `summarize_results`
 
@@ -74,6 +75,9 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   passage memory under test.
 - Prefix controls are emitted only after the question-perception phase, implementing a
   turn-level perceive-then-express cycle without putting passage text back in context.
+- Exposure-memory capture is an observation of the existing state tensor, not another
+  write, readout, or inference route. It exists so developmental losses can be
+  temporally assigned before question processing.
 
 ## Contracts
 
@@ -90,6 +94,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   Llama.
 - A supplied control reference is detached and affects only language decoding. It does
   not change exposure, cellular dynamics, memory contents, or the continuing state.
+- `exposure_memory_state` is `None` without exposure and otherwise refers to live
+  post-exposure memory cells before any requested reset or lesion.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.
