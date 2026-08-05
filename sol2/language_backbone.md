@@ -16,6 +16,8 @@ A structural protocol exposing only:
 - contextual feature extraction for sensory input, and
 - language logits under optional continuous control tokens, including decoding from
   already-computed frozen features and one distinct control bank per sequence position.
+- full frozen-transformer decoding with continuous controls prepended as input
+  embeddings before every layer.
 
 ### `ToyFrozenLanguageBackbone`
 
@@ -36,6 +38,8 @@ A structural protocol exposing only:
 - Loads current Hugging Face checkpoints lazily through `from_pretrained`.
 - Measures generic-head versus native-logit parity with `native_logit_error`; models
   with extra architecture-specific logit transforms require a specialized adapter.
+- Can rerun ordinary input embeddings behind a differentiable creature prefix while
+  keeping every model parameter frozen.
 
 ## Decisions
 
@@ -57,6 +61,9 @@ A structural protocol exposing only:
   backbone forward under `no_grad`, avoids a second transformer pass, and still gives
   the organism a differentiable path through the frozen language head. Deeper
   zero-residual injection remains an empirical extension, not a prerequisite.
+- Prefix mode deliberately uses a second frozen forward after SOL2 perceives the turn.
+  Exact-zero continuous prefixes form its matched language floor; they are not claimed
+  to reproduce native no-prefix logits because prefix positions remain present.
 
 ## Contracts
 
@@ -68,5 +75,7 @@ A structural protocol exposing only:
 - Adapters convert controls to the frozen feature device and dtype before attention.
 - Frozen parameters never receive gradients or optimizer updates.
 - Language loss remains differentiable with respect to non-detached controls.
+- Prefix decoding returns logits only for ordinary tokens, excluding virtual-prefix
+  positions, and gradients may reach controls but never frozen model parameters.
 - A production checkpoint is accepted only after `native_logit_error` is within its
   numeric tolerance; otherwise its language head needs a model-specific wrapper.

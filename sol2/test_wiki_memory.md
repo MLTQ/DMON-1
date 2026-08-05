@@ -14,6 +14,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - All four answer labels are exactly one token in the fixture tokenizer.
 - Passage exposure advances persistent state while baseline scoring does not.
 - Wiki-episode loss recruits the continuous graft and never creates backbone gradients.
+- Pre-transformer prefix episodes recruit the output decoder through the frozen
+  backbone and the matched causal evaluator preserves all eight intervention arms.
 - No-exposure and reset causal arms traverse the same exact scorer.
 - Aggregate metrics remain bounded and auditable.
 - Counterfactual targets vary deterministically by epoch.
@@ -31,7 +33,7 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
   recall, sensor, and effector learning-rate multipliers.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
-  state, corpus identity, and update cursor.
+  state, corpus identity, update cursor, and the selected language-control mode.
 - The matched evaluator emits all eight preregistered causal arms.
 - Fixed output codes are deterministic and orthonormal; incompatible paired targets
   deliver distinct gradients into live output tissue and aligned states satisfy the

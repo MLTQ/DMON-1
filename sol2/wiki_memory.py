@@ -257,6 +257,7 @@ def run_wiki_memory_episode(
     exposure_document: WikiDocument | None = None,
     exposure_features: torch.Tensor | None = None,
     question_features: torch.Tensor | None = None,
+    question_ids: torch.Tensor | None = None,
     expose: bool = True,
     reset_after_exposure: bool = False,
     memory_lesion: bool = False,
@@ -266,6 +267,7 @@ def run_wiki_memory_episode(
     max_memory_tokens: int = 256,
     max_question_tokens: int = 256,
     collect_health: bool = False,
+    control_mode: str = "late_residual",
 ) -> WikiEpisodeResult:
     if state.hidden.shape[0] != 1:
         raise ValueError("wiki memory episodes currently require one lifetime lane")
@@ -290,10 +292,11 @@ def run_wiki_memory_episode(
     formatted = format_wiki_question(
         question, permutation_seed=permutation_seed, paraphrase=paraphrase
     )
-    if question_features is None:
+    if question_ids is None:
         question_ids = encode_text(
             tokenizer, formatted.prompt, device, max_tokens=max_question_tokens
         )
+    if question_features is None:
         scored = system.score_next_after_sequence(
             question_ids,
             next_state,
@@ -301,6 +304,7 @@ def run_wiki_memory_episode(
             frozen_idx=frozen_idx,
             write_memory=False,
             collect_health=collect_health,
+            control_mode=control_mode,
         )
     else:
         scored = system.score_next_from_features(
@@ -310,6 +314,8 @@ def run_wiki_memory_episode(
             frozen_idx=frozen_idx,
             write_memory=False,
             collect_health=collect_health,
+            control_mode=control_mode,
+            input_ids=question_ids,
         )
     labels = label_token_ids(tokenizer, device)
     label_logits = _select_label_logits(scored.logits, labels)

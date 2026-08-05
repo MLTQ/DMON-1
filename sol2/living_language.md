@@ -29,6 +29,8 @@ optional SOL2 health telemetry.
   exposure while continuing to process its own tokens.
 - Supports masked teacher forcing so question/prompt tokens can evolve the organism
   without receiving a language loss.
+- Optionally reruns a perceived turn with the final creature control bank as a
+  pre-transformer soft prefix, allowing all frozen layers to reason over SOL2 output.
 
 ### `graft_language_backbone`
 
@@ -56,6 +58,9 @@ caller's random stream. Control and recall gains are explicit graft properties.
   separate cellular transitions and controls.
 - Frozen features are computed once per transition and reused for controlled decoding;
   there is no mandatory second backbone pass.
+- Prefix mode is the explicit exception: it spends a second backbone pass to move the
+  creature upstream of frozen transformer reasoning. The first pass remains detached
+  sensory perception; only the prefix-conditioned pass retains control gradients.
 - Sensory features are explicitly converted to the continuing cellular state's device
   and dtype. Return controls are converted to the backbone feature dtype by the adapter,
   so BF16 language machinery and FP32 organism dynamics remain a deliberate boundary.
@@ -85,3 +90,5 @@ caller's random stream. Control and recall gains are explicit graft properties.
   same continuing cellular state.
 - Cached features must retain `[batch, sequence, backbone_width]` shape and remain
   detached from backbone parameters.
+- Cached prefix scoring also requires the exact original token IDs because final
+  features cannot reconstruct a pre-transformer input sequence.

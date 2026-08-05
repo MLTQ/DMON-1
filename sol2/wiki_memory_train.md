@@ -11,7 +11,7 @@ unchanged source-family-disjoint development and held-out facts under causal con
 
 Defines update count, optimizer strength, evaluation/checkpoint intervals, token limits,
 permutation seed, reproducibility seed, and the explicit bounded control gain used by
-the language graft.
+the language graft, including the serialized late-residual or prefix control mode.
 
 ### `counterfactual_training_record`
 
@@ -69,6 +69,13 @@ when requested. Gate magnitude and a separate `transport` gradient group are rep
 so opening a new anatomical path cannot be inferred from task loss alone.
 The serialized initial gate may be nonzero for explicitly preregistered developmental
 treatments; zero remains the backward-compatible default.
+
+### Pre-transformer prefix treatment
+
+`--language-control-mode prefix` preserves detached Llama perception but performs a
+second differentiable frozen forward with the final organism control bank prepended to
+the erased-context question. This lets every transformer layer reason over creature
+output while keeping the ordinary late residual as the backward-compatible default.
 
 ### `organism_gradient_groups`
 
@@ -172,6 +179,8 @@ performs independent cellular transitions and language-head control.
 - Eligibility credit has no trainable parameters, detaches its relay gate, and is absent
   from development, held-out evaluation, and inference.
 - Causal passage contrast requires paired counterfactuals and has no inference path.
+- Language control mode is checkpointed; prefix evaluation uses matched zero-prefix
+  geometry and never restores the exposed passage to Llama context.
 - Frozen-effector mode removes gradients only from the attached language effector;
   gradients still traverse its fixed operations into cellular output tissue.
 

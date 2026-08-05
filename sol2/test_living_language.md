@@ -9,6 +9,8 @@ backbone or GPU training is attempted.
 
 - A newly grafted continuous organ emits exact zeros and exactly preserves frozen
   language logits.
+- Prefix mode matches its deterministic exact-zero virtual-prefix floor and sends
+  gradients through all frozen language layers into controls, never model parameters.
 - Contextual language features enter stream-written organism memory through the
   bounded sensor.
 - Stream-memory writes preserve delayed gradients into the sensor, and content recall
@@ -20,6 +22,8 @@ backbone or GPU training is attempted.
 - Exposure-only observation, final-position scoring, and masked token loss preserve
   exact causal state evolution while avoiding unnecessary vocabulary logits.
 - Cached frozen-feature entry points exactly match their token-encoding wrappers.
+- Cached prefix scoring matches token-based perception when supplied the same original
+  IDs required for the second pre-transformer pass.
 - Query-phase write gating preserves memory cells and cursor while token and cached-
   feature scoring remain exactly equivalent.
 - Frozen language parameters receive no gradients and remain byte-for-byte unchanged.

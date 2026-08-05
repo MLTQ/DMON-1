@@ -194,6 +194,23 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     assert frozen_groups["effector"]["tensors"] == 0.0
     assert frozen_groups["tissues"]["rms"] > 0.0
 
+    prefix_system, prefix_organ = build_system()
+    prefix_result = run_wiki_memory_episode(
+        prefix_system,
+        tokenizer,
+        document,
+        question,
+        prefix_system.initial_state(1, "cpu"),
+        permutation_seed=3,
+        control_mode="prefix",
+    )
+    prefix_result.loss.backward()
+    assert prefix_organ.output.decoder.weight.grad is not None
+    assert float(prefix_organ.output.decoder.weight.grad.abs().sum()) > 0.0
+    assert all(
+        parameter.grad is None for parameter in prefix_system.backbone.parameters()
+    )
+
     no_exposure = run_wiki_memory_episode(
         system,
         tokenizer,
@@ -472,6 +489,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 output_eligibility_margin=0.005,
                 output_eligibility_temperature=0.005,
                 output_eligibility_relay_reference=0.005,
+                language_control_mode="prefix",
             ),
             model_name="toy",
             dtype="float32",
@@ -496,6 +514,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["output_credit_seed"] == 211
         assert payload["train_config"]["output_eligibility_weight"] == 4.0
         assert payload["train_config"]["output_eligibility_margin"] == 0.005
+        assert payload["train_config"]["language_control_mode"] == "prefix"
         assert torch.equal(restored_state.hidden, lane_state.hidden)
         assert restored_state.memory_cursor == lane_state.memory_cursor
         left = system.organism.state_dict()
@@ -531,6 +550,19 @@ def test_causal_evaluator_runs_matched_arms() -> None:
     assert len(evaluation["rows"]) == 2
     assert "output_credit_accuracy" not in evaluation["summaries"]
     assert "output_eligibility_loss" not in evaluation["summaries"]
+
+    prefix_evaluation = evaluate_wiki_memory(
+        system,
+        tokenizer,
+        WikiMemoryCorpus(corpus.wiki_root, corpus.split("development")[:1]),
+        split="development",
+        permutation_seed=33,
+        max_memory_tokens=256,
+        max_question_tokens=256,
+        control_mode="prefix",
+    )
+    assert set(prefix_evaluation["summaries"]) == expected
+    assert len(prefix_evaluation["rows"]) == 2
 
 
 def main() -> None:

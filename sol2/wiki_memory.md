@@ -40,6 +40,8 @@ feature is sent through the vocabulary head.
   and internal freeze/lesion arms through explicit arguments.
 - Accepts cached frozen passage/question features so matched causal arms rerun only the
   organism rather than the 8B language encoder.
+- In prefix mode, reuses cached features for perception but retains exact question IDs
+  for the required second, prefix-conditioned frozen-transformer pass.
 - Processes the question after a fresh language context and computes cross-entropy only
   over the four label logits.
 - Closes the stream-memory write gate during the question so the prompt cannot replace
@@ -67,6 +69,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
   of the resumable sample cursor.
 - Query tokens continue through input and recurrent tissue but never overwrite the
   passage memory under test.
+- Prefix controls are emitted only after the question-perception phase, implementing a
+  turn-level perceive-then-express cycle without putting passage text back in context.
 
 ## Contracts
 
@@ -78,6 +82,8 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
 - Exact-zero control traverses the same exposure and cellular transitions as normal.
 - Cached features change performance only; token wrappers remain the training path and
   cached-feature equivalence is covered by the living-language CPU gate.
+- Prefix zero-control uses the same virtual-token geometry as normal prefix control;
+  it is the matched floor for that interface rather than the native no-prefix Llama.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.

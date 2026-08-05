@@ -56,6 +56,7 @@ class WikiMemoryTrainConfig:
     causal_contrast_weight: float = 0.0
     causal_contrast_margin: float = 0.1
     freeze_effector_updates: bool = False
+    language_control_mode: str = "late_residual"
     compact_bindings: bool = False
     control_gain: float = 1.0
     recall_lr_multiplier: float = 1.0
@@ -84,6 +85,8 @@ class WikiMemoryTrainConfig:
             )
         if self.causal_contrast_weight > 0 and not self.paired_counterfactual:
             raise ValueError("causal contrast requires paired counterfactual training")
+        if self.language_control_mode not in {"late_residual", "prefix"}:
+            raise ValueError("unknown language control mode")
         if self.control_gain <= 0:
             raise ValueError("control gain must be positive")
         if min(
@@ -329,6 +332,7 @@ def evaluate_wiki_memory(
     max_memory_tokens: int,
     max_question_tokens: int,
     admitted_questions: set[str] | None = None,
+    control_mode: str = "late_residual",
 ) -> dict:
     documents = corpus.split(split)
     rows = []
@@ -358,6 +362,7 @@ def evaluate_wiki_memory(
         for document in documents
     }
     question_features = {}
+    question_ids = {}
     for document in documents:
         for question in document.questions:
             for paraphrase in (False, True):
@@ -372,7 +377,10 @@ def evaluate_wiki_memory(
                     device,
                     max_tokens=max_question_tokens,
                 )
-                question_features[(question.id, paraphrase)] = system.backbone.encode(ids)
+                question_ids[(question.id, paraphrase)] = ids
+                question_features[(question.id, paraphrase)] = (
+                    system.backbone.encode(ids)
+                )
     for document_index, document in enumerate(documents):
         wrong_document = documents[(document_index + 1) % len(documents)]
         for question in document.questions:
@@ -385,53 +393,62 @@ def evaluate_wiki_memory(
                 "permutation_seed": permutation_seed,
                 "max_memory_tokens": max_memory_tokens,
                 "max_question_tokens": max_question_tokens,
+                "control_mode": control_mode,
             }
             results = {
                 "normal": run_wiki_memory_episode(
                     **common,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "no_exposure": run_wiki_memory_episode(
                     **common,
                     expose=False,
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "zero_control": run_wiki_memory_episode(
                     **common,
                     control_scale=0.0,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "reset_after_exposure": run_wiki_memory_episode(
                     **common,
                     reset_after_exposure=True,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "wrong_passage": run_wiki_memory_episode(
                     **common,
                     exposure_document=wrong_document,
                     exposure_features=memory_features[wrong_document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "memory_lesion": run_wiki_memory_episode(
                     **common,
                     memory_lesion=True,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "internal_lesion": run_wiki_memory_episode(
                     **common,
                     frozen_idx=system.organism.internal_idx,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, False)],
+                    question_ids=question_ids[(question.id, False)],
                 ),
                 "question_paraphrase": run_wiki_memory_episode(
                     **common,
                     paraphrase=True,
                     exposure_features=memory_features[document.id],
                     question_features=question_features[(question.id, True)],
+                    question_ids=question_ids[(question.id, True)],
                 ),
             }
             for arm, result in results.items():
@@ -547,6 +564,7 @@ def run_training(args: argparse.Namespace) -> dict:
         causal_contrast_weight=args.causal_contrast_weight,
         causal_contrast_margin=args.causal_contrast_margin,
         freeze_effector_updates=args.freeze_effector_updates,
+        language_control_mode=args.language_control_mode,
         compact_bindings=args.compact_bindings,
         control_gain=args.control_gain,
         recall_lr_multiplier=args.recall_lr_multiplier,
@@ -628,6 +646,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 permutation_seed=train_config.permutation_seed + update,
                 max_memory_tokens=train_config.max_memory_tokens,
                 max_question_tokens=train_config.max_question_tokens,
+                control_mode=train_config.language_control_mode,
             )
             branch_results.append(branch_result)
         no_exposure_result = None
@@ -643,6 +662,7 @@ def run_training(args: argparse.Namespace) -> dict:
                     expose=False,
                     max_memory_tokens=train_config.max_memory_tokens,
                     max_question_tokens=train_config.max_question_tokens,
+                    control_mode=train_config.language_control_mode,
                 )
         task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
         binding_loss = task_loss.new_zeros(())
@@ -830,6 +850,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_memory_tokens=train_config.max_memory_tokens,
                 max_question_tokens=train_config.max_question_tokens,
                 admitted_questions=admitted,
+                control_mode=train_config.language_control_mode,
             )
             evaluation["update"] = update
             evaluations.append(evaluation)
@@ -867,6 +888,7 @@ def run_training(args: argparse.Namespace) -> dict:
         max_memory_tokens=train_config.max_memory_tokens,
         max_question_tokens=train_config.max_question_tokens,
         admitted_questions=admitted,
+        control_mode=train_config.language_control_mode,
     )
     metrics = {
         "schema": 1,
@@ -959,6 +981,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--causal-contrast-weight", type=float, default=0.0)
     parser.add_argument("--causal-contrast-margin", type=float, default=0.1)
     parser.add_argument("--freeze-effector-updates", action="store_true")
+    parser.add_argument(
+        "--language-control-mode",
+        choices=("late_residual", "prefix"),
+        default="late_residual",
+    )
     parser.add_argument("--compact-bindings", action="store_true")
     parser.add_argument("--control-gain", type=float, default=1.0)
     parser.add_argument("--recall-gain", type=float, default=0.25)

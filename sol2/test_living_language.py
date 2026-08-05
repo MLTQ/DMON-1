@@ -81,6 +81,16 @@ def test_new_language_graft_is_an_exact_noop() -> None:
     assert step.health is not None
     assert step.health.logit_absmax == 0.0
 
+    prefix_step = system.advance(
+        context,
+        system.initial_state(2, "cpu"),
+        control_mode="prefix",
+    )
+    null_prefix = system.backbone.prefix_logits(
+        context, torch.zeros_like(prefix_step.controls)
+    )
+    assert torch.equal(prefix_step.logits, null_prefix[:, -1])
+
     sensed = system.backbone.encode(context)[:, -1]
     expected_memory = torch.tanh(organ.sensor(sensed))
     memory_cell = system.organism.memory_idx[0]
@@ -119,6 +129,22 @@ def test_language_loss_recruits_the_organ_but_not_the_backbone() -> None:
     assert all(parameter.grad is None for parameter in system.backbone.parameters())
     for name, parameter in system.backbone.named_parameters():
         assert torch.equal(parameter, frozen_before[name])
+
+
+def test_prefix_control_backpropagates_through_every_frozen_layer() -> None:
+    system, organ = build_system()
+    inputs = torch.tensor([[1, 2, 3, 4], [4, 3, 2, 1]])
+    targets = torch.tensor([5, 0])
+    step = system.score_next_after_sequence(
+        inputs,
+        system.initial_state(2, "cpu"),
+        control_mode="prefix",
+    )
+    loss = torch.nn.functional.cross_entropy(step.logits, targets)
+    loss.backward()
+    assert organ.output.decoder.weight.grad is not None
+    assert float(organ.output.decoder.weight.grad.abs().sum()) > 0.0
+    assert all(parameter.grad is None for parameter in system.backbone.parameters())
 
 
 def test_stream_memory_write_and_content_recall_are_differentiable() -> None:
@@ -233,6 +259,21 @@ def test_observation_scoring_and_masked_loss_preserve_sequence_causality() -> No
     assert torch.allclose(cached_gated.logits, gated.logits, atol=1e-6)
     assert torch.allclose(cached_gated.state.hidden, gated.state.hidden, atol=1e-6)
 
+    prefix_scored = system.score_next_after_sequence(
+        question, exposed_state, write_memory=False, control_mode="prefix"
+    )
+    cached_prefix = system.score_next_from_features(
+        question_features,
+        cached_state,
+        write_memory=False,
+        control_mode="prefix",
+        input_ids=question,
+    )
+    assert torch.allclose(cached_prefix.logits, prefix_scored.logits, atol=1e-6)
+    assert torch.allclose(
+        cached_prefix.state.hidden, prefix_scored.state.hidden, atol=1e-6
+    )
+
     targets = torch.tensor([[2, 3], [4, 5]])
     mask = torch.tensor([[False, True], [False, True]])
     masked_loss, _, _ = system.teacher_forced_loss(
@@ -290,8 +331,18 @@ def test_huggingface_adapter_freezes_and_controls_an_exposed_head() -> None:
         def get_output_embeddings(self):
             return self.head
 
-        def forward(self, *, input_ids, **_kwargs):
-            features = torch.tanh(self.embedding(input_ids))
+        def get_input_embeddings(self):
+            return self.embedding
+
+        def forward(self, *, input_ids=None, inputs_embeds=None, **_kwargs):
+            if (input_ids is None) == (inputs_embeds is None):
+                raise ValueError("provide exactly one token representation")
+            embedded = (
+                self.embedding(input_ids)
+                if inputs_embeds is None
+                else inputs_embeds
+            )
+            features = torch.tanh(embedded.cumsum(dim=1))
             return SimpleNamespace(
                 hidden_states=(features,),
                 logits=self.head(features),
@@ -308,6 +359,12 @@ def test_huggingface_adapter_freezes_and_controls_an_exposed_head() -> None:
     controls = torch.randn(2, 3, 8, requires_grad=True)
     adapter.controlled_logits_from_features(features, controls).sum().backward()
     assert controls.grad is not None and float(controls.grad.abs().sum()) > 0.0
+    assert all(parameter.grad is None for parameter in adapter.parameters())
+    prefix = torch.randn(2, 3, 8, requires_grad=True)
+    prefix_logits = adapter.prefix_logits(input_ids, prefix)
+    assert prefix_logits.shape == (2, 3, 9)
+    prefix_logits.sum().backward()
+    assert prefix.grad is not None and float(prefix.grad.abs().sum()) > 0.0
     assert all(parameter.grad is None for parameter in adapter.parameters())
     assert adapter.native_logit_error(input_ids) == 0.0
 
@@ -378,6 +435,7 @@ def main() -> None:
     tests = [
         test_new_language_graft_is_an_exact_noop,
         test_language_loss_recruits_the_organ_but_not_the_backbone,
+        test_prefix_control_backpropagates_through_every_frozen_layer,
         test_stream_memory_write_and_content_recall_are_differentiable,
         test_vectorized_teacher_forcing_matches_causal_prefix_steps,
         test_observation_scoring_and_masked_loss_preserve_sequence_causality,

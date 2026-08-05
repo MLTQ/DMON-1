@@ -39,6 +39,13 @@ class FrozenLanguageBackbone(Protocol):
     ) -> torch.Tensor:
         """Decode features under one separate control bank per sequence position."""
 
+    def prefix_logits(
+        self,
+        input_ids: torch.Tensor,
+        controls: torch.Tensor,
+    ) -> torch.Tensor:
+        """Decode tokens after prepending continuous controls before all layers."""
+
 
 def _apply_control_residual(
     features: torch.Tensor,
@@ -130,6 +137,24 @@ class ToyFrozenLanguageBackbone(nn.Module):
     ) -> torch.Tensor:
         return self.controlled_logits_from_features(features, controls)
 
+    def prefix_logits(
+        self,
+        input_ids: torch.Tensor,
+        controls: torch.Tensor,
+    ) -> torch.Tensor:
+        self._validate_input_ids(input_ids)
+        if (
+            controls.ndim != 3
+            or controls.shape[0] != input_ids.shape[0]
+            or controls.shape[1] < 1
+            or controls.shape[2] != self.width
+        ):
+            raise ValueError("prefix controls must have shape [batch, tokens, width]")
+        embedded = self.embedding(input_ids).detach()
+        prefix = controls.to(device=embedded.device, dtype=embedded.dtype)
+        features, _ = self.recurrent(torch.cat((prefix, embedded), dim=1))
+        return self.decoder(features[:, prefix.shape[1] :])
+
     def _validate_input_ids(self, input_ids: torch.Tensor) -> None:
         if input_ids.ndim != 2:
             raise ValueError("input_ids must have shape [batch, sequence]")
@@ -218,6 +243,38 @@ class HuggingFaceFrozenBackbone(nn.Module):
         controls: torch.Tensor | None = None,
     ) -> torch.Tensor:
         return self.controlled_logits_from_features(features, controls)
+
+    def prefix_logits(
+        self,
+        input_ids: torch.Tensor,
+        controls: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run the frozen transformer over continuous prefix and ordinary tokens."""
+
+        self._validate_input_ids(input_ids)
+        if (
+            controls.ndim != 3
+            or controls.shape[0] != input_ids.shape[0]
+            or controls.shape[1] < 1
+            or controls.shape[2] != self.width
+        ):
+            raise ValueError("prefix controls must have shape [batch, tokens, width]")
+        embedding = self.model.get_input_embeddings()
+        token_embeddings = embedding(input_ids).detach()
+        prefix = controls.to(
+            device=token_embeddings.device, dtype=token_embeddings.dtype
+        )
+        combined = torch.cat((prefix, token_embeddings), dim=1)
+        attention_mask = torch.ones(
+            combined.shape[:2], dtype=torch.long, device=combined.device
+        )
+        output = self.model(
+            inputs_embeds=combined,
+            attention_mask=attention_mask,
+            use_cache=False,
+            return_dict=True,
+        )
+        return output.logits[:, prefix.shape[1] :]
 
     @torch.no_grad()
     def native_logit_error(self, input_ids: torch.Tensor) -> float:

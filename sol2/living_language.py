@@ -136,6 +136,7 @@ class LivingLanguageSystem(nn.Module):
         frozen_idx: torch.Tensor | None = None,
         write_memory: bool = True,
         collect_health: bool = False,
+        control_mode: str = "late_residual",
     ) -> LanguageStep:
         """Absorb a complete prompt and score only its next-token distribution."""
 
@@ -149,6 +150,8 @@ class LivingLanguageSystem(nn.Module):
             frozen_idx=frozen_idx,
             write_memory=write_memory,
             collect_health=collect_health,
+            control_mode=control_mode,
+            input_ids=input_ids,
         )
 
     def score_next_from_features(
@@ -160,6 +163,8 @@ class LivingLanguageSystem(nn.Module):
         frozen_idx: torch.Tensor | None = None,
         write_memory: bool = True,
         collect_health: bool = False,
+        control_mode: str = "late_residual",
+        input_ids: torch.Tensor | None = None,
     ) -> LanguageStep:
         """Evolve over cached features and score their final next-token distribution."""
 
@@ -173,9 +178,18 @@ class LivingLanguageSystem(nn.Module):
             write_memory=write_memory,
             collect_final_health=collect_health,
         )
-        logits = self.backbone.controlled_logits_from_features(
-            feature_sequence[:, -1:], controls[:, -1]
-        )[:, -1]
+        if control_mode == "late_residual":
+            logits = self.backbone.controlled_logits_from_features(
+                feature_sequence[:, -1:], controls[:, -1]
+            )[:, -1]
+        elif control_mode == "prefix":
+            if input_ids is None:
+                raise ValueError("prefix control requires the original input_ids")
+            if input_ids.shape[:2] != feature_sequence.shape[:2]:
+                raise ValueError("prefix input_ids must match cached feature positions")
+            logits = self.backbone.prefix_logits(input_ids, controls[:, -1])[:, -1]
+        else:
+            raise ValueError(f"unknown language control mode {control_mode!r}")
         return LanguageStep(
             logits=logits,
             controls=controls[:, -1],
@@ -191,6 +205,7 @@ class LivingLanguageSystem(nn.Module):
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
         collect_health: bool = False,
+        control_mode: str = "late_residual",
     ) -> LanguageStep:
         """Observe the newest context token, evolve once, and predict the next token."""
 
@@ -209,9 +224,14 @@ class LivingLanguageSystem(nn.Module):
             collect_health=collect_health,
         )
         controlled = controls * control_scale
-        logits = self.backbone.controlled_logits_from_features(
-            feature_sequence, controlled
-        )[:, -1]
+        if control_mode == "late_residual":
+            logits = self.backbone.controlled_logits_from_features(
+                feature_sequence, controlled
+            )[:, -1]
+        elif control_mode == "prefix":
+            logits = self.backbone.prefix_logits(context_ids, controlled)[:, -1]
+        else:
+            raise ValueError(f"unknown language control mode {control_mode!r}")
         return LanguageStep(
             logits=logits,
             controls=controlled,
@@ -265,6 +285,7 @@ class LivingLanguageSystem(nn.Module):
         max_new_tokens: int,
         control_scale: float = 1.0,
         frozen_idx: torch.Tensor | None = None,
+        control_mode: str = "late_residual",
     ) -> tuple[torch.Tensor, OrganismState]:
         """Greedily generate while feeding every prompt and generated token back."""
 
@@ -279,6 +300,7 @@ class LivingLanguageSystem(nn.Module):
                 next_state,
                 control_scale=control_scale,
                 frozen_idx=frozen_idx,
+                control_mode=control_mode,
             )
             next_state = step.state
         for _ in range(max_new_tokens):
@@ -291,6 +313,7 @@ class LivingLanguageSystem(nn.Module):
                 next_state,
                 control_scale=control_scale,
                 frozen_idx=frozen_idx,
+                control_mode=control_mode,
             )
             next_state = step.state
         return context, next_state
