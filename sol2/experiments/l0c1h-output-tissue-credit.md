@@ -1,6 +1,7 @@
 # L0-C1h: target-conditioned output-tissue credit
 
-Status: protocol frozen 2026-08-04 before implementation or optimizer updates.
+Status: stopped at the frozen update-25 gate on 2026-08-04; the update-100
+extension was not run.
 
 ## Question
 
@@ -69,3 +70,58 @@ output tissue to the detachable low-rank Llama effector.
   code or task loss remains misaligned.
 - Correct held-out passage beats every causal control: passage-conditioned organism
   memory is supported and should be replicated across seeds and natural distractors.
+
+## Result
+
+The implementation and two-update health pilot passed their mechanical gates, so the
+same checkpoint was resumed through update 25 on the RTX 4090. The frozen Llama remained
+untouched (`0` trainable parameters and `0` gradient tensors), all reported organism
+gradient-group RMS values were finite, and peak CUDA allocation was 18,519,761,920
+bytes. The final metrics artifact is
+`l0c1h-output-credit-m96-u25-result.json` (SHA-256
+`b25bfb0d5a7c92ed61555cec3fa133a53d0825ac28ac1f9675df4c6434b69815`).
+
+The update-25 representation gate failed:
+
+- mean output-code accuracy over updates 16-25 was `35%`, below the required `>60%`;
+- mean paired output-state separation was `0.000791875` RMS, with a trailing maximum
+  of `0.001652745`, both below the required `0.005` mean;
+- mean paired branch task accuracy was `10%`, and mean control separation was only
+  `0.000576883` RMS;
+- the four-way auxiliary loss averaged `1.47072` over the trailing window, worse than
+  the `ln(4) = 1.38629` uniform baseline.
+
+The causal evaluation also provides no evidence that the passage-bound state controlled
+the answer. Development accuracy was `0.75` for normal, reset-after-exposure, and wrong
+passage. Held-out accuracy was `0.50` for all three. Held-out normal loss (`1.08911`)
+was slightly better than reset (`1.14001`) and wrong passage (`1.09888`), but the normal
+and wrong-passage predictions were identical in aggregate and their control magnitudes
+were effectively equal. This small loss movement is insufficient to establish memory
+use.
+
+Per the frozen protocol, L0-C1h stops at update 25. This rejects the specific strategy
+of applying unit-weight four-way credit to a mean-pooled output state under the current
+paired training dynamics. It does **not** show that output organs, larger organisms,
+longer training under a mechanism that passes the early gate, or the broader DMON
+architecture are ineffective.
+
+## Mechanistic reading and next treatment
+
+The result sharpens the bottleneck. Both paired branches begin with nearly the same
+query-time output state but receive incompatible auxiliary targets through shared
+parameters. Cross-entropy can therefore lower its average by producing a shared label
+mixture; it can only create passage-specific states through the already weak recurrent
+passage-conditioned Jacobian. That is the very route the auxiliary was intended to
+strengthen, so this objective supplies a destination without supplying an effective
+transport or local learning mechanism.
+
+Before attempting a deeper Llama injection, the next treatment should make target
+credit local and temporally assignable inside the organism. A compact next step is an
+output-organ eligibility trace: record passage-conditioned presynaptic activity during
+exposure/query evolution, then use the training-only answer signal to reinforce the
+specific relay-to-output interactions that were active. The inference graph remains
+unchanged and receives no answer code. Its early gate should require the same question
+under incompatible passages to separate at output tissue before any Llama score is
+considered. This directly tests whether biological-style local credit can establish the
+missing memory-to-output route, rather than asking ordinary shared backpropagation to
+discover that route from two nearly identical endpoints.
