@@ -1,6 +1,7 @@
 # L0-C1t: local semantic credit through memory and relay
 
-Status: protocol frozen 2026-08-05 before implementation tests or optimizer updates.
+Status: completed at update 25 on 2026-08-05; representation gate failed with a
+partial memory-storage result.
 
 ## Question
 
@@ -116,3 +117,51 @@ A failure rejects this fixed local-credit cascade as the immediate scale-up trea
 not Qwen contextual perception, organismal differentiation, or local developmental
 scaffolding in general. A pass licenses an update-100 persistence test and subsequent
 annealing of the local losses; it does not yet license a language-capability claim.
+
+## Result
+
+The CPU contracts and one-update 4090 preflight passed. Fixed projections reproduced,
+teacher targets detached, identical tissue endpoints received opposing gradients, and
+the fresh organism exposed finite nonzero semantic target axes. The full update-25 run
+completed on only the 4090 with Qwen at zero trainable and zero gradient-bearing
+parameters. Peak CUDA allocation/reservation was 14.16/16.40 GiB. The raw artifact is
+`l0c1t-local-sem-s7-u25-result.json` with SHA-256
+`f37fe6eb6b5ef9a622da715d73158f437f9e4127d6f4ee95172b01f2218f5878`.
+
+Per-update checkpoints made the learning curve observable. Across all twelve
+recurrence-matched questions:
+
+- memory semantic loss improved on 9/12 examples, from mean `0.06308` to `0.06208`,
+  and memory target alignment improved from `-0.0175` to `0.0836`;
+- relay semantic loss improved on 8/12, but alignment remained unlearned at
+  `-0.0568` to `-0.00995`;
+- passage-effect KL improved on 8/12 but worsened in mean from `0.9861` to `1.0037`
+  because four regressions were larger;
+- causal-contrast satisfaction declined from `37.5%` to `31.25%`.
+
+Neither local alignment reached the preregistered trailing `0.25` gate. The memory
+curve nevertheless supplies bounded evidence that temporally local storage credit can
+shape passage state; the relay curve does not show useful question-conditioned recall.
+
+Credit also remained badly imbalanced. Across matched early/late windows, recall
+gradient RMS fell from `6.66e-6` to `1.10e-7`, sensor from `2.55e-4` to `5.81e-5`,
+connectome from `1.36e-3` to `2.36e-4`, and tissue dynamics from `7.44e-4` to
+`9.02e-5`, while effector gradient increased from `0.0395` to `0.0602`. The existing
+content-addressed recall attention therefore remained the upstream bottleneck despite
+a direct loss at downstream relay tissue.
+
+Held out, normal exposure achieved 75% accuracy and mean loss `0.5833`. It was slightly
+better than wrong passage at 75%/`0.6061`, but worse than no exposure, zero control, and
+reset at 87.5%/`0.5511`. Memory lesion scored 87.5%/`0.5568`, and internal lesion
+75%/`0.5345`; useful organism state is not established when removing either route
+improves likelihood. Only 3/8 questions had lower normal loss than the zero/no-exposure
+floor, and only 4/8 beat wrong passage.
+
+C1t therefore stops at update 25. More time on this loss placement is not justified.
+The next isolated treatment should place the question-conditioned semantic target at
+the actual recalled vector emitted by the existing language-organ memory attention,
+before it is diluted through recurrent and relay tissue. Retaining the successful
+post-exposure memory target then tests storage and retrieval separately: if recall
+aligns but relay/output does not, transport is the remaining bottleneck; if direct
+recall credit still collapses, the recall anatomy or memory-slot representation must
+change before scaling.
