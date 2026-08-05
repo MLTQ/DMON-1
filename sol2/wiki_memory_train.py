@@ -163,7 +163,7 @@ def passage_visible_teacher_logits(
         device,
         max_tokens=max_memory_tokens + max_question_tokens + 16,
     )
-    return system.backbone.controlled_logits(teacher_ids)[:, -1].detach()
+    return system.backbone.controlled_logits(teacher_ids)[0, -1].detach()
 
 
 def counterfactual_training_pair(

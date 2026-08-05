@@ -86,6 +86,9 @@ its full next-token vocabulary logits and minimizes temperature-scaled reverse K
 `wiki_distillation.py`. Teacher label accuracy and paired full-logit separation make an
 uninformative teacher visible before a result is interpreted.
 
+`passage_visible_teacher_logits` returns one detached `[vocabulary]` vector for the
+final prompt position, matching each retained student episode vector exactly.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's

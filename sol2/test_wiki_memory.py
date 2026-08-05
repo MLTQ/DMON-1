@@ -170,7 +170,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_question_tokens=256,
     )
     right_teacher_input = tokenizer.texts[-1]
-    assert left_teacher.shape == (1, system.backbone.vocab_size)
+    assert left_teacher.shape == (system.backbone.vocab_size,)
     assert not left_teacher.requires_grad and not right_teacher.requires_grad
     assert left[0].memory in left_teacher_input
     assert right[0].memory in right_teacher_input
