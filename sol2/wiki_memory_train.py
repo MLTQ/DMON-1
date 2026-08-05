@@ -35,7 +35,11 @@ from .wiki_memory import (
     verify_wiki_sources,
 )
 from .wiki_causal_contrast import passage_causal_contrast_loss
-from .wiki_distillation import control_delta_energy, full_vocab_reverse_kl
+from .wiki_distillation import (
+    control_delta_energy,
+    full_vocab_effect_reverse_kl,
+    full_vocab_reverse_kl,
+)
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
 
@@ -58,6 +62,7 @@ class WikiMemoryTrainConfig:
     causal_contrast_weight: float = 0.0
     causal_contrast_margin: float = 0.1
     teacher_distillation_weight: float = 0.0
+    teacher_effect_distillation_weight: float = 0.0
     teacher_distillation_temperature: float = 1.0
     control_energy_weight: float = 0.0
     reference_centered_controls: bool = False
@@ -93,6 +98,8 @@ class WikiMemoryTrainConfig:
             raise ValueError("causal contrast requires paired counterfactual training")
         if self.teacher_distillation_weight < 0:
             raise ValueError("teacher distillation weight must be nonnegative")
+        if self.teacher_effect_distillation_weight < 0:
+            raise ValueError("teacher effect distillation weight must be nonnegative")
         if self.teacher_distillation_temperature <= 0:
             raise ValueError("teacher distillation temperature must be positive")
         if self.control_energy_weight < 0:
@@ -162,6 +169,28 @@ def passage_visible_teacher_logits(
         f"{document.memory}\n\n{formatted.prompt}",
         device,
         max_tokens=max_memory_tokens + max_question_tokens + 16,
+    )
+    return system.backbone.controlled_logits(teacher_ids)[0, -1].detach()
+
+
+@torch.no_grad()
+def question_only_teacher_logits(
+    system: LivingLanguageSystem,
+    tokenizer: Any,
+    question: WikiQuestion,
+    *,
+    permutation_seed: int,
+    max_question_tokens: int,
+) -> torch.Tensor:
+    """Score the frozen teacher on the identical question without its passage."""
+
+    device = next(system.organism.parameters()).device
+    formatted = format_wiki_question(question, permutation_seed=permutation_seed)
+    teacher_ids = encode_text(
+        tokenizer,
+        formatted.prompt,
+        device,
+        max_tokens=max_question_tokens,
     )
     return system.backbone.controlled_logits(teacher_ids)[0, -1].detach()
 
@@ -649,6 +678,9 @@ def run_training(args: argparse.Namespace) -> dict:
         causal_contrast_weight=args.causal_contrast_weight,
         causal_contrast_margin=args.causal_contrast_margin,
         teacher_distillation_weight=args.teacher_distillation_weight,
+        teacher_effect_distillation_weight=(
+            args.teacher_effect_distillation_weight
+        ),
         teacher_distillation_temperature=args.teacher_distillation_temperature,
         control_energy_weight=args.control_energy_weight,
         reference_centered_controls=args.reference_centered_controls,
@@ -726,7 +758,11 @@ def run_training(args: argparse.Namespace) -> dict:
         optimizer.zero_grad(set_to_none=True)
         permutation_seed = train_config.permutation_seed + update
         teacher_logits: list[torch.Tensor] = []
-        if train_config.teacher_distillation_weight > 0:
+        teacher_enabled = (
+            train_config.teacher_distillation_weight > 0
+            or train_config.teacher_effect_distillation_weight > 0
+        )
+        if teacher_enabled:
             teacher_logits = [
                 passage_visible_teacher_logits(
                     system,
@@ -739,6 +775,15 @@ def run_training(args: argparse.Namespace) -> dict:
                 )
                 for training_document, training_question in training_records
             ]
+        teacher_baseline_logits = None
+        if train_config.teacher_effect_distillation_weight > 0:
+            teacher_baseline_logits = question_only_teacher_logits(
+                system,
+                tokenizer,
+                training_records[0][1],
+                permutation_seed=permutation_seed,
+                max_question_tokens=train_config.max_question_tokens,
+            )
         control_reference = None
         if train_config.reference_centered_controls:
             with torch.no_grad():
@@ -773,7 +818,10 @@ def run_training(args: argparse.Namespace) -> dict:
             )
             branch_results.append(branch_result)
         no_exposure_result = None
-        if train_config.causal_contrast_weight > 0:
+        if (
+            train_config.causal_contrast_weight > 0
+            or train_config.teacher_effect_distillation_weight > 0
+        ):
             with torch.no_grad():
                 no_exposure_result = run_wiki_memory_episode(
                     system,
@@ -793,13 +841,19 @@ def run_training(args: argparse.Namespace) -> dict:
                 )
         task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
         teacher_distillation_loss = task_loss.new_zeros(())
+        teacher_effect_distillation_loss = task_loss.new_zeros(())
         teacher_label_accuracy = task_loss.new_zeros(())
         teacher_logit_separation_rms = task_loss.new_zeros(())
-        if train_config.teacher_distillation_weight > 0:
+        teacher_effect_rms = task_loss.new_zeros(())
+        student_effect_rms = task_loss.new_zeros(())
+        teacher_effect_pair_separation_rms = task_loss.new_zeros(())
+        student_effect_pair_separation_rms = task_loss.new_zeros(())
+        if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
             if any(branch.vocab_logits is None for branch in branch_results):
                 raise RuntimeError("student episode did not retain vocabulary logits")
+        if train_config.teacher_distillation_weight > 0:
             teacher_distillation_loss = torch.stack(
                 [
                     full_vocab_reverse_kl(
@@ -810,6 +864,7 @@ def run_training(args: argparse.Namespace) -> dict:
                     for branch, teacher in zip(branch_results, teacher_logits)
                 ]
             ).mean()
+        if teacher_enabled:
             labels = label_token_ids(tokenizer, lane_state.hidden.device)
             teacher_correct = []
             for (_, teacher_question), teacher in zip(
@@ -826,6 +881,45 @@ def run_training(args: argparse.Namespace) -> dict:
             if len(teacher_logits) == 2:
                 teacher_logit_separation_rms = (
                     teacher_logits[0].float() - teacher_logits[1].float()
+                ).pow(2).mean().sqrt()
+        if train_config.teacher_effect_distillation_weight > 0:
+            if teacher_baseline_logits is None:
+                raise RuntimeError("teacher effect requires question-only baseline")
+            if no_exposure_result is None or no_exposure_result.vocab_logits is None:
+                raise RuntimeError("teacher effect requires student zero baseline")
+            student_baseline_logits = no_exposure_result.vocab_logits
+            teacher_effect_distillation_loss = torch.stack(
+                [
+                    full_vocab_effect_reverse_kl(
+                        branch.vocab_logits,
+                        student_baseline_logits,
+                        teacher,
+                        teacher_baseline_logits,
+                        temperature=train_config.teacher_distillation_temperature,
+                    )
+                    for branch, teacher in zip(branch_results, teacher_logits)
+                ]
+            ).mean()
+            teacher_effects = [
+                teacher.float() - teacher_baseline_logits.float()
+                for teacher in teacher_logits
+            ]
+            student_effects = [
+                branch.vocab_logits.float() - student_baseline_logits.float()
+                for branch in branch_results
+            ]
+            teacher_effect_rms = torch.stack(
+                [effect.pow(2).mean().sqrt() for effect in teacher_effects]
+            ).mean()
+            student_effect_rms = torch.stack(
+                [effect.pow(2).mean().sqrt() for effect in student_effects]
+            ).mean()
+            if len(teacher_effects) == 2:
+                teacher_effect_pair_separation_rms = (
+                    teacher_effects[0] - teacher_effects[1]
+                ).pow(2).mean().sqrt()
+                student_effect_pair_separation_rms = (
+                    student_effects[0] - student_effects[1]
                 ).pow(2).mean().sqrt()
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
@@ -895,6 +989,8 @@ def run_training(args: argparse.Namespace) -> dict:
             + train_config.causal_contrast_weight * causal_contrast_loss
             + train_config.teacher_distillation_weight
             * teacher_distillation_loss
+            + train_config.teacher_effect_distillation_weight
+            * teacher_effect_distillation_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
@@ -957,9 +1053,20 @@ def run_training(args: argparse.Namespace) -> dict:
             "teacher_distillation_loss": float(
                 teacher_distillation_loss.detach()
             ),
+            "teacher_effect_distillation_loss": float(
+                teacher_effect_distillation_loss.detach()
+            ),
             "teacher_label_accuracy": float(teacher_label_accuracy.detach()),
             "teacher_logit_separation_rms": float(
                 teacher_logit_separation_rms.detach()
+            ),
+            "teacher_effect_rms": float(teacher_effect_rms.detach()),
+            "student_effect_rms": float(student_effect_rms.detach()),
+            "teacher_effect_pair_separation_rms": float(
+                teacher_effect_pair_separation_rms.detach()
+            ),
+            "student_effect_pair_separation_rms": float(
+                student_effect_pair_separation_rms.detach()
             ),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
@@ -1014,6 +1121,9 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"causal={row['causal_contrast_loss']:.4f} "
                 f"causal_acc={row['causal_contrast_accuracy']:.2f} "
                 f"distill={row['teacher_distillation_loss']:.4f} "
+                f"effect={row['teacher_effect_distillation_loss']:.4f} "
+                f"teacher_effect={row['teacher_effect_rms']:.4f} "
+                f"student_effect={row['student_effect_rms']:.4f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1171,6 +1281,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--causal-contrast-weight", type=float, default=0.0)
     parser.add_argument("--causal-contrast-margin", type=float, default=0.1)
     parser.add_argument("--teacher-distillation-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--teacher-effect-distillation-weight", type=float, default=0.0
+    )
     parser.add_argument(
         "--teacher-distillation-temperature", type=float, default=1.0
     )

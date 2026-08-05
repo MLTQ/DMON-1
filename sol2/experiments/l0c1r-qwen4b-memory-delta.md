@@ -53,3 +53,27 @@ change.
 A pass licenses a larger-organism curriculum on Qwen3.5-4B. A failure diagnoses the
 reference-centered prefix/credit construction despite a valid teacher; it does not
 impugn Qwen or dense teacher credit in isolation.
+
+## Result
+
+Status: stopped at update 50 on 2026-08-05; representation gate failed.
+
+The run and checkpoint were finite, Qwen retained zero trainable and gradient-bearing
+parameters, and the teacher was label-consistent on 99% of branches. The organism did
+not learn a causal passage delta:
+
+- effective control RMS fell from `6.43e-4` over updates 1–10 to `8.66e-7` over
+  updates 41–50;
+- paired control separation fell from `2.82e-5` to `4.15e-7`;
+- all four late mean causal advantages were negative, with only 10–30% positive
+  frequency;
+- held-out normal, zero-control, and no-exposure accuracy were all 87.5%, while normal
+  loss 0.5822 was worse than the zero/no-exposure floor 0.5511;
+- recall gradient RMS collapsed from `1.25e-5` early to `1.87e-8` late and sensor
+  gradient from `2.28e-4` to `8.83e-7`, while effector gradient remained near 0.075.
+
+Internal and memory activity became large, but lesions did not reveal useful language
+control. Absolute teacher KL and task NLL rewarded the already-capable frozen Qwen
+prior, so the easiest solution was to suppress the reference-centered intervention.
+C1s therefore teaches only the *change caused by passage visibility* and removes the
+absolute objectives that admit this zero-control shortcut.

@@ -35,16 +35,21 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Full-vocabulary reverse KL is zero for matching distributions, detaches the teacher,
   and sends gradients into the student; the control-energy term measures expressed
   delta amplitude exactly.
+- Passage-effect targets cancel arbitrary common teacher priors within floating
+  tolerance, reduce exactly to the detached student baseline for zero teacher effect,
+  and send gradients only into the conditioned student.
 - Passage-visible teacher inputs contain distinct incompatible temporary bindings while
   returned teacher logits remain frozen and detached. Real-logit separation is a GPU
   preflight gate rather than a toy-tokenizer assumption.
+- Question-only teacher input contains the identical formatted question and excludes
+  both incompatible passage annotations.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
   recall, sensor, and effector learning-rate multipliers.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, update cursor, language-control mode, distillation settings,
-  and reference-centering treatment.
+  effect-distillation weight, and reference-centering treatment.
 - The matched evaluator emits all eight preregistered causal arms.
 - Reference-centered prefix evaluation makes no-exposure and explicit zero-control
   arms exact zero deltas.

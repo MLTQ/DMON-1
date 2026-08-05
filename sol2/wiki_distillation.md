@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Provides dense, frozen-teacher credit and an explicit energy price for the
-passage-conditioned language-control delta in L0-C1p.
+Provides dense frozen-teacher credit, passage-effect targets, and an explicit energy
+price for passage-conditioned language control.
 
 ## Components
 
@@ -23,6 +23,22 @@ passage-conditioned language-control delta in L0-C1p.
 - **Rationale**: Makes gratuitous intervention costly while allowing a small
   content-specific delta to earn its keep through task and teacher losses.
 
+### `passage_effect_target_logits`
+
+- **Does**: Adds detached `teacher(passage + question) - teacher(question)` logits to
+  the detached matched student zero-prefix baseline.
+- **Interacts with**: Passage-visible/question-only teacher helpers and the no-exposure
+  student arm in `wiki_memory_train.py`.
+- **Rationale**: Cancels the teacher's general language prior so dense credit cannot be
+  satisfied merely by suppressing organism control.
+
+### `full_vocab_effect_reverse_kl`
+
+- **Does**: Applies full-vocabulary reverse KL from the live passage-conditioned
+  student to the passage-effect target.
+- **Rationale**: Preserves dense frozen-language credit while allowing gradients only
+  through the conditioned student path.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
@@ -30,6 +46,7 @@ passage-conditioned language-control delta in L0-C1p.
 | `wiki_memory_train.py` | Teacher is detached and only student receives KL gradients | KL direction or detach semantics |
 | `test_wiki_memory.py` | Matching distributions have exact-zero KL within floating tolerance | Reduction or temperature scaling |
 | C1p protocol | Energy is computed on expressed deltas, not raw common controls | Input meaning |
+| C1s protocol | Common teacher priors cancel within floating tolerance and all baseline/teacher logits detach | Target construction or detach semantics |
 
 ## Notes
 

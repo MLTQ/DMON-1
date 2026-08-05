@@ -29,6 +29,51 @@ def full_vocab_reverse_kl(
     return per_item.mean() * temperature**2
 
 
+def passage_effect_target_logits(
+    student_baseline_logits: torch.Tensor,
+    teacher_passage_logits: torch.Tensor,
+    teacher_baseline_logits: torch.Tensor,
+) -> torch.Tensor:
+    """Add only the detached teacher passage effect to the student baseline."""
+
+    shape = student_baseline_logits.shape
+    if (
+        not shape
+        or teacher_passage_logits.shape != shape
+        or teacher_baseline_logits.shape != shape
+    ):
+        raise ValueError("all passage-effect logits must share one non-empty shape")
+    return (
+        student_baseline_logits.detach().float()
+        + (
+            teacher_passage_logits.detach().float()
+            - teacher_baseline_logits.detach().float()
+        )
+    )
+
+
+def full_vocab_effect_reverse_kl(
+    student_passage_logits: torch.Tensor,
+    student_baseline_logits: torch.Tensor,
+    teacher_passage_logits: torch.Tensor,
+    teacher_baseline_logits: torch.Tensor,
+    *,
+    temperature: float = 1.0,
+) -> torch.Tensor:
+    """Match the teacher's passage-induced change atop the student's own prior."""
+
+    target = passage_effect_target_logits(
+        student_baseline_logits,
+        teacher_passage_logits,
+        teacher_baseline_logits,
+    )
+    return full_vocab_reverse_kl(
+        student_passage_logits,
+        target,
+        temperature=temperature,
+    )
+
+
 def control_delta_energy(controls: torch.Tensor) -> torch.Tensor:
     """Price the mean squared amplitude of an expressed creature-control delta."""
 

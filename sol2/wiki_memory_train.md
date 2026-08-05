@@ -12,7 +12,7 @@ unchanged source-family-disjoint development and held-out facts under causal con
 Defines update count, optimizer strength, evaluation/checkpoint intervals, token limits,
 permutation seed, reproducibility seed, and the explicit bounded control gain used by
 the language graft, including serialized late-residual/prefix mode, dense-teacher,
-control-energy, and reference-centering treatments.
+passage-effect, control-energy, and reference-centering treatments.
 
 ### `counterfactual_training_record`
 
@@ -89,6 +89,18 @@ uninformative teacher visible before a result is interpreted.
 `passage_visible_teacher_logits` returns one detached `[vocabulary]` vector for the
 final prompt position, matching each retained student episode vector exactly.
 
+### Passage-effect distillation
+
+When explicitly enabled, `question_only_teacher_logits` scores the identical formatted
+question without any passage. The detached teacher passage-minus-question effect is
+added to the detached student zero-prefix logits, and only the live exposed student
+minimizes reverse KL to that target. This cancels the teacher's shared language prior
+and makes zero control optimal only when the hidden passage has no effect.
+
+Telemetry separately reports teacher/student effect RMS and paired effect separation.
+The question-only teacher and zero-prefix student baselines never receive gradients or
+enter organism state.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's
@@ -151,6 +163,8 @@ performs independent cellular transitions and language-head control.
   no-exposure task outcome, and the exact count of frozen effector parameters.
 - Records full-vocabulary teacher KL, teacher label accuracy, teacher-pair separation,
   and effective-delta energy beside the existing causal metrics.
+- Records passage-effect KL, teacher/student effect RMS, and paired effect separation
+  when the effect-only treatment is enabled.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -216,6 +230,8 @@ performs independent cellular transitions and language-head control.
 - Causal passage contrast requires paired counterfactuals and has no inference path.
 - Teacher logits are detached, never serialized into the organism, and never enter
   cellular state; full-vocabulary KL sends gradients only through student logits.
+- Passage-effect targets detach the student baseline and both teacher paths; only the
+  conditioned exposed student receives effect-loss gradients.
 - Reference controls are computed from the identical starting state and question,
   detached before subtraction, and serialized as a treatment flag rather than state.
 - Delta energy prices effective language intervention after reference subtraction, not

@@ -13,7 +13,12 @@ from torch import nn
 from .backbone_audit import summarize_binding_rows
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_causal_contrast import passage_causal_contrast_loss
-from .wiki_distillation import control_delta_energy, full_vocab_reverse_kl
+from .wiki_distillation import (
+    control_delta_energy,
+    full_vocab_effect_reverse_kl,
+    full_vocab_reverse_kl,
+    passage_effect_target_logits,
+)
 from .wiki_memory import (
     WikiDocument,
     WikiMemoryCorpus,
@@ -37,6 +42,7 @@ from .wiki_memory_train import (
     organism_optimizer_groups,
     paired_binding_margin_loss,
     passage_visible_teacher_logits,
+    question_only_teacher_logits,
     require_finite_organism_gradients,
     save_wiki_memory_checkpoint,
 )
@@ -162,6 +168,58 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
     shifted.backward()
     assert student.grad is not None and float(student.grad.abs().sum()) > 0.0
     assert teacher.grad is None and shifted_teacher.grad is None
+
+    student_baseline = torch.tensor([[0.4, -0.2, 0.1]], requires_grad=True)
+    common_teacher_prior = torch.tensor([[8.0, -3.0, 1.5]], requires_grad=True)
+    teacher_effect = torch.tensor([[0.5, -0.25, 0.0]])
+    effect_target = passage_effect_target_logits(
+        student_baseline,
+        common_teacher_prior + teacher_effect,
+        common_teacher_prior,
+    )
+    assert torch.allclose(
+        effect_target,
+        student_baseline.detach() + teacher_effect,
+        atol=1e-6,
+        rtol=0.0,
+    )
+    different_prior = torch.tensor([[-5.0, 7.0, 2.0]])
+    assert torch.allclose(
+        effect_target,
+        passage_effect_target_logits(
+            student_baseline,
+            different_prior + teacher_effect,
+            different_prior,
+        ),
+        atol=1e-6,
+        rtol=0.0,
+    )
+    conditioned_student = effect_target.detach().clone().requires_grad_()
+    effect_loss = full_vocab_effect_reverse_kl(
+        conditioned_student,
+        student_baseline,
+        common_teacher_prior + teacher_effect,
+        common_teacher_prior,
+    )
+    assert abs(float(effect_loss.detach())) < 1e-7
+    mismatched_student = student_baseline.detach().clone().requires_grad_()
+    mismatched_loss = full_vocab_effect_reverse_kl(
+        mismatched_student,
+        student_baseline,
+        common_teacher_prior + teacher_effect,
+        common_teacher_prior,
+    )
+    assert float(mismatched_loss.detach()) > 0.0
+    mismatched_loss.backward()
+    assert mismatched_student.grad is not None
+    assert float(mismatched_student.grad.abs().sum()) > 0.0
+    assert student_baseline.grad is None and common_teacher_prior.grad is None
+    zero_effect_target = passage_effect_target_logits(
+        student_baseline,
+        common_teacher_prior,
+        common_teacher_prior,
+    )
+    assert torch.equal(zero_effect_target, student_baseline.detach())
     zero_controls = torch.zeros(1, 2, 3)
     active_controls = torch.full((1, 2, 3), 0.5)
     assert float(control_delta_energy(zero_controls)) == 0.0
@@ -195,11 +253,27 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_question_tokens=256,
     )
     right_teacher_input = tokenizer.texts[-1]
+    baseline_teacher = question_only_teacher_logits(
+        system,
+        tokenizer,
+        left[1],
+        permutation_seed=19,
+        max_question_tokens=256,
+    )
+    baseline_teacher_input = tokenizer.texts[-1]
     assert left_teacher.shape == (system.backbone.vocab_size,)
-    assert not left_teacher.requires_grad and not right_teacher.requires_grad
+    assert baseline_teacher.shape == left_teacher.shape
+    assert not any(
+        logits.requires_grad
+        for logits in (left_teacher, right_teacher, baseline_teacher)
+    )
     assert left[0].memory in left_teacher_input
     assert right[0].memory in right_teacher_input
     assert left_teacher_input != right_teacher_input
+    assert left[0].memory not in baseline_teacher_input
+    assert right[0].memory not in baseline_teacher_input
+    formatted = format_wiki_question(left[1], permutation_seed=19)
+    assert baseline_teacher_input == formatted.prompt
 
 
 def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
@@ -591,6 +665,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 output_eligibility_relay_reference=0.005,
                 language_control_mode="prefix",
                 teacher_distillation_weight=1.0,
+                teacher_effect_distillation_weight=2.0,
                 teacher_distillation_temperature=0.75,
                 control_energy_weight=0.1,
                 reference_centered_controls=True,
@@ -620,6 +695,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["output_eligibility_margin"] == 0.005
         assert payload["train_config"]["language_control_mode"] == "prefix"
         assert payload["train_config"]["teacher_distillation_weight"] == 1.0
+        assert payload["train_config"]["teacher_effect_distillation_weight"] == 2.0
         assert payload["train_config"]["teacher_distillation_temperature"] == 0.75
         assert payload["train_config"]["control_energy_weight"] == 0.1
         assert payload["train_config"]["reference_centered_controls"] is True
