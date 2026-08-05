@@ -202,6 +202,85 @@ def test_zero_up_private_adapters_are_silent_and_recruitable() -> None:
     assert torch.equal(adapted.cell_adapter_up.detach(), trained)
 
 
+def test_zero_gated_relay_output_attention_is_silent_and_recruitable() -> None:
+    tract_cfg = dataclasses.replace(SMALL, relay_output_attention=True)
+    torch.manual_seed(SMALL.seed)
+    baseline = Sol2(SMALL)
+    torch.manual_seed(SMALL.seed)
+    tract_model = Sol2(tract_cfg)
+    assert tract_model.relay_output_transport is not None
+    assert tract_model.relay_output_transport.gate_rms() == 0.0
+
+    tokens = torch.randint(0, SMALL.vocab_size, (2, 5))
+    baseline_state = baseline.initial_state(2, "cpu")
+    tract_state = tract_model.initial_state(2, "cpu")
+    for position in range(tokens.shape[1]):
+        baseline_logits, baseline_state, _ = baseline.step(
+            tokens[:, position], baseline_state
+        )
+        tract_logits, tract_state, _ = tract_model.step(
+            tokens[:, position], tract_state
+        )
+    assert torch.equal(baseline_logits, tract_logits)
+    assert torch.equal(baseline_state.hidden, tract_state.hidden)
+
+    transport = tract_model.relay_output_transport
+    relay = torch.randn(2, SMALL.n_relay, SMALL.hidden)
+    output = torch.randn(2, SMALL.n_output, SMALL.hidden)
+    probe = torch.randn(2, SMALL.n_output, SMALL.hidden)
+    transported = transport(relay, output)
+    assert torch.equal(transported, torch.zeros_like(transported))
+    (transported * probe).sum().backward()
+    assert transport.gate_logit.grad is not None
+    assert float(transport.gate_logit.grad.abs().sum()) > 0.0
+    for name, parameter in transport.named_parameters():
+        if name == "gate_logit":
+            continue
+        assert parameter.grad is not None
+        assert float(parameter.grad.abs().sum()) == 0.0, name
+
+    tract_model.zero_grad(set_to_none=True)
+    with torch.no_grad():
+        transport.gate_logit.fill_(0.2)
+    recruited = transport(relay, output)
+    assert float(recruited.detach().abs().sum()) > 0.0
+    (recruited * probe).sum().backward()
+    assert float(transport.query.weight.grad.abs().sum()) > 0.0
+    assert float(transport.key.weight.grad.abs().sum()) > 0.0
+    assert float(transport.value.weight.grad.abs().sum()) > 0.0
+    assert float(transport.output.weight.grad.abs().sum()) > 0.0
+    assert float(transport.queries.grad.abs().sum()) > 0.0
+
+    baseline_state = baseline.initial_state(2, "cpu")
+    tract_state = tract_model.initial_state(2, "cpu")
+    same_token = torch.tensor([2, 2])
+    for _ in range(3):
+        _, baseline_state, _ = baseline.step(same_token, baseline_state)
+        _, tract_state, _ = tract_model.step(same_token, tract_state)
+    non_output = torch.cat(
+        [tract_model.input_idx, tract_model.memory_idx, tract_model.internal_idx]
+    )
+    assert torch.equal(
+        baseline_state.hidden[:, non_output], tract_state.hidden[:, non_output]
+    )
+    assert not torch.equal(
+        baseline_state.hidden[:, tract_model.output_idx],
+        tract_state.hidden[:, tract_model.output_idx],
+    )
+    assert tract_model.graph.output_cells_are_sinks(tract_model.output_idx)
+    assert tract_model.graph.targets_read_only_from(
+        tract_model.output_idx, tract_model.internal_idx
+    )
+
+    restored = Sol2(tract_cfg)
+    restored.load_state_dict(tract_model.state_dict())
+    assert restored.relay_output_transport is not None
+    assert torch.equal(
+        restored.relay_output_transport.gate_logit,
+        tract_model.relay_output_transport.gate_logit,
+    )
+
+
 def test_gradient_reaches_every_adaptive_layer() -> None:
     torch.manual_seed(SMALL.seed)
     model = Sol2(SMALL)
@@ -639,6 +718,7 @@ def main() -> None:
         test_bounded_treatment_is_parameter_neutral_and_effective,
         test_zero_identity_is_behaviorally_silent,
         test_zero_up_private_adapters_are_silent_and_recruitable,
+        test_zero_gated_relay_output_attention_is_silent_and_recruitable,
         test_gradient_reaches_every_adaptive_layer,
         test_tiny_repeated_stream_can_be_learned,
         test_growth_preserves_anatomy_state_and_optimizer,

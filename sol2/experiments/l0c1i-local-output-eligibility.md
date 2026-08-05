@@ -1,6 +1,6 @@
 # L0-C1i: eligibility-gated differential output transport
 
-Status: protocol frozen 2026-08-05 before implementation or optimizer updates.
+Status: stopped at the frozen update-25 gate on 2026-08-05; update 100 was not run.
 
 ## Question
 
@@ -86,3 +86,34 @@ LLM graph.
   an isolated effector treatment.
 - Causal controls order correctly: replicate across seeds and replace compact bindings
   with natural unseen passages before expanding conversational generation.
+
+## Result
+
+The two-update mechanical pilot and exact resume to update 25 completed on the physical
+RTX 4090. All expected organism gradient groups participated with finite telemetry;
+the frozen Llama retained `0` trainable parameters and `0` gradient tensors. The final
+artifact is `l0c1i-eligibility-m96-u25-result.json` (SHA-256
+`3d50e8d61b53d36615dae88b3acd28a59f2a23a84e35d12d8350f53c27946081`).
+
+The frozen trailing update 16-25 gates failed:
+
+- relay separation averaged `0.00879569` RMS and the detached eligibility gate averaged
+  `0.951816`, proving the auxiliary was not silent for lack of presynaptic distinction;
+- output separation averaged only `0.000810227` RMS, below the required `0.005`;
+- output/relay transport retention averaged `0.0965617`, below the required `0.8`;
+- target-axis projection averaged `-0.000199392`, below the required positive `0.003`.
+
+Development accuracy was `0.75` for normal, no exposure, reset, wrong passage, memory
+lesion, internal lesion, and zero control. Held-out accuracy was `0.375` for every one
+of those arms. The treatment therefore supplies no causal memory evidence and stops at
+update 25.
+
+This is a negative result for eligibility-gated signed endpoint credit under the
+existing sparse relay-to-output anatomy. It is not evidence that the passage signal is
+absent: relay tissue remained more separated than L0-C1i's `0.005` reference while
+roughly 90% of that distinction disappeared at output. More optimizer time on the same
+treatment is not justified. The next isolated change should add a bounded,
+zero-initialized attentive relay-to-output tract inside the organism, retaining output
+tissue as the only LLM-facing sink. That tests whether the missing ingredient is
+adaptive transport bandwidth and cell-specific routing rather than another global
+loss.

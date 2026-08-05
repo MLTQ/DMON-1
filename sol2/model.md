@@ -25,6 +25,8 @@ and the largest effective operator norm beside behavioral loss.
   state, incoming message, and drive.
 - Clears output tissue at each token boundary, preventing it from becoming an
   autonomous recurrent shortcut.
+- Optionally adds a zero-gated, per-output-cell attentive tract from all relay tissue
+  into the ordinary output-tissue message.
 - Reads dedicated output tissue through learned organ queries; the organ never sees
   input, memory, compute, or relay tensors directly.
 - Retains legacy A parameter names and stores additional physical ports in an initially
@@ -66,6 +68,8 @@ Counts only trainable parameters for matched controls.
   optimizer boundaries, preventing gradients across weight versions.
 - An attached organ may content-address memory during a closed-write phase, but recall
   is added only to input sensory drive. It cannot bypass compute/relay or output sinks.
+- The optional relay-output tract uses a private seeded initialization so enabling its
+  exact-zero gate does not perturb legacy parameter initialization or global RNG.
 
 ## Contracts
 
@@ -76,6 +80,8 @@ Counts only trainable parameters for matched controls.
 - Output cells are sinks in the connectome.
 - Output cells receive only from compute/relay tissue and retain state only within a
   token's microsteps.
+- Relay-output attention reads relay cells only and writes output message only; it does
+  not weaken the output-sink or organ-isolation contracts.
 - `weight_version` is preserved through ticks.
 - All tissue access uses index buffers; growth may append cells after the original
   output block without relying on contiguity.

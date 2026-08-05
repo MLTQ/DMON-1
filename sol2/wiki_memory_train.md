@@ -47,6 +47,12 @@ credit is present only when presynaptic tissue carries a passage distinction. Th
 signed paired projection gives identical output endpoints opposing nonzero gradients,
 avoiding L0-C1h's shared-mixture solution.
 
+### Optional attentive relay tract
+
+Builds the organism with a zero-gated, per-output-cell cross-attention tract over relay
+tissue when requested. Gate magnitude and a separate `transport` gradient group are
+reported so opening a new anatomical path cannot be inferred from task loss alone.
+
 ### `organism_gradient_groups`
 
 Reports gradient RMS, participating element count, and tensor count separately for the
@@ -90,6 +96,7 @@ performs independent cellular transitions and language-head control.
 - Records training-only output-code loss/accuracy and paired output-state separation.
 - Records eligibility loss, answer-axis projection, relay separation, output/relay
   transport ratio, and eligibility-gate strength.
+- Records attentive-tract gate magnitude when the optional architecture is enabled.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 

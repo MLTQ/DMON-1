@@ -11,6 +11,7 @@ from torch.nn import functional as F
 from .config import Sol2Config
 from .graph import DirectedConnectome
 from .organs import AttentiveOutputOrgan, SensorEffectorOrgan
+from .relay_output_transport import RelayOutputAttention
 from .state import OrganismState
 from .tissues import TissueBank
 
@@ -106,6 +107,19 @@ class Sol2(nn.Module):
             value_gain=cfg.value_gain,
             attention_temperature=cfg.attention_temperature,
         )
+        self.relay_output_transport = None
+        if cfg.relay_output_attention:
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(cfg.seed + 73_000)
+                self.relay_output_transport = RelayOutputAttention(
+                    cfg.n_output,
+                    hidden,
+                    bounded_operators=cfg.bounded_operators,
+                    operator_bound=cfg.operator_bound,
+                    value_gain=cfg.value_gain,
+                    attention_temperature=cfg.attention_temperature,
+                    transport_gain=cfg.relay_output_gain,
+                )
         # Organ A keeps the legacy parameter names so acquisition checkpoints load
         # strictly. Newly attached ports live here and are always selected explicitly.
         self.attached_organs = nn.ModuleDict()
@@ -372,6 +386,15 @@ class Sol2(nn.Module):
         for micro in range(cfg.steps_per_token):
             raw_message = self.graph.aggregate(hidden, self.mutable_idx)
             message = raw_message
+            if self.relay_output_transport is not None:
+                transported = self.relay_output_transport(
+                    hidden[:, self.relay_idx], hidden[:, self.output_idx]
+                )
+                message = message.index_copy(
+                    1,
+                    self.output_pos,
+                    message[:, self.output_pos] + transported,
+                )
             drive = torch.zeros_like(message)
             if micro == 0:
                 drive = drive.index_copy(1, self.input_pos, sensory_drive)
@@ -414,6 +437,13 @@ class Sol2(nn.Module):
                 **{f"tissue.{k}": v for k, v in self.tissues.operator_norms().items()},
                 **{f"organ.{organ_name}.{k}": v for k, v in organ_norms.items()},
             }
+            if self.relay_output_transport is not None:
+                norms.update(
+                    {
+                        f"relay_output.{k}": v
+                        for k, v in self.relay_output_transport.operator_norms().items()
+                    }
+                )
             assert organ_health is not None
             health = StepHealth(
                 hidden_absmax=float(hidden.detach().abs().max()),

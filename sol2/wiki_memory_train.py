@@ -160,6 +160,8 @@ def paired_binding_margin_loss(
 
 
 def _organism_parameter_group(name: str) -> str:
+    if name.startswith("relay_output_transport."):
+        return "transport"
     if ".recall_" in name:
         return "recall"
     if ".sensor." in name or name.endswith(("sensory_gain", "sensory_bias")):
@@ -478,6 +480,8 @@ def build_system(args: argparse.Namespace):
         initial_active_dendrites=args.active_dendrites,
         steps_per_token=args.microsteps,
         organ_queries=args.organ_queries,
+        relay_output_attention=getattr(args, "relay_output_attention", False),
+        relay_output_gain=getattr(args, "relay_output_gain", 1.0),
         vocab_size=2,
         seed=args.seed,
         device=str(device),
@@ -695,6 +699,11 @@ def run_training(args: argparse.Namespace) -> dict:
             ),
             "output_transport_ratio": float(output_transport_ratio.detach()),
             "output_eligibility_gate": float(output_eligibility_gate.detach()),
+            "relay_output_gate_rms": (
+                0.0
+                if system.organism.relay_output_transport is None
+                else system.organism.relay_output_transport.gate_rms()
+            ),
             "correct": result.correct,
             "branch_accuracy": branch_accuracy,
             "branch_answers": [branch.correct_label for branch in branch_results],
@@ -725,6 +734,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"target_proj={row['output_target_projection']:.4f} "
                 f"relay_sep={row['relay_state_separation_rms']:.4f} "
                 f"transport={row['output_transport_ratio']:.3f} "
+                f"tract_gate={row['relay_output_gate_rms']:.4f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -887,6 +897,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--active-dendrites", type=int, default=12)
     parser.add_argument("--microsteps", type=int, default=5)
     parser.add_argument("--organ-queries", type=int, default=8)
+    parser.add_argument("--relay-output-attention", action="store_true")
+    parser.add_argument("--relay-output-gain", type=float, default=1.0)
     parser.add_argument("--control-tokens", type=int, default=8)
     parser.add_argument("--control-rank", type=int, default=16)
     return parser.parse_args()

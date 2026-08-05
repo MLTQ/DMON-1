@@ -14,6 +14,8 @@ contract for a SOL2 run. The serialized configuration travels with every checkpo
 - Exposes the two S0-R factors: bounded graph operators and private cell identity.
 - Optionally gives mutable cells zero-output private low-rank transition residuals;
   rank zero preserves legacy checkpoint structure exactly.
+- Optionally installs a zero-gated attentive relay-to-output tract; disabled remains
+  the checkpoint-compatible default.
 - Defaults to a constant learning rate because indefinite plasticity must not depend on
   reaching the end of a one-shot cosine schedule.
 - Computes total and mutable cell counts from tissue counts.
@@ -26,6 +28,8 @@ contract for a SOL2 run. The serialized configuration travels with every checkpo
 - `n_mutable` is also the exact number of private-expression rows in identity arms.
 - Positive adapter rank creates exactly one down/up parameter pair per mutable cell;
   adapter gain is nonnegative and the up projection starts at zero.
+- Relay-output attention has positive bounded gain and creates no parameters or state
+  keys when disabled.
 - `initial_active_dendrites <= n_dendrites`; unused slots are dormant growth capacity.
 - `scaled()` validates the resulting configuration.
 - Training and all controls consume the same optimizer schedule fields.
