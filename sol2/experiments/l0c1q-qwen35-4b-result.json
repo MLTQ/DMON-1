@@ -1,0 +1,465 @@
+{
+  "schema": 1,
+  "kind": "l0c1q-modern-backbone-audit",
+  "model": "Qwen/Qwen3.5-4B",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "cuda_visible_devices": "GPU-21d45575-7ece-a97c-35a0-294f7bce9c39",
+  "backbone_class": "Qwen3_5ForCausalLM",
+  "backbone_width": 2560,
+  "backbone_vocab_size": 248320,
+  "backbone_parameters": 4205751296,
+  "backbone_trainable_parameters": 0,
+  "native_logit_error": 0.0,
+  "prefix": {
+    "question_id": "actor_attribution",
+    "tokens": 75,
+    "loss": 1.2862813472747803,
+    "seconds": 0.68213195700082,
+    "gradient_rms": 0.07750467211008072,
+    "gradient_absmax": 1.078125,
+    "gradient_finite": true,
+    "backbone_gradient_tensors": 0,
+    "embedding_rms": 0.014163410291075706,
+    "perturbation_relative_scale": 0.01,
+    "full_logit_delta_rms": 0.029276873916387558,
+    "label_logit_delta_rms": 0.0,
+    "forward_kl": 0.00183560186997056
+  },
+  "binding_summary": {
+    "count": 24.0,
+    "accuracy": 1.0,
+    "mean_correct_label_probability": 0.8389363611737887,
+    "mean_correct_label_margin": 2.140625,
+    "mean_pair_logit_separation_rms": 0.5883985832333565,
+    "minimum_pair_logit_separation_rms": 0.4006288945674896
+  },
+  "binding_seconds": 4.256212692998815,
+  "binding_rows": [
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.8398067355155945,
+      "correct_label_margin": 1.75,
+      "label_log_probs": {
+        "A": -1.9245834350585938,
+        "B": -0.17458346486091614,
+        "C": -5.112083435058594,
+        "D": -4.799583435058594
+      },
+      "tokens": 130,
+      "branch": "left"
+    },
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9255480766296387,
+      "correct_label_margin": 2.625,
+      "label_log_probs": {
+        "A": -2.702369213104248,
+        "B": -5.202369213104248,
+        "C": -6.264869213104248,
+        "D": -0.07736917585134506
+      },
+      "tokens": 131,
+      "branch": "right"
+    },
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_rate",
+      "correct_label": "A",
+      "predicted_label": "A",
+      "correct": true,
+      "correct_label_probability": 0.8823733925819397,
+      "correct_label_margin": 2.625,
+      "label_log_probs": {
+        "A": -0.12513989210128784,
+        "B": -3.7501399517059326,
+        "C": -3.5001399517059326,
+        "D": -2.7501399517059326
+      },
+      "tokens": 122,
+      "branch": "left"
+    },
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_rate",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9372017979621887,
+      "correct_label_margin": 3.0,
+      "label_log_probs": {
+        "A": -3.064856767654419,
+        "B": -4.43985652923584,
+        "C": -5.43985652923584,
+        "D": -0.06485670059919357
+      },
+      "tokens": 121,
+      "branch": "right"
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_decomposition",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.7373054623603821,
+      "correct_label_margin": 1.375,
+      "label_log_probs": {
+        "A": -2.679753065109253,
+        "B": -0.30475300550460815,
+        "C": -4.867252826690674,
+        "D": -1.679753065109253
+      },
+      "tokens": 131,
+      "branch": "left"
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_decomposition",
+      "correct_label": "C",
+      "predicted_label": "C",
+      "correct": true,
+      "correct_label_probability": 0.6606719493865967,
+      "correct_label_margin": 1.125,
+      "label_log_probs": {
+        "A": -2.1644978523254395,
+        "B": -4.6019978523254395,
+        "C": -0.41449791193008423,
+        "D": -1.5394978523254395
+      },
+      "tokens": 131,
+      "branch": "right"
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_stability",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9315101504325867,
+      "correct_label_margin": 2.75,
+      "label_log_probs": {
+        "A": -2.820948362350464,
+        "B": -5.320948123931885,
+        "C": -5.508448123931885,
+        "D": -0.07094825059175491
+      },
+      "tokens": 125,
+      "branch": "left"
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_stability",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.9208594560623169,
+      "correct_label_margin": 2.625,
+      "label_log_probs": {
+        "A": -2.7074477672576904,
+        "B": -0.0824478417634964,
+        "C": -5.0199480056762695,
+        "D": -5.1449480056762695
+      },
+      "tokens": 125,
+      "branch": "right"
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_axes",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9296995997428894,
+      "correct_label_margin": 2.75,
+      "label_log_probs": {
+        "A": -2.8228938579559326,
+        "B": -4.7603936195373535,
+        "C": -6.0728936195373535,
+        "D": -0.07289374619722366
+      },
+      "tokens": 112,
+      "branch": "left"
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_axes",
+      "correct_label": "C",
+      "predicted_label": "C",
+      "correct": true,
+      "correct_label_probability": 0.7848787307739258,
+      "correct_label_margin": 1.625,
+      "label_log_probs": {
+        "A": -1.8672261238098145,
+        "B": -3.1172261238098145,
+        "C": -0.24222606420516968,
+        "D": -4.1172261238098145
+      },
+      "tokens": 113,
+      "branch": "right"
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_sudoku",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.7985524535179138,
+      "correct_label_margin": 2.125,
+      "label_log_probs": {
+        "A": -2.349954605102539,
+        "B": -0.22495464980602264,
+        "C": -2.349954605102539,
+        "D": -4.537454605102539
+      },
+      "tokens": 142,
+      "branch": "left"
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_sudoku",
+      "correct_label": "A",
+      "predicted_label": "A",
+      "correct": true,
+      "correct_label_probability": 0.8560608625411987,
+      "correct_label_margin": 1.875,
+      "label_log_probs": {
+        "A": -0.15541380643844604,
+        "B": -4.717913627624512,
+        "C": -2.030413866043091,
+        "D": -5.592913627624512
+      },
+      "tokens": 151,
+      "branch": "right"
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_phases",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.8996772170066833,
+      "correct_label_margin": 2.625,
+      "label_log_probs": {
+        "A": -2.7307193279266357,
+        "B": -0.10571926832199097,
+        "C": -3.9807193279266357,
+        "D": -4.105719089508057
+      },
+      "tokens": 111,
+      "branch": "left"
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_phases",
+      "correct_label": "C",
+      "predicted_label": "C",
+      "correct": true,
+      "correct_label_probability": 0.7806907892227173,
+      "correct_label_margin": 1.625,
+      "label_log_probs": {
+        "A": -1.8725762367248535,
+        "B": -3.2475762367248535,
+        "C": -0.24757617712020874,
+        "D": -3.6225762367248535
+      },
+      "tokens": 111,
+      "branch": "right"
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_cause",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9212970733642578,
+      "correct_label_margin": 2.625,
+      "label_log_probs": {
+        "A": -2.70697283744812,
+        "B": -4.706972599029541,
+        "C": -5.831972599029541,
+        "D": -0.08197273313999176
+      },
+      "tokens": 116,
+      "branch": "left"
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_cause",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.6843999028205872,
+      "correct_label_margin": 0.875,
+      "label_log_probs": {
+        "A": -1.2542128562927246,
+        "B": -0.3792129158973694,
+        "C": -4.129212856292725,
+        "D": -4.254212856292725
+      },
+      "tokens": 116,
+      "branch": "right"
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_gain",
+      "correct_label": "C",
+      "predicted_label": "C",
+      "correct": true,
+      "correct_label_probability": 0.940407931804657,
+      "correct_label_margin": 3.0,
+      "label_log_probs": {
+        "A": -3.061441421508789,
+        "B": -5.186441421508789,
+        "C": -0.06144152954220772,
+        "D": -4.936441421508789
+      },
+      "tokens": 140,
+      "branch": "left"
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_gain",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.7899622321128845,
+      "correct_label_margin": 1.625,
+      "label_log_probs": {
+        "A": -1.8607702255249023,
+        "B": -0.23577016592025757,
+        "C": -3.7357702255249023,
+        "D": -3.4857702255249023
+      },
+      "tokens": 133,
+      "branch": "right"
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_transfer",
+      "correct_label": "D",
+      "predicted_label": "D",
+      "correct": true,
+      "correct_label_probability": 0.9500717520713806,
+      "correct_label_margin": 3.5,
+      "label_log_probs": {
+        "A": -3.551217794418335,
+        "B": -3.926217794418335,
+        "C": -6.488717555999756,
+        "D": -0.05121779069304466
+      },
+      "tokens": 120,
+      "branch": "left"
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_transfer",
+      "correct_label": "A",
+      "predicted_label": "A",
+      "correct": true,
+      "correct_label_probability": 0.9323577880859375,
+      "correct_label_margin": 2.875,
+      "label_log_probs": {
+        "A": -0.07003860175609589,
+        "B": -2.9450385570526123,
+        "C": -5.132538795471191,
+        "D": -4.695038795471191
+      },
+      "tokens": 119,
+      "branch": "right"
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_action",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.7921563386917114,
+      "correct_label_margin": 1.75,
+      "label_log_probs": {
+        "A": -2.8579964637756348,
+        "B": -0.23299656808376312,
+        "C": -1.9829965829849243,
+        "D": -4.357996463775635
+      },
+      "tokens": 114,
+      "branch": "left"
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_action",
+      "correct_label": "A",
+      "predicted_label": "A",
+      "correct": true,
+      "correct_label_probability": 0.6213512420654297,
+      "correct_label_margin": 0.625,
+      "label_log_probs": {
+        "A": -0.47585880756378174,
+        "B": -3.600858688354492,
+        "C": -1.1008588075637817,
+        "D": -3.975858688354492
+      },
+      "tokens": 114,
+      "branch": "right"
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_detection",
+      "correct_label": "A",
+      "predicted_label": "A",
+      "correct": true,
+      "correct_label_probability": 0.7941775918006897,
+      "correct_label_margin": 1.625,
+      "label_log_probs": {
+        "A": -0.2304481863975525,
+        "B": -3.3554482460021973,
+        "C": -1.8554482460021973,
+        "D": -4.230448246002197
+      },
+      "tokens": 118,
+      "branch": "left"
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_detection",
+      "correct_label": "B",
+      "predicted_label": "B",
+      "correct": true,
+      "correct_label_probability": 0.8234541416168213,
+      "correct_label_margin": 2.375,
+      "label_log_probs": {
+        "A": -2.5692474842071533,
+        "B": -0.19424742460250854,
+        "C": -2.5692474842071533,
+        "D": -3.7567474842071533
+      },
+      "tokens": 119,
+      "branch": "right"
+    }
+  ],
+  "pair_logit_separations_rms": [
+    0.5723819732666016,
+    0.5825980305671692,
+    0.5491064190864563,
+    0.6271579265594482,
+    0.8426529169082642,
+    0.4575989246368408,
+    0.49809232354164124,
+    0.7058325409889221,
+    0.5558450818061829,
+    0.7962706089019775,
+    0.4006288945674896,
+    0.47261735796928406
+  ],
+  "peak_cuda_allocated_bytes": 10327957504,
+  "peak_cuda_reserved_bytes": 10643046400,
+  "total_seconds": 84.9701556200016
+}
