@@ -16,6 +16,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Wiki-episode loss recruits the continuous graft and never creates backbone gradients.
 - Pre-transformer prefix episodes recruit the output decoder through the frozen
   backbone and the matched causal evaluator preserves all eight intervention arms.
+- Non-finite organism gradients are rejected before mutation, with the named parameter
+  and its pre-step value preserved.
 - No-exposure and reset causal arms traverse the same exact scorer.
 - Aggregate metrics remain bounded and auditable.
 - Counterfactual targets vary deterministically by epoch.

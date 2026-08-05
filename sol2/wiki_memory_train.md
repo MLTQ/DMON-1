@@ -83,6 +83,12 @@ Reports gradient RMS, participating element count, and tensor count separately f
 language sensor, recall head, connectome, tissue dynamics, cell identity, and effector.
 This distinguishes a weak reward from a route that receives no learning signal.
 
+### `require_finite_organism_gradients`
+
+Rejects any non-finite organism gradient before clipping, optimizer mutation, lifetime
+state advancement, or checkpointing. Aggregate gradient norm receives a second finite
+check after clipping computes it and before the optimizer step.
+
 ### `organism_optimizer_groups`
 
 Partitions every organism parameter exactly once and assigns explicit learning rates
@@ -183,6 +189,8 @@ performs independent cellular transitions and language-head control.
   geometry and never restores the exposed passage to Llama context.
 - Frozen-effector mode removes gradients only from the attached language effector;
   gradients still traverse its fixed operations into cellular output tissue.
+- A non-finite gradient can never reach `optimizer.step`; the failed update leaves the
+  continuing lane and checkpoint cursor unchanged.
 
 ## Example
 

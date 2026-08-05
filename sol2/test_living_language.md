@@ -9,8 +9,9 @@ backbone or GPU training is attempted.
 
 - A newly grafted continuous organ emits exact zeros and exactly preserves frozen
   language logits.
-- Prefix mode matches its deterministic exact-zero virtual-prefix floor and sends
-  gradients through all frozen language layers into controls, never model parameters.
+- Prefix mode matches its deterministic first-token-anchor plus exact-zero-residual
+  floor and sends gradients through all frozen language layers into controls, never
+  model parameters.
 - Contextual language features enter stream-written organism memory through the
   bounded sensor.
 - Stream-memory writes preserve delayed gradients into the sensor, and content recall

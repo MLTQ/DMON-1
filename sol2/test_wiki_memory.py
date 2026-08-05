@@ -34,6 +34,7 @@ from .wiki_memory_train import (
     organism_gradient_groups,
     organism_optimizer_groups,
     paired_binding_margin_loss,
+    require_finite_organism_gradients,
     save_wiki_memory_checkpoint,
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
@@ -193,6 +194,18 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     frozen_groups = organism_gradient_groups(frozen_system)
     assert frozen_groups["effector"]["tensors"] == 0.0
     assert frozen_groups["tissues"]["rms"] > 0.0
+
+    protected_system, _ = build_system()
+    protected_parameter = next(protected_system.organism.parameters())
+    protected_before = protected_parameter.detach().clone()
+    protected_parameter.grad = torch.full_like(protected_parameter, float("nan"))
+    try:
+        require_finite_organism_gradients(protected_system)
+    except FloatingPointError as error:
+        assert "non-finite organism gradients" in str(error)
+    else:
+        raise AssertionError("non-finite organism gradient was accepted")
+    assert torch.equal(protected_parameter, protected_before)
 
     prefix_system, prefix_organ = build_system()
     prefix_result = run_wiki_memory_episode(

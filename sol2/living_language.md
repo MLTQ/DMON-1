@@ -60,7 +60,7 @@ caller's random stream. Control and recall gains are explicit graft properties.
   there is no mandatory second backbone pass.
 - Prefix mode is the explicit exception: it spends a second backbone pass to move the
   creature upstream of frozen transformer reasoning. The first pass remains detached
-  sensory perception; only the prefix-conditioned pass retains control gradients.
+  sensory perception; only the anchored-prefix residuals retain control gradients.
 - Sensory features are explicitly converted to the continuing cellular state's device
   and dtype. Return controls are converted to the backbone feature dtype by the adapter,
   so BF16 language machinery and FP32 organism dynamics remain a deliberate boundary.

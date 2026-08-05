@@ -254,6 +254,23 @@ def organism_gradient_groups(system: LivingLanguageSystem) -> dict[str, dict[str
     }
 
 
+def require_finite_organism_gradients(system: LivingLanguageSystem) -> None:
+    """Reject a wiki-memory update before mutation when any gradient is non-finite."""
+
+    invalid = [
+        name
+        for name, parameter in system.organism.named_parameters()
+        if parameter.grad is not None
+        and not bool(torch.isfinite(parameter.grad).all())
+    ]
+    if invalid:
+        preview = ", ".join(invalid[:8])
+        suffix = "" if len(invalid) <= 8 else f" (+{len(invalid) - 8} more)"
+        raise FloatingPointError(
+            f"non-finite organism gradients before optimizer step: {preview}{suffix}"
+        )
+
+
 def save_wiki_memory_checkpoint(
     path: Path,
     *,
@@ -731,9 +748,14 @@ def run_training(args: argparse.Namespace) -> dict:
         )
         objective_loss.backward()
         gradient_groups = organism_gradient_groups(system)
+        require_finite_organism_gradients(system)
         grad_norm = torch.nn.utils.clip_grad_norm_(
             system.organism.parameters(), train_config.grad_clip
         )
+        if not bool(torch.isfinite(grad_norm)):
+            raise FloatingPointError(
+                f"non-finite aggregate gradient norm before optimizer step: {grad_norm}"
+            )
         optimizer.step()
         update += 1
         result = branch_results[0]

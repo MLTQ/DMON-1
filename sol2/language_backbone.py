@@ -151,7 +151,9 @@ class ToyFrozenLanguageBackbone(nn.Module):
         ):
             raise ValueError("prefix controls must have shape [batch, tokens, width]")
         embedded = self.embedding(input_ids).detach()
-        prefix = controls.to(device=embedded.device, dtype=embedded.dtype)
+        residual = controls.to(device=embedded.device, dtype=embedded.dtype)
+        anchors = embedded[:, :1].expand(-1, residual.shape[1], -1)
+        prefix = anchors + residual
         features, _ = self.recurrent(torch.cat((prefix, embedded), dim=1))
         return self.decoder(features[:, prefix.shape[1] :])
 
@@ -261,9 +263,11 @@ class HuggingFaceFrozenBackbone(nn.Module):
             raise ValueError("prefix controls must have shape [batch, tokens, width]")
         embedding = self.model.get_input_embeddings()
         token_embeddings = embedding(input_ids).detach()
-        prefix = controls.to(
+        residual = controls.to(
             device=token_embeddings.device, dtype=token_embeddings.dtype
         )
+        anchors = token_embeddings[:, :1].expand(-1, residual.shape[1], -1)
+        prefix = anchors + residual
         combined = torch.cat((prefix, token_embeddings), dim=1)
         attention_mask = torch.ones(
             combined.shape[:2], dtype=torch.long, device=combined.device

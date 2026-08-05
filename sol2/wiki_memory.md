@@ -82,8 +82,9 @@ Aggregates exact accuracy, loss/bits, control scale, and internal/memory activit
 - Exact-zero control traverses the same exposure and cellular transitions as normal.
 - Cached features change performance only; token wrappers remain the training path and
   cached-feature equivalence is covered by the living-language CPU gate.
-- Prefix zero-control uses the same virtual-token geometry as normal prefix control;
-  it is the matched floor for that interface rather than the native no-prefix Llama.
+- Prefix zero-control uses the same repeated first-token anchors and virtual-token
+  geometry as normal control; it is the matched floor rather than native no-prefix
+  Llama.
 - Source families cannot cross meta-training, development, and held-out splits.
 - The initial implementation runs one lifetime lane per episode; batching variable
   passages is a throughput optimization after the causal pilot works.

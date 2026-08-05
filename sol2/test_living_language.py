@@ -90,6 +90,15 @@ def test_new_language_graft_is_an_exact_noop() -> None:
         context, torch.zeros_like(prefix_step.controls)
     )
     assert torch.equal(prefix_step.logits, null_prefix[:, -1])
+    embedded = system.backbone.embedding(context).detach()
+    anchors = embedded[:, :1].expand(-1, prefix_step.controls.shape[1], -1)
+    anchored_features, _ = system.backbone.recurrent(
+        torch.cat((anchors, embedded), dim=1)
+    )
+    anchored_logits = system.backbone.decoder(
+        anchored_features[:, anchors.shape[1] :]
+    )
+    assert torch.equal(null_prefix, anchored_logits)
 
     sensed = system.backbone.encode(context)[:, -1]
     expected_memory = torch.tanh(organ.sensor(sensed))

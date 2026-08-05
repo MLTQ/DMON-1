@@ -1,6 +1,6 @@
 # L0-C1n: pre-transformer creature prefix
 
-Status: protocol frozen 2026-08-05 before implementation tests or optimizer updates.
+Status: complete numerical failure 2026-08-05.
 
 ## Question
 
@@ -69,3 +69,16 @@ alone has weight 4 and margin 0.1. Memory and question limits remain 256 tokens.
   compact operations to ordinary text rather than scaling updates blindly.
 - Natural causal controls order: replicate, then extend the same interface to
   generated conversation and only afterward test several-layer injection.
+
+## Result
+
+The one-update 8B BF16 preflight fit on the 4090 at roughly 19.4 GiB observed memory.
+Forward task loss (`5.5625`), output separation (`0.0066`), target projection
+(`0.0013`), relay separation (`0.0393`), and transport ratio (`0.168`) were finite.
+Backward gradient norm was `NaN`, however, and the unguarded optimizer step corrupted
+the tract gate before evaluation. The process was stopped and the invalid arm was not
+extended.
+
+This is a numerical failure of exact-zero virtual embeddings, not evidence about the
+scientific utility of pre-transformer control. C1o replaces them with ordinary fixed
+anchor embeddings plus creature residuals and adds mandatory pre-step rejection.

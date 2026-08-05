@@ -62,8 +62,9 @@ A structural protocol exposing only:
   the organism a differentiable path through the frozen language head. Deeper
   zero-residual injection remains an empirical extension, not a prerequisite.
 - Prefix mode deliberately uses a second frozen forward after SOL2 perceives the turn.
-  Exact-zero continuous prefixes form its matched language floor; they are not claimed
-  to reproduce native no-prefix logits because prefix positions remain present.
+  Each virtual slot repeats the detached first-token embedding and adds one bounded
+  creature residual. Exact-zero residuals form the matched anchored-prefix floor; they
+  are not claimed to reproduce native no-prefix logits because prefix positions remain.
 
 ## Contracts
 
