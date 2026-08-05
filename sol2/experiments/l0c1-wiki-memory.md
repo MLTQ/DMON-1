@@ -1,8 +1,10 @@
 # L0-C1: held-out wiki memory through a frozen language organ
 
-Status: protocol frozen 2026-08-04 before Llama baseline screening or organism training.
+Status: L0-C1g exploratory continuation completed at update 300 on 2026-08-04. The
+organism learned a causal but passage-independent Llama control policy; held-out wiki
+memory was not demonstrated.
 
-Baseline screening completed later on 2026-08-04; no optimizer update had occurred.
+The original protocol was frozen before baseline screening or any optimizer update.
 
 ## Question
 
@@ -326,6 +328,59 @@ accuracy rose to 75%, but normal, no-exposure, reset, wrong-passage, memory-lesi
 zero-control arms were all the same 75%; the admitted-question normal score was zero.
 This is a changed static answer policy, not evidence of wiki-memory use. The run continues
 because update 50 is only the first declared observation on the exploratory trajectory.
+
+### L0-C1g update-300 result
+
+The continuation completed normally at update 300. The full artifact is
+`l0c1g-gain64-m96-u300-result.json` with SHA-256 digest
+`1ccf7d096b0248e493fd83eb3783d4b98a2effa989e4cd72a96fb830c0e29fe0`. The frozen
+backbone retained zero trainable parameters and zero gradient tensors. Peak CUDA
+allocation/reservation was 17.29/17.61 GiB.
+
+Passage-dependent training signals did not improve with time:
+
+| Updates | Paired accuracy | Control separation | Label-logit separation | Binding loss |
+|---|---:|---:|---:|---:|
+| 1-25 | 8% | `2.53e-4` | `3.54e-3` | 1.240 |
+| 26-50 | 38% | `2.61e-4` | zero | 2.143 |
+| 51-100 | 23% | `9.68e-5` | `1.25e-3` | 1.694 |
+| 101-150 | 26% | `7.33e-5` | zero | 1.744 |
+| 151-200 | 24% | `3.02e-5` | `1.25e-3` | 1.689 |
+| 201-250 | 23% | `3.65e-5` | zero | 1.664 |
+| 251-300 | 25% | `1.45e-5` | zero | 1.679 |
+
+Only three of 300 updates produced any BF16 four-label separation. By the final window,
+paired accuracy was at chance and control separation had fallen about eighteenfold from
+the first 25 updates. Thus insufficient time alone does not explain the update-25 miss
+for this exact curriculum and mechanism.
+
+The final held-out causal evaluation separates language control from memory use:
+
+| Arm | Accuracy | Mean loss | Interpretation |
+|---|---:|---:|---|
+| Normal exposure | 62.5% | 1.0096 | Trained control policy active |
+| No exposure | 62.5% | 1.0096 | Exactly the same logits as normal |
+| Zero control | 37.5% | 1.2010 | Organism control changes Llama behavior |
+| Reset after exposure | 62.5% | 1.0096 | Exactly the same logits as normal |
+| Wrong passage | 62.5% | 1.0096 | Exactly the same logits as normal |
+| Memory lesion | 62.5% | 1.0096 | Exactly the same logits as normal |
+| Internal lesion | 62.5% | 1.0013 | Small logit change, no prediction change |
+| Question paraphrase | 87.5% | 0.4154 | Static question policy remains strong |
+
+The organism therefore learned to steer the frozen Llama, but not according to the
+stored passage. This is narrower than failure of the organism or LLM-organ concept: the
+language boundary is functional, memory and internal tissues previously carried paired
+information, and the trained control is behaviorally causal. The failed link is learning
+to preserve and target that information through output tissue rather than consuming the
+loss in a passage-independent effector policy.
+
+The next isolated treatment should add a training-only, target-conditioned auxiliary
+readout on output tissue for matched incompatible passage branches. It must require the
+same question with two passages to produce output states predictive of their respective
+bound labels; the auxiliary head is removed for causal evaluation and cannot bypass the
+organism at inference. If this creates correct output-tissue separation but the frozen
+head still cannot use it, only then test deeper zero-residual Llama injection. More
+updates or a larger organism should not precede this credit-localization test.
 
 ## Episode
 
