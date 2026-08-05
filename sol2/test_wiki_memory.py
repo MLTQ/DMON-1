@@ -63,6 +63,15 @@ class TinyTokenizer:
         )
 
 
+class RecordingTinyTokenizer(TinyTokenizer):
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def __call__(self, text: str, *, return_tensors: str):
+        self.texts.append(text)
+        return super().__call__(text, return_tensors=return_tensors)
+
+
 def test_manifest_is_source_family_disjoint_and_complete() -> None:
     corpus = load_wiki_memory_corpus(DATA_PATH)
     assert len(corpus.documents) == 12
@@ -134,7 +143,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
     assert abs(float(control_delta_energy(active_controls)) - 0.25) < 1e-7
 
     system, _ = build_system()
-    tokenizer = TinyTokenizer()
+    tokenizer = RecordingTinyTokenizer()
     corpus = load_wiki_memory_corpus(DATA_PATH)
     document = corpus.split("meta_train")[0]
     question = document.questions[0]
@@ -150,6 +159,7 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_memory_tokens=256,
         max_question_tokens=256,
     )
+    left_teacher_input = tokenizer.texts[-1]
     right_teacher = passage_visible_teacher_logits(
         system,
         tokenizer,
@@ -159,9 +169,12 @@ def test_dense_teacher_credit_is_detached_and_passage_visible() -> None:
         max_memory_tokens=256,
         max_question_tokens=256,
     )
+    right_teacher_input = tokenizer.texts[-1]
     assert left_teacher.shape == (1, system.backbone.vocab_size)
     assert not left_teacher.requires_grad and not right_teacher.requires_grad
-    assert float((left_teacher - right_teacher).abs().sum()) > 0.0
+    assert left[0].memory in left_teacher_input
+    assert right[0].memory in right_teacher_input
+    assert left_teacher_input != right_teacher_input
 
 
 def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
