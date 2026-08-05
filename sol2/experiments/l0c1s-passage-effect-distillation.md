@@ -1,6 +1,7 @@
 # L0-C1s: passage-effect distillation
 
-Status: protocol frozen 2026-08-05 before implementation tests or optimizer updates.
+Status: completed at update 25 on 2026-08-05; representation gate failed with a
+partial output-effect result.
 
 ## Question
 
@@ -66,3 +67,48 @@ change. Softmax makes vocabulary-wide additive logit offsets irrelevant.
 
 Failure rejects this effect-target construction. It does not justify enlarging the
 organism until the causal credit route itself remains active.
+
+## Result
+
+The one-update preflight passed. The frozen Qwen backbone retained zero trainable
+parameters and zero gradient tensors, all organism state and gradients were finite,
+and peak CUDA allocation/reservation was 14.35/16.72 GiB on the 4090. The 25-update
+run then completed the frozen protocol without touching the 2070S. Its raw artifact
+is `l0c1s-effect-s7-u25-result.json` with SHA-256
+`a084c86a00e931e3dc20d6eec415fe047bf6f41b2980e6919781a5cf0d9c6ae3`.
+
+Effect-only distillation did prevent the immediate *vocabulary-effect* silence seen
+under C1r's absolute target. Over updates 16--25, student-effect RMS was `0.02914` and
+paired student-effect separation was `0.02922`, versus exact zero at initialization.
+Eight of twelve recurrence-matched questions reduced effect KL on their second
+appearance. This establishes that a very small organism prefix can produce a
+measurable, passage-dependent change in Qwen's vocabulary distribution.
+
+It did not pass the causal representation gate:
+
+- mean recurrence-matched effect KL was `0.9822` on first appearances and `0.9969`
+  on second appearances because four regressions outweighed the eight improvements;
+- late correct-passage advantages over no exposure and the incompatible passage were
+  positive on only 20--40% of updates, with mean advantages
+  `[0.01669, 0.00937, -0.00518, 0.00518]`;
+- effective control RMS fell from `6.18e-4` over updates 1--10 to `9.77e-7` over
+  updates 16--25, and paired control separation fell from `2.53e-5` to `2.38e-7`;
+- recall gradient RMS fell from `8.19e-6` early to `3.13e-8` late and sensor gradient
+  from `1.53e-4` to `7.29e-7`, while effector gradient increased from `0.0364` to
+  `0.0574`;
+- held-out correct-passage accuracy was 75%, below the 87.5% no-exposure and
+  zero-control baselines. Correct passage had mean loss `0.5938` versus `0.5511` for
+  either baseline, and beat the wrong passage on loss for only 3/8 questions.
+
+The nonzero vocabulary effect alongside microscopic late controls is consistent with
+Qwen amplifying a tiny prefix perturbation. It is not evidence that the internal
+memory route remained useful: zero/reset baselines were better, and memory/internal
+lesions were not harmful. The next treatment should therefore add direct local credit
+to the memory-to-relay route and test whether a compact, question-conditioned semantic
+effect reaches the output organ. Merely increasing organism size would add depth and
+capacity to a route whose upstream gradients are already disappearing.
+
+This single bounded failure rejects C1s as the immediate scale-up recipe; it does not
+show that passage-effect distillation is intrinsically useless. Its successful
+passage-dependent output effect is a component worth retaining in a structurally
+better-credited treatment.
