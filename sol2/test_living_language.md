@@ -36,6 +36,8 @@ backbone or GPU training is attempted.
 - A specialized language organ detaches and reattaches as the same module object.
 - The generic Hugging Face adapter freezes an exposed causal model, preserves exact
   zero-control logits, passes gradients only into controls, and audits native parity.
+- Unified checkpoints with language dimensions under nested `text_config` metadata
+  satisfy the same adapter contract.
 - The graft factory is deterministic from a private seed and leaves global RNG state
   untouched.
 - Explicit recall gain is preserved by deterministic graft construction without

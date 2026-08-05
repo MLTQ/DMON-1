@@ -32,6 +32,9 @@ A structural protocol exposing only:
 
 - Wraps a decoder-only `AutoModelForCausalLM` without making Transformers a core
   SOL2 dependency.
+- Reads language width and vocabulary metadata from either ordinary top-level model
+  configuration or a nested `text_config`, as used by unified multimodal checkpoints
+  whose text decoder is still exposed through `AutoModelForCausalLM`.
 - Obtains final contextual features through `output_hidden_states=True`.
 - Lets each frozen feature attend to the organism's control tokens, adds the resulting
   residual, and decodes it through the model's exposed frozen output embeddings.

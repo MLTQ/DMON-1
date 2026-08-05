@@ -170,8 +170,17 @@ class HuggingFaceFrozenBackbone(nn.Module):
     def __init__(self, model: nn.Module) -> None:
         super().__init__()
         config = getattr(model, "config", None)
+        text_config = getattr(config, "text_config", None)
         width = getattr(config, "hidden_size", getattr(config, "n_embd", None))
         vocab_size = getattr(config, "vocab_size", None)
+        if width is None and text_config is not None:
+            width = getattr(
+                text_config,
+                "hidden_size",
+                getattr(text_config, "n_embd", None),
+            )
+        if vocab_size is None and text_config is not None:
+            vocab_size = getattr(text_config, "vocab_size", None)
         output_head = getattr(model, "get_output_embeddings", lambda: None)()
         if width is None or vocab_size is None or output_head is None:
             raise TypeError(

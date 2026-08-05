@@ -412,6 +412,40 @@ def test_huggingface_adapter_freezes_and_controls_an_exposed_head() -> None:
     assert adapter.native_logit_error(input_ids) == 0.0
 
 
+def test_huggingface_adapter_accepts_nested_text_config() -> None:
+    class FakeMultimodalCausalLM(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.config = SimpleNamespace(
+                text_config=SimpleNamespace(hidden_size=8, vocab_size=9)
+            )
+            self.embedding = nn.Embedding(9, 8)
+            self.head = nn.Linear(8, 9, bias=False)
+
+        def get_output_embeddings(self):
+            return self.head
+
+        def get_input_embeddings(self):
+            return self.embedding
+
+        def forward(self, *, input_ids=None, inputs_embeds=None, **_kwargs):
+            embedded = (
+                self.embedding(input_ids)
+                if inputs_embeds is None
+                else inputs_embeds
+            )
+            features = torch.tanh(embedded.cumsum(dim=1))
+            return SimpleNamespace(
+                hidden_states=(features,),
+                logits=self.head(features),
+            )
+
+    adapter = HuggingFaceFrozenBackbone(FakeMultimodalCausalLM())
+    assert adapter.width == 8
+    assert adapter.vocab_size == 9
+    assert adapter.native_logit_error(torch.tensor([[1, 2, 3]])) == 0.0
+
+
 def test_graft_factory_is_deterministic_and_rng_neutral() -> None:
     torch.manual_seed(91)
     left = Sol2(LANGUAGE_CFG)
@@ -487,6 +521,7 @@ def main() -> None:
         test_context_erasure_does_not_erase_the_organism,
         test_specialized_organ_detaches_and_reattaches_exactly,
         test_huggingface_adapter_freezes_and_controls_an_exposed_head,
+        test_huggingface_adapter_accepts_nested_text_config,
         test_graft_factory_is_deterministic_and_rng_neutral,
         test_mixed_backbone_and_organism_dtypes_are_bridged,
         test_context_erasure_learning_requires_persistent_internal_state,

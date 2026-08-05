@@ -81,3 +81,25 @@ homeostatic/gating circuit.
 Passing this gate licenses a longer before-mode curriculum. Failing it diagnoses this
 specific reference/distillation construction; it does not reject pre-transformer or
 multi-depth organism control.
+
+## Result
+
+Status: stopped at the one-update gate on 2026-08-05; no 50-update extension.
+
+The corrected BF16 preflight completed on the RTX 4090 with a finite checkpoint,
+14.258 clipped pre-step gradient norm, zero trainable or gradient-bearing Llama
+parameters, and safe peak allocation. The initial reference-centered control was
+exactly zero and the passage-visible teacher distributions were distinct (0.4817 RMS
+full-logit separation), so the implementation mechanics passed.
+
+The teacher-validity gate failed. Frozen Llama selected the designated label for only
+one of the two incompatible temporary bindings (50%). After the single update,
+held-out normal, no-exposure, zero-control, and wrong-passage accuracy were all 62.5%.
+Normal target loss was 1.1143 versus 1.0520 for the matched zero/no-exposure floor;
+wrong-passage loss was 1.1417. The expressed delta reached only 0.001447 RMS and did
+not establish passage identity.
+
+This result rejects promotion of this particular Llama teacher treatment. It does not
+reject dense distributional credit: an oracle that contradicts the supervised answer
+is not a valid target. Before repairing the teacher, C1q audits newer, smaller language
+organs and explicitly compares foundation and post-trained checkpoints.
