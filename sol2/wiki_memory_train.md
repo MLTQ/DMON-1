@@ -38,6 +38,13 @@ Reports gradient RMS, participating element count, and tensor count separately f
 language sensor, recall head, connectome, tissue dynamics, cell identity, and effector.
 This distinguishes a weak reward from a route that receives no learning signal.
 
+### `organism_optimizer_groups`
+
+Partitions every organism parameter exactly once and assigns explicit learning rates
+to sensor, recall, and effector groups while leaving connectome, tissue, identity, and
+other parameters at the base rate. This turns measured plasticity imbalance into an
+auditable experimental treatment rather than implicit gradient manipulation.
+
 ### `save_wiki_memory_checkpoint` / `load_wiki_memory_checkpoint`
 
 Round-trip organism and attached-graft weights, optimizer moments, continuing lifetime
@@ -106,6 +113,8 @@ performs independent cellular transitions and language-head control.
   as separate telemetry; the reported task loss remains comparable to earlier runs.
 - Compact bindings alter meta-training exposure only. Development and held-out wiki
   cards remain frozen, natural, and source-family disjoint.
+- Optimizer groups preserve full parameter coverage and serialize their names, rates,
+  parameter counts, and moments in checkpoints/results.
 
 ## Example
 

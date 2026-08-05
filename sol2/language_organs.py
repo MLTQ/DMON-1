@@ -31,6 +31,7 @@ class ContinuousLanguageOrgan(nn.Module):
         value_gain: float,
         attention_temperature: float,
         control_gain: float = 1.0,
+        recall_gain: float = 0.25,
     ) -> None:
         super().__init__()
         if language_width < 1 or n_control_tokens < 1 or control_rank < 1:
@@ -41,6 +42,8 @@ class ContinuousLanguageOrgan(nn.Module):
             raise ValueError("control_rank cannot exceed language_width")
         if control_gain <= 0:
             raise ValueError("control_gain must be positive")
+        if not 0 < recall_gain <= 1.0:
+            raise ValueError("recall_gain must be in (0, 1]")
 
         self.language_width = language_width
         self.n_control_tokens = n_control_tokens
@@ -93,7 +96,7 @@ class ContinuousLanguageOrgan(nn.Module):
             bounded=bounded_operators,
             bound=operator_bound,
         )
-        self.recall_gain = 0.25
+        self.recall_gain = float(recall_gain)
         self.value_gain = value_gain
         self.attention_temperature = attention_temperature
         self.bounded_operators = bounded_operators

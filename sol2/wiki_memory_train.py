@@ -50,6 +50,9 @@ class WikiMemoryTrainConfig:
     binding_margin: float = 1.0
     binding_weight: float = 1.0
     compact_bindings: bool = False
+    recall_lr_multiplier: float = 1.0
+    sensor_lr_multiplier: float = 1.0
+    effector_lr_multiplier: float = 1.0
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
@@ -58,6 +61,12 @@ class WikiMemoryTrainConfig:
             raise ValueError("learning rate and gradient clip must be positive")
         if self.binding_margin <= 0 or self.binding_weight < 0:
             raise ValueError("binding margin must be positive and weight nonnegative")
+        if min(
+            self.recall_lr_multiplier,
+            self.sensor_lr_multiplier,
+            self.effector_lr_multiplier,
+        ) <= 0:
+            raise ValueError("plasticity multipliers must be positive")
 
 
 def counterfactual_training_record(
@@ -128,25 +137,52 @@ def paired_binding_margin_loss(
     return loss, preferences
 
 
+def _organism_parameter_group(name: str) -> str:
+    if ".recall_" in name:
+        return "recall"
+    if ".sensor." in name or name.endswith(("sensory_gain", "sensory_bias")):
+        return "sensor"
+    if ".output." in name or name.endswith("control_basis"):
+        return "effector"
+    if name.startswith("graph."):
+        return "connectome"
+    if name.startswith("tissues."):
+        return "tissues"
+    if name.startswith("cell_"):
+        return "cell_identity"
+    return "other"
+
+
+def organism_optimizer_groups(
+    system: LivingLanguageSystem,
+    train_config: WikiMemoryTrainConfig,
+) -> list[dict]:
+    """Partition organism parameters into explicit plasticity-rate groups."""
+
+    multipliers = {
+        "recall": train_config.recall_lr_multiplier,
+        "sensor": train_config.sensor_lr_multiplier,
+        "effector": train_config.effector_lr_multiplier,
+    }
+    grouped: dict[str, list[torch.nn.Parameter]] = {}
+    for name, parameter in system.organism.named_parameters():
+        grouped.setdefault(_organism_parameter_group(name), []).append(parameter)
+    return [
+        {
+            "params": parameters,
+            "lr": train_config.lr * multipliers.get(group, 1.0),
+            "group_name": group,
+        }
+        for group, parameters in sorted(grouped.items())
+    ]
+
+
 def organism_gradient_groups(system: LivingLanguageSystem) -> dict[str, dict[str, float]]:
     """Summarize gradient participation across the causal language-memory route."""
 
     totals: dict[str, list[float]] = {}
     for name, parameter in system.organism.named_parameters():
-        if ".recall_" in name:
-            group = "recall"
-        elif ".sensor." in name or name.endswith(("sensory_gain", "sensory_bias")):
-            group = "sensor"
-        elif ".output." in name or name.endswith("control_basis"):
-            group = "effector"
-        elif name.startswith("graph."):
-            group = "connectome"
-        elif name.startswith("tissues."):
-            group = "tissues"
-        elif name.startswith(("cell_", "attached_orgs.")):
-            group = "cell_identity"
-        else:
-            group = "other"
+        group = _organism_parameter_group(name)
         values = totals.setdefault(group, [0.0, 0.0, 0.0])
         if parameter.grad is not None:
             gradient = parameter.grad.detach().float()
@@ -431,6 +467,7 @@ def build_system(args: argparse.Namespace):
         backbone,
         n_control_tokens=args.control_tokens,
         control_rank=args.control_rank,
+        recall_gain=args.recall_gain,
         seed=args.seed + 1,
     )
     return system, tokenizer, cfg
@@ -451,6 +488,9 @@ def run_training(args: argparse.Namespace) -> dict:
         binding_margin=args.binding_margin,
         binding_weight=args.binding_weight,
         compact_bindings=args.compact_bindings,
+        recall_lr_multiplier=args.recall_lr_multiplier,
+        sensor_lr_multiplier=args.sensor_lr_multiplier,
+        effector_lr_multiplier=args.effector_lr_multiplier,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -459,7 +499,7 @@ def run_training(args: argparse.Namespace) -> dict:
     admitted = _admitted_questions(args.baseline)
     system, tokenizer, organism_config = build_system(args)
     optimizer = torch.optim.AdamW(
-        system.organism.parameters(), lr=train_config.lr, weight_decay=0.0
+        organism_optimizer_groups(system, train_config), weight_decay=0.0
     )
     checkpoint_path = args.out_dir / "checkpoint.pt"
     history: list[dict] = []
@@ -651,6 +691,14 @@ def run_training(args: argparse.Namespace) -> dict:
         "organism_config": organism_config.to_dict(),
         "train_config": dataclasses.asdict(train_config),
         "organism_trainable_parameters": count_parameters(system.organism),
+        "optimizer_groups": [
+            {
+                "group_name": group["group_name"],
+                "lr": group["lr"],
+                "parameters": sum(parameter.numel() for parameter in group["params"]),
+            }
+            for group in optimizer.param_groups
+        ],
         "backbone_trainable_parameters": sum(
             parameter.numel()
             for parameter in system.backbone.parameters()
@@ -719,6 +767,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--binding-margin", type=float, default=1.0)
     parser.add_argument("--binding-weight", type=float, default=1.0)
     parser.add_argument("--compact-bindings", action="store_true")
+    parser.add_argument("--recall-gain", type=float, default=0.25)
+    parser.add_argument("--recall-lr-multiplier", type=float, default=1.0)
+    parser.add_argument("--sensor-lr-multiplier", type=float, default=1.0)
+    parser.add_argument("--effector-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)

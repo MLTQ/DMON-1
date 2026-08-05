@@ -30,6 +30,8 @@ backbone or GPU training is attempted.
   zero-control logits, passes gradients only into controls, and audits native parity.
 - The graft factory is deterministic from a private seed and leaves global RNG state
   untouched.
+- Explicit recall gain is preserved by deterministic graft construction without
+  changing parameter initialization or RNG neutrality.
 - Mixed-precision backbones and FP32 organism state cross the graft with explicit dtype
   conversion while retaining exact zero-control logits.
 - A paired context-erasure task reaches perfect accuracy, while exact-zero control,

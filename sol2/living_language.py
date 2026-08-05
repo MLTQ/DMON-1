@@ -304,6 +304,7 @@ def graft_language_backbone(
     n_control_tokens: int = 4,
     control_rank: int = 8,
     control_gain: float = 1.0,
+    recall_gain: float = 0.25,
     seed: int = 0,
 ) -> LivingLanguageSystem:
     """Create and attach a deterministic continuous graft for one frozen backbone."""
@@ -324,6 +325,7 @@ def graft_language_backbone(
             value_gain=organism.cfg.value_gain,
             attention_temperature=organism.cfg.attention_temperature,
             control_gain=control_gain,
+            recall_gain=recall_gain,
         )
     organism.attach_organ_module(organ_name, organ)
     return LivingLanguageSystem(organism, backbone, organ_name=organ_name)

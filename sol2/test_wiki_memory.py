@@ -30,6 +30,7 @@ from .wiki_memory_train import (
     evaluate_wiki_memory,
     load_wiki_memory_checkpoint,
     organism_gradient_groups,
+    organism_optimizer_groups,
     paired_binding_margin_loss,
     save_wiki_memory_checkpoint,
 )
@@ -143,6 +144,26 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
         gradient_groups
     )
     assert gradient_groups["effector"]["rms"] > 0.0
+    plasticity = WikiMemoryTrainConfig(
+        lr=2e-3,
+        recall_lr_multiplier=20.0,
+        sensor_lr_multiplier=4.0,
+        effector_lr_multiplier=0.1,
+    )
+    optimizer_groups = organism_optimizer_groups(system, plasticity)
+    rates = {group["group_name"]: group["lr"] for group in optimizer_groups}
+    assert rates["recall"] == 4e-2
+    assert rates["sensor"] == 8e-3
+    assert rates["effector"] == 2e-4
+    grouped_parameters = [
+        parameter for group in optimizer_groups for parameter in group["params"]
+    ]
+    assert len({id(parameter) for parameter in grouped_parameters}) == len(
+        grouped_parameters
+    )
+    assert sum(parameter.numel() for parameter in grouped_parameters) == sum(
+        parameter.numel() for parameter in system.organism.parameters()
+    )
 
     no_exposure = run_wiki_memory_episode(
         system,

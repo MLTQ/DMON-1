@@ -34,7 +34,7 @@ optional SOL2 health telemetry.
 
 Builds a deterministic continuous organ sized to a backbone's hidden width, attaches
 it to an existing organism, and returns the closed-loop system without consuming the
-caller's random stream.
+caller's random stream. Control and recall gains are explicit graft properties.
 
 ## Decisions
 
@@ -78,6 +78,8 @@ caller's random stream.
 - Generated tokens are sensory input on the following transition.
 - Clearing the LLM context does not itself clear `OrganismState`.
 - Grafting is deterministic from its private seed and preserves global RNG state.
+- Recall gain changes only the bounded memory-to-sensory amplitude and never the frozen
+  backbone, control gain, topology, or initialization RNG stream.
 - A loss mask changes credit assignment only; every input token still advances the
   same continuing cellular state.
 - Cached features must retain `[batch, sequence, backbone_width]` shape and remain

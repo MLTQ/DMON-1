@@ -37,6 +37,8 @@ adaptation, and lifetime state remain in the cellular substrate.
   directly reach the effector or frozen LLM head.
 - Query/key vectors use the same damp-only unit-ball projection as the connectome;
   values and recalled drive are bounded before entering persistent dynamics.
+- Recall gain is an explicit immutable construction value in `(0, 1]`. Experiments may
+  raise it without changing parameter count or creating an unbounded state injection.
 
 ## Contracts
 

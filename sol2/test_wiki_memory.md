@@ -25,6 +25,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
   becomes exactly zero once both branches prefer their own targets by the margin.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
+- Plasticity groups cover every organism parameter exactly once and apply the declared
+  recall, sensor, and effector learning-rate multipliers.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, and update cursor.
 - The matched evaluator emits all eight preregistered causal arms.

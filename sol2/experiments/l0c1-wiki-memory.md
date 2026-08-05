@@ -202,6 +202,30 @@ effector. Thus the static answer route received over 500 times the recall head's
 credit. The next intervention should rebalance plasticity or recall gain while retaining
 the compact gate; additional organism size is not indicated by this result.
 
+### L0-C1f frozen plasticity treatment
+
+Before any L0-C1f optimizer update, the treatment is fixed from the measured L0-C1e
+gradient imbalance:
+
+1. Recall gain increases from 0.25 to its bounded maximum of 1.0.
+2. Recall parameters use `20x` the base learning rate, sensor parameters use `4x`, and
+   effector/output-organ parameters use `0.1x`. Connectome, tissues, cell identity, and
+   all other organism parameters retain the base rate.
+3. With base AdamW learning rate `0.002`, the resulting rates are `0.04` recall,
+   `0.008` sensor, `0.0002` effector, and `0.002` elsewhere. Weight decay remains zero
+   and global gradient clipping remains 1.0.
+4. Compact paired bindings, the unit binding margin, continuing lifetime lane,
+   96-memory-cell geometry, frozen Llama, development/held-out sets, and all causal arms
+   remain unchanged.
+5. Optimizer group names, rates, and parameter counts are serialized with raw gradient
+   telemetry. The update-25 gates remain trailing control separation above `0.005` and
+   paired accuracy above 25%; a miss stops the checkpoint.
+
+The multipliers approximately balance the measured effective sensor/recall/effector
+update scales without normalizing individual gradients or prescribing representations.
+The recall drive remains bounded and still enters only sensory/recurrent tissue, so the
+no-effector-bypass invariant is unchanged.
+
 ## Episode
 
 For one lifetime lane:
