@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
+from .backbone_audit import summarize_binding_rows
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_causal_contrast import passage_causal_contrast_loss
 from .wiki_distillation import control_delta_energy, full_vocab_reverse_kl
@@ -81,6 +82,30 @@ def test_manifest_is_source_family_disjoint_and_complete() -> None:
     assert sum(len(document.questions) for document in corpus.documents) == 24
     families = [document.source_family for document in corpus.documents]
     assert len(families) == len(set(families))
+
+
+def test_backbone_binding_summary_retains_probability_margin_and_separation() -> None:
+    rows = [
+        {
+            "correct": True,
+            "correct_label_probability": 0.75,
+            "correct_label_margin": 2.0,
+        },
+        {
+            "correct": False,
+            "correct_label_probability": 0.25,
+            "correct_label_margin": -1.0,
+        },
+    ]
+    summary = summarize_binding_rows(rows, [0.2, 0.4])
+    assert summary == {
+        "count": 2.0,
+        "accuracy": 0.5,
+        "mean_correct_label_probability": 0.5,
+        "mean_correct_label_margin": 0.5,
+        "mean_pair_logit_separation_rms": 0.30000000000000004,
+        "minimum_pair_logit_separation_rms": 0.2,
+    }
 
 
 def test_source_hash_and_question_permutation_are_exact() -> None:
@@ -654,6 +679,7 @@ def test_causal_evaluator_runs_matched_arms() -> None:
 def main() -> None:
     tests = [
         test_manifest_is_source_family_disjoint_and_complete,
+        test_backbone_binding_summary_retains_probability_margin_and_separation,
         test_source_hash_and_question_permutation_are_exact,
         test_dense_teacher_credit_is_detached_and_passage_visible,
         test_wiki_episode_exposes_scores_and_backpropagates,

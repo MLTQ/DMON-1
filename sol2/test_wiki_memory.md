@@ -20,6 +20,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
   and its pre-step value preserved.
 - No-exposure and reset causal arms traverse the same exact scorer.
 - Aggregate metrics remain bounded and auditable.
+- Modern-backbone binding summaries retain accuracy, correct-label probability and
+  margin, and both mean and worst paired full-logit separation.
 - Counterfactual targets vary deterministically by epoch.
 - Paired counterfactuals retain identical question wording and choices while assigning
   incompatible passage-bound targets.
