@@ -30,6 +30,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, and update cursor.
 - The matched evaluator emits all eight preregistered causal arms.
+- Fixed output codes are deterministic and orthonormal; incompatible paired targets
+  deliver distinct gradients into live output tissue and aligned states satisfy the
+  training-only probe without adding evaluation fields.
 
 ## Decisions
 

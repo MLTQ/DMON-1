@@ -34,6 +34,7 @@ from .wiki_memory_train import (
     paired_binding_margin_loss,
     save_wiki_memory_checkpoint,
 )
+from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 
 
 DATA_PATH = Path(__file__).with_name("experiments") / "l0c1-wiki-memory-corpus.json"
@@ -134,6 +135,8 @@ def test_wiki_episode_exposes_scores_and_backpropagates() -> None:
     )
     assert result.state.memory_cursor > baseline.state.memory_cursor
     assert set(result.label_log_probs) == {"A", "B", "C", "D"}
+    assert result.output_state is not None
+    assert result.output_state.shape == (1, LANGUAGE_CFG.n_output, LANGUAGE_CFG.hidden)
     assert abs(sum(result.label_log_probs.values())) > 0.0
     result.loss.backward()
     assert organ.output.decoder.weight.grad is not None
@@ -240,6 +243,53 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
     ).pow(2).mean().sqrt()
     assert float(separation.detach()) > 0.0
 
+    codebook = fixed_output_codebook(
+        LANGUAGE_CFG.hidden, seed=211, device="cpu"
+    )
+    repeated_codebook = fixed_output_codebook(
+        LANGUAGE_CFG.hidden, seed=211, device="cpu"
+    )
+    assert torch.equal(codebook, repeated_codebook)
+    assert torch.allclose(
+        codebook @ codebook.T, torch.eye(4), atol=1e-6, rtol=0.0
+    )
+    left_state = torch.randn(1, LANGUAGE_CFG.n_output, LANGUAGE_CFG.hidden)
+    left_state.requires_grad_()
+    right_state = left_state.detach().clone().requires_grad_()
+    auxiliary_loss, auxiliary_accuracy, output_separation = output_tissue_credit_loss(
+        (
+            SimpleNamespace(correct_label="A", output_state=left_state),
+            SimpleNamespace(correct_label="B", output_state=right_state),
+        ),
+        codebook=codebook,
+        scale=4.0,
+    )
+    assert float(auxiliary_loss.detach()) > 0.0
+    assert 0.0 <= float(auxiliary_accuracy.detach()) <= 1.0
+    assert float(output_separation.detach()) == 0.0
+    auxiliary_loss.backward()
+    assert float(left_state.grad.abs().sum()) > 0.0
+    assert float(right_state.grad.abs().sum()) > 0.0
+    assert not torch.allclose(left_state.grad, right_state.grad)
+
+    aligned_left = codebook[0].view(1, 1, -1).expand(
+        1, LANGUAGE_CFG.n_output, -1
+    )
+    aligned_right = codebook[1].view(1, 1, -1).expand(
+        1, LANGUAGE_CFG.n_output, -1
+    )
+    aligned_loss, aligned_accuracy, aligned_separation = output_tissue_credit_loss(
+        (
+            SimpleNamespace(correct_label="A", output_state=aligned_left),
+            SimpleNamespace(correct_label="B", output_state=aligned_right),
+        ),
+        codebook=codebook,
+        scale=4.0,
+    )
+    assert float(aligned_accuracy) == 1.0
+    assert float(aligned_loss) < float(auxiliary_loss.detach())
+    assert float(aligned_separation) > 0.0
+
     left_logits = torch.zeros(4, requires_grad=True)
     right_logits = torch.zeros(4, requires_grad=True)
     binding_loss, preferences = paired_binding_margin_loss(
@@ -275,7 +325,12 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
             optimizer=optimizer,
             lane_state=lane_state,
             organism_config=LANGUAGE_CFG,
-            train_config=WikiMemoryTrainConfig(updates=2),
+            train_config=WikiMemoryTrainConfig(
+                updates=2,
+                output_credit_weight=1.0,
+                output_credit_scale=4.0,
+                output_credit_seed=211,
+            ),
             model_name="toy",
             dtype="float32",
             corpus_sha256="fixture-hash",
@@ -295,6 +350,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
             expected_corpus_sha256="fixture-hash",
         )
         assert payload["update"] == 1
+        assert payload["train_config"]["output_credit_weight"] == 1.0
+        assert payload["train_config"]["output_credit_seed"] == 211
         assert torch.equal(restored_state.hidden, lane_state.hidden)
         assert restored_state.memory_cursor == lane_state.memory_cursor
         left = system.organism.state_dict()
@@ -328,6 +385,7 @@ def test_causal_evaluator_runs_matched_arms() -> None:
     }
     assert set(evaluation["summaries"]) == expected
     assert len(evaluation["rows"]) == 2
+    assert "output_credit_accuracy" not in evaluation["summaries"]
 
 
 def main() -> None:

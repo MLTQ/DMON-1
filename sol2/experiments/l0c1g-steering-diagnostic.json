@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "kind": "l0c1g-steering-diagnostic",
+  "checkpoint_update": 300,
+  "questions": 8,
+  "exact_repeat_controls": false,
+  "repeat_control_rms": {
+    "mean": 5.745734332762709e-09,
+    "min": 0.0,
+    "max": 1.0657148052928278e-08
+  },
+  "mean_control_rms": 0.08748628199100494,
+  "question_centered_control_rms": 6.795524768676842e-06,
+  "question_variation_fraction": 7.76753179358512e-05,
+  "question_pairwise_control_rms": {
+    "mean": 8.574667769981456e-06,
+    "min": 6.850834211036272e-07,
+    "max": 1.9198427253286354e-05
+  },
+  "question_pairwise_output_rms": {
+    "mean": 7.774156456110046e-06,
+    "min": 1.3128832279107883e-06,
+    "max": 1.5559138773824088e-05
+  },
+  "normal_minus_no_exposure_control_rms": {
+    "mean": 0.0008763258520048112,
+    "min": 0.0007898245821706951,
+    "max": 0.0009466783376410604
+  },
+  "normal_minus_wrong_passage_control_rms": {
+    "mean": 8.92334305717668e-05,
+    "min": 2.4451153876725584e-05,
+    "max": 0.00016580536612309515
+  },
+  "normal_minus_no_exposure_output_rms": {
+    "mean": 0.0005067177262390032,
+    "min": 0.0004759466683026403,
+    "max": 0.0005297974566929042
+  },
+  "normal_minus_wrong_passage_output_rms": {
+    "mean": 0.00015474119572900236,
+    "min": 0.0001163851484307088,
+    "max": 0.00022735590755473822
+  },
+  "rows": [
+    {
+      "question_id": "scalelogic_exponents",
+      "predicted_label": "D",
+      "correct_label": "D",
+      "control_rms": 0.0874863937497139
+    },
+    {
+      "question_id": "scalelogic_gain",
+      "predicted_label": "A",
+      "correct_label": "A",
+      "control_rms": 0.08748694509267807
+    },
+    {
+      "question_id": "skillos_roles",
+      "predicted_label": "D",
+      "correct_label": "C",
+      "control_rms": 0.08748135715723038
+    },
+    {
+      "question_id": "skillos_emergence",
+      "predicted_label": "D",
+      "correct_label": "D",
+      "control_rms": 0.0874854251742363
+    },
+    {
+      "question_id": "tfgrpo_advantage",
+      "predicted_label": "A",
+      "correct_label": "D",
+      "control_rms": 0.08747951686382294
+    },
+    {
+      "question_id": "tfgrpo_update",
+      "predicted_label": "D",
+      "correct_label": "D",
+      "control_rms": 0.08747857809066772
+    },
+    {
+      "question_id": "faithfulness_asymmetry",
+      "predicted_label": "D",
+      "correct_label": "A",
+      "control_rms": 0.08749554306268692
+    },
+    {
+      "question_id": "faithfulness_scope",
+      "predicted_label": "C",
+      "correct_label": "C",
+      "control_rms": 0.08749653398990631
+    }
+  ]
+}

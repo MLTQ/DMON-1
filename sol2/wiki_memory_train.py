@@ -33,6 +33,7 @@ from .wiki_memory import (
     summarize_results,
     verify_wiki_sources,
 )
+from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,9 @@ class WikiMemoryTrainConfig:
     recall_lr_multiplier: float = 1.0
     sensor_lr_multiplier: float = 1.0
     effector_lr_multiplier: float = 1.0
+    output_credit_weight: float = 0.0
+    output_credit_scale: float = 4.0
+    output_credit_seed: int = 211
 
     def validate(self) -> None:
         if self.updates < 1 or self.eval_every < 1 or self.checkpoint_every < 1:
@@ -70,6 +74,8 @@ class WikiMemoryTrainConfig:
             self.effector_lr_multiplier,
         ) <= 0:
             raise ValueError("plasticity multipliers must be positive")
+        if self.output_credit_weight < 0 or self.output_credit_scale <= 0:
+            raise ValueError("output credit weight must be nonnegative and scale positive")
 
 
 def counterfactual_training_record(
@@ -496,6 +502,9 @@ def run_training(args: argparse.Namespace) -> dict:
         recall_lr_multiplier=args.recall_lr_multiplier,
         sensor_lr_multiplier=args.sensor_lr_multiplier,
         effector_lr_multiplier=args.effector_lr_multiplier,
+        output_credit_weight=args.output_credit_weight,
+        output_credit_scale=args.output_credit_scale,
+        output_credit_seed=args.output_credit_seed,
     )
     train_config.validate()
     corpus = load_wiki_memory_corpus(args.corpus)
@@ -505,6 +514,11 @@ def run_training(args: argparse.Namespace) -> dict:
     system, tokenizer, organism_config = build_system(args)
     optimizer = torch.optim.AdamW(
         organism_optimizer_groups(system, train_config), weight_decay=0.0
+    )
+    output_codebook = fixed_output_codebook(
+        organism_config.hidden,
+        seed=train_config.output_credit_seed,
+        device=args.device,
     )
     checkpoint_path = args.out_dir / "checkpoint.pt"
     history: list[dict] = []
@@ -560,13 +574,32 @@ def run_training(args: argparse.Namespace) -> dict:
         task_loss = torch.stack([branch.loss for branch in branch_results]).mean()
         binding_loss = task_loss.new_zeros(())
         binding_preferences = task_loss.new_zeros(2)
+        output_credit_loss = task_loss.new_zeros(())
+        output_credit_accuracy = task_loss.new_zeros(())
+        output_state_separation_rms = task_loss.new_zeros(())
         if len(branch_results) == 2 and train_config.binding_weight > 0:
             binding_loss, binding_preferences = paired_binding_margin_loss(
                 branch_results[0],
                 branch_results[1],
                 margin=train_config.binding_margin,
             )
-        objective_loss = task_loss + train_config.binding_weight * binding_loss
+        if len(branch_results) == 2:
+            (
+                measured_output_credit_loss,
+                output_credit_accuracy,
+                output_state_separation_rms,
+            ) = output_tissue_credit_loss(
+                branch_results,
+                codebook=output_codebook,
+                scale=train_config.output_credit_scale,
+            )
+            if train_config.output_credit_weight > 0:
+                output_credit_loss = measured_output_credit_loss
+        objective_loss = (
+            task_loss
+            + train_config.binding_weight * binding_loss
+            + train_config.output_credit_weight * output_credit_loss
+        )
         objective_loss.backward()
         gradient_groups = organism_gradient_groups(system)
         grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -610,6 +643,11 @@ def run_training(args: argparse.Namespace) -> dict:
             "binding_preferences": [
                 float(value) for value in binding_preferences.detach()
             ],
+            "output_credit_loss": float(output_credit_loss.detach()),
+            "output_credit_accuracy": float(output_credit_accuracy.detach()),
+            "output_state_separation_rms": float(
+                output_state_separation_rms.detach()
+            ),
             "correct": result.correct,
             "branch_accuracy": branch_accuracy,
             "branch_answers": [branch.correct_label for branch in branch_results],
@@ -634,6 +672,8 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"control={row['control_rms']:.4f} "
                 f"control_sep={row['control_separation_rms']:.4f} "
                 f"binding={row['binding_loss']:.4f} "
+                f"output_credit={row['output_credit_loss']:.4f} "
+                f"output_sep={row['output_state_separation_rms']:.4f} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -777,6 +817,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recall-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--sensor-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--effector-lr-multiplier", type=float, default=1.0)
+    parser.add_argument("--output-credit-weight", type=float, default=0.0)
+    parser.add_argument("--output-credit-scale", type=float, default=4.0)
+    parser.add_argument("--output-credit-seed", type=int, default=211)
     parser.add_argument("--input-cells", type=int, default=8)
     parser.add_argument("--memory-cells", type=int, default=32)
     parser.add_argument("--compute-cells", type=int, default=128)

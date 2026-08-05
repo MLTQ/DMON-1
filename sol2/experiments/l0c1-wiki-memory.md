@@ -382,6 +382,25 @@ organism at inference. If this creates correct output-tissue separation but the 
 head still cannot use it, only then test deeper zero-residual Llama injection. More
 updates or a larger organism should not precede this credit-localization test.
 
+### Post-hoc steering-policy diagnostic
+
+`l0c1g-steering-diagnostic.json` evaluates the final update-300 checkpoint from matched
+fresh states without optimizer updates. Its SHA-256 digest is
+`62edd87e95738224dacf73d6e2bdf0d41c5ed1dceb682843f1fbe49b6968b3a7`.
+
+The learned control is overwhelmingly global rather than question-conditioned. Mean
+control RMS was `0.0874863`, while centered variation across eight held-out questions
+was only `6.80e-6`, or `0.00777%` of the vector magnitude. Mean pairwise question
+distance was `8.57e-6`; same-question repeat noise was `5.75e-9`, so the small question
+modulation is real but roughly 1,500 times larger than numerical repeat noise.
+
+Correct exposure changed the no-exposure control by `0.000876` RMS on average, whereas
+replacing it with the wrong passage changed the normal control by only `0.0000892`.
+Thus passage state reaches the effector weakly, but training converged on a dominant
+passage-independent control vector. This supports output-tissue target credit as the
+next treatment and rejects both random steering and a substantial question adapter as
+the main explanation of the update-300 behavior.
+
 ## Episode
 
 For one lifetime lane:

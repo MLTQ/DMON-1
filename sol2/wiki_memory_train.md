@@ -33,6 +33,12 @@ own passage-bound answer over its mate's incompatible answer by the configured m
 This prevents averaged cross-entropy gradients from cancelling into a static half-
 solution while leaving all internal representation and routing choices unconstrained.
 
+### Fixed output-tissue credit
+
+When explicitly enabled, scores final output-cell state against a deterministic
+parameter-free four-label codebook. This delivers paired passage-target credit at the
+anatomical bottleneck without adding any evaluation or inference path.
+
 ### `organism_gradient_groups`
 
 Reports gradient RMS, participating element count, and tensor count separately for the
@@ -73,6 +79,7 @@ performs independent cellular transitions and language-head control.
 - Can train first on compact question-to-answer memory cards before restoring the full
   wiki paragraph as distractor context.
 - Records RMS separation between paired control banks and paired four-label logits.
+- Records training-only output-code loss/accuracy and paired output-state separation.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -102,6 +109,8 @@ performs independent cellular transitions and language-head control.
 - Control gain is part of the serialized training protocol. This matters at the BF16
   boundary: a differentiable but sub-ULP residual can receive gradients while producing
   exactly identical frozen-head logits in the forward pass.
+- Output credit defaults to zero for exact legacy behavior. Its codebook seed, scale,
+  and weight are serialized; evaluation never constructs or consults auxiliary scores.
 
 ## Contracts
 
@@ -121,6 +130,7 @@ performs independent cellular transitions and language-head control.
   parameter counts, and moments in checkpoints/results.
 - Positive control gain is passed unchanged into graft construction and serialized in
   `train_config`; it does not change topology, parameter count, or backbone weights.
+- Output credit has no trainable parameters and cannot create a memory-to-Llama bypass.
 
 ## Example
 
