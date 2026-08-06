@@ -14,7 +14,15 @@ permutation seed, reproducibility seed, and the explicit bounded control gain us
 the language graft, including serialized late-residual/prefix mode, dense-teacher,
 passage-effect, control-energy, and reference-centering treatments.
 Local memory/relay semantic-credit weights, fixed projection seed, and target RMS are
-also serialized so developmental scaffolding cannot drift across resume.
+also serialized so developmental scaffolding cannot drift across resume. The lifetime
+lane policy explicitly distinguishes continuous state inheritance from fresh episodic
+training populations.
+
+### `training_episode_start_state`
+
+Selects the cellular start for one optimizer example. `continuous` returns the supplied
+lane; `fresh_episode` creates zero hidden state and cursor while preserving batch,
+device, dtype, anatomy, and the current weight-version marker.
 
 ### `counterfactual_training_record`
 
@@ -173,8 +181,9 @@ performs independent cellular transitions and language-head control.
 
 ### `run_training`
 
-- Continues one lifetime lane across meta-training updates while truncating autograd at
-  each optimizer boundary.
+- Either continues one lifetime lane across meta-training updates or starts each
+  optimizer example from a fresh cellular lifetime, while always preserving continuous
+  passage-to-question state inside an episode.
 - Cycles deterministically across all meta-training questions and counterfactual values.
 - Optionally accumulates gradients from a matched incompatible pair while carrying only
   the primary branch forward as the continuing lifetime lane.
@@ -197,6 +206,7 @@ performs independent cellular transitions and language-head control.
   alignment, and pre-normalization teacher projection RMS when local credit is enabled.
 - Records the corresponding direct-recall loss/separation/alignment and all four recall
   component gradient RMS values when recall credit is enabled.
+- Records start/end memory cursors so lane-policy behavior and saturation are auditable.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
 
@@ -207,9 +217,9 @@ performs independent cellular transitions and language-head control.
   amendment was frozen before any optimizer update.
 - Development and held-out memory cards remain natural, unmodified wiki-derived facts.
   Transfer to them is deliberately harder than memorizing the counterfactual syntax.
-- One persistent lane is a closer model of a continuing creature than independent
-  minibatches. It also creates interference pressure that a useful memory operation
-  must learn to manage.
+- Continuous and fresh-episode lanes answer different questions. Continuous state tests
+  one creature under interference; fresh episodes train shared developmental rules over
+  a population without carrying cellular contents across changing weight versions.
 - The paired branch is a controlled counterfactual used only for credit assignment;
   the primary branch remains the single physical continuation after each update.
 - Query-phase memory gating was added after the 50-update diagnostic showed that the
@@ -245,10 +255,14 @@ performs independent cellular transitions and language-head control.
 
 - Source hashes and corpus SHA-256 match before loading or resuming.
 - Schedule position is exactly the checkpoint update count.
+- Lifetime lane policy is serialized. Old checkpoints default to `continuous`; resume
+  rejects a requested policy that differs from the checkpoint.
 - Held-out evaluation performs no optimizer step.
 - Backbone trainable parameters and gradient tensors remain zero.
 - All result-bearing GPU commands expose only the physical RTX 4090 UUID.
-- Checkpoint writes are atomic and resume the exact continuing cellular state.
+- Checkpoint writes are atomic and preserve the last completed episode state. The
+  `continuous` policy resumes it; `fresh_episode` deliberately creates a new cellular
+  state at the next update while restoring weights, optimizer, RNG, and schedule.
 - A paired update reports exact control/logit separation; zero separation identifies a
   passage-insensitive shortcut even if one branch or held-out accuracy improves.
 - Binding preference, margin loss, task loss, and combined objective are checkpointed

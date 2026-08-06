@@ -46,6 +46,7 @@ from .wiki_memory_train import (
     question_only_teacher_outputs,
     require_finite_organism_gradients,
     save_wiki_memory_checkpoint,
+    training_episode_start_state,
 )
 from .wiki_output_credit import fixed_output_codebook, output_tissue_credit_loss
 from .wiki_output_eligibility import eligibility_gated_transport_loss
@@ -379,6 +380,40 @@ def test_local_semantic_credit_is_differential_and_detached() -> None:
     )
     assert float(aligned_loss) < 1e-12
     assert abs(float(aligned_cosine) - 1.0) < 1e-6
+
+
+def test_training_lifetime_lane_policy_is_explicit_and_fresh() -> None:
+    system, _ = build_system()
+    lane = system.initial_state(2, "cpu")
+    lane.hidden.fill_(0.5)
+    lane.memory_cursor = 37
+    lane.weight_version = 9
+    continuous = training_episode_start_state(
+        system, lane, policy="continuous"
+    )
+    assert continuous is lane
+
+    fresh = training_episode_start_state(
+        system, lane, policy="fresh_episode"
+    )
+    assert fresh is not lane
+    assert fresh.hidden.shape == lane.hidden.shape
+    assert fresh.hidden.device == lane.hidden.device
+    assert fresh.hidden.dtype == lane.hidden.dtype
+    assert torch.count_nonzero(fresh.hidden) == 0
+    assert fresh.memory_cursor == 0
+    assert fresh.weight_version == lane.weight_version
+    assert torch.count_nonzero(lane.hidden) == lane.hidden.numel()
+    assert lane.memory_cursor == 37
+
+    WikiMemoryTrainConfig(lifetime_lane_policy="continuous").validate()
+    WikiMemoryTrainConfig(lifetime_lane_policy="fresh_episode").validate()
+    try:
+        WikiMemoryTrainConfig(lifetime_lane_policy="unknown").validate()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unknown lifetime lane policy was accepted")
 
 
 def test_direct_recall_capture_and_semantic_credit_are_exact() -> None:
@@ -866,6 +901,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
             organism_config=LANGUAGE_CFG,
             train_config=WikiMemoryTrainConfig(
                 updates=2,
+                lifetime_lane_policy="fresh_episode",
                 paired_counterfactual=True,
                 output_credit_weight=1.0,
                 output_credit_scale=4.0,
@@ -905,6 +941,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
             expected_corpus_sha256="fixture-hash",
         )
         assert payload["update"] == 1
+        assert payload["train_config"]["lifetime_lane_policy"] == "fresh_episode"
         assert payload["train_config"]["output_credit_weight"] == 1.0
         assert payload["train_config"]["output_credit_seed"] == 211
         assert payload["train_config"]["output_eligibility_weight"] == 4.0
@@ -980,6 +1017,7 @@ def main() -> None:
         test_source_hash_and_question_permutation_are_exact,
         test_dense_teacher_credit_is_detached_and_passage_visible,
         test_local_semantic_credit_is_differential_and_detached,
+        test_training_lifetime_lane_policy_is_explicit_and_fresh,
         test_direct_recall_capture_and_semantic_credit_are_exact,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,

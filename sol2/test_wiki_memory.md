@@ -56,6 +56,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
   recall, sensor, and effector learning-rate multipliers.
+- Lifetime lane policy preserves continuous state exactly or creates a zero-cursor,
+  zero-hidden fresh episode with the same anatomy, dtype, device, and weight version;
+  invalid policies fail and checkpoints serialize the selected treatment.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, update cursor, language-control mode, distillation settings,
   effect-distillation weight, local semantic-credit configuration, and

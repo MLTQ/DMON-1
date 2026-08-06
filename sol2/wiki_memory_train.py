@@ -60,6 +60,7 @@ class WikiMemoryTrainConfig:
     max_memory_tokens: int = 256
     max_question_tokens: int = 256
     seed: int = 7
+    lifetime_lane_policy: str = "continuous"
     paired_counterfactual: bool = False
     task_weight: float = 1.0
     binding_margin: float = 1.0
@@ -96,6 +97,8 @@ class WikiMemoryTrainConfig:
             raise ValueError("update and interval counts must be positive")
         if self.lr <= 0 or self.grad_clip <= 0:
             raise ValueError("learning rate and gradient clip must be positive")
+        if self.lifetime_lane_policy not in {"continuous", "fresh_episode"}:
+            raise ValueError("unknown lifetime lane policy")
         if self.task_weight < 0:
             raise ValueError("task weight must be nonnegative")
         if self.binding_margin <= 0 or self.binding_weight < 0:
@@ -417,6 +420,25 @@ def recall_gradient_components(
         }
         for component, (square_sum, elements, tensors) in component_totals.items()
     }
+
+
+def training_episode_start_state(
+    system: LivingLanguageSystem,
+    lane_state: OrganismState,
+    *,
+    policy: str,
+) -> OrganismState:
+    """Select cross-update cellular inheritance without changing learned weights."""
+
+    if policy == "continuous":
+        return lane_state
+    if policy == "fresh_episode":
+        fresh = system.initial_state(
+            lane_state.hidden.shape[0], lane_state.hidden.device
+        )
+        fresh.weight_version = lane_state.weight_version
+        return fresh
+    raise ValueError(f"unknown lifetime lane policy {policy!r}")
 
 
 def require_finite_organism_gradients(system: LivingLanguageSystem) -> None:
@@ -771,6 +793,7 @@ def run_training(args: argparse.Namespace) -> dict:
         max_memory_tokens=args.max_memory_tokens,
         max_question_tokens=args.max_question_tokens,
         seed=args.seed,
+        lifetime_lane_policy=args.lifetime_lane_policy,
         paired_counterfactual=args.paired_counterfactual,
         task_weight=args.task_weight,
         binding_margin=args.binding_margin,
@@ -857,9 +880,22 @@ def run_training(args: argparse.Namespace) -> dict:
         update = int(payload["update"])
         history = payload["history"]
         evaluations = payload["evaluations"]
+        checkpoint_policy = payload["train_config"].get(
+            "lifetime_lane_policy", "continuous"
+        )
+        if checkpoint_policy != train_config.lifetime_lane_policy:
+            raise ValueError(
+                "checkpoint lifetime lane policy does not match requested policy"
+            )
 
     schedule = _flatten_split(corpus, "meta_train")
     while update < train_config.updates:
+        episode_state = training_episode_start_state(
+            system,
+            lane_state,
+            policy=train_config.lifetime_lane_policy,
+        )
+        episode_start_memory_cursor = episode_state.memory_cursor
         document, question = schedule[update % len(schedule)]
         epoch = update // len(schedule)
         if train_config.paired_counterfactual:
@@ -886,7 +922,7 @@ def run_training(args: argparse.Namespace) -> dict:
         training_question_ids = encode_text(
             tokenizer,
             formatted_question.prompt,
-            lane_state.hidden.device,
+            episode_state.hidden.device,
             max_tokens=train_config.max_question_tokens,
         )
         training_question_features = system.backbone.encode(training_question_ids)
@@ -895,7 +931,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 encode_text(
                     tokenizer,
                     training_document.memory,
-                    lane_state.hidden.device,
+                    episode_state.hidden.device,
                     max_tokens=train_config.max_memory_tokens,
                 )
             )
@@ -949,7 +985,7 @@ def run_training(args: argparse.Namespace) -> dict:
                     tokenizer,
                     training_records[0][0],
                     training_records[0][1],
-                    lane_state,
+                    episode_state,
                     permutation_seed=permutation_seed,
                     expose=False,
                     question_features=training_question_features,
@@ -971,7 +1007,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 tokenizer,
                 training_document,
                 training_question,
-                lane_state,
+                episode_state,
                 permutation_seed=permutation_seed,
                 exposure_features=exposure_features,
                 question_features=training_question_features,
@@ -994,7 +1030,7 @@ def run_training(args: argparse.Namespace) -> dict:
                     tokenizer,
                     training_records[0][0],
                     training_records[0][1],
-                    lane_state,
+                    episode_state,
                     permutation_seed=permutation_seed,
                     expose=False,
                     question_features=training_question_features,
@@ -1045,7 +1081,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 ]
             ).mean()
         if teacher_enabled:
-            labels = label_token_ids(tokenizer, lane_state.hidden.device)
+            labels = label_token_ids(tokenizer, episode_state.hidden.device)
             teacher_correct = []
             for (_, teacher_question), teacher in zip(
                 training_records, teacher_logits
@@ -1293,6 +1329,9 @@ def run_training(args: argparse.Namespace) -> dict:
             )
         row = {
             "update": update,
+            "lifetime_lane_policy": train_config.lifetime_lane_policy,
+            "episode_start_memory_cursor": episode_start_memory_cursor,
+            "episode_end_memory_cursor": result.state.memory_cursor,
             "document_id": document.id,
             "question_id": question.id,
             "loss": mean_loss,
@@ -1433,6 +1472,8 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"relay_sep={row['relay_state_separation_rms']:.4f} "
                 f"transport={row['output_transport_ratio']:.3f} "
                 f"tract_gate={row['relay_output_gate_rms']:.4f} "
+                f"cursor={row['episode_start_memory_cursor']}"
+                f"->{row['episode_end_memory_cursor']} "
                 f"grad={row['grad_norm']:.3f}",
                 flush=True,
             )
@@ -1570,6 +1611,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-memory-tokens", type=int, default=256)
     parser.add_argument("--max-question-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--lifetime-lane-policy",
+        choices=("continuous", "fresh_episode"),
+        default="continuous",
+    )
     parser.add_argument(
         "--paired-counterfactual",
         action="store_true",
