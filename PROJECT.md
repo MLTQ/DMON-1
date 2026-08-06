@@ -141,6 +141,15 @@ work returns here.
   append-only growth preserved the organism mechanically, but lesions showed the new
   cells were unused. Capacity is not credited until grown tissue becomes causally
   useful.
+- **[2026-08] fable2 is the multi-depth Broca-graft line** — it imports the validated
+  SOL2 kernel rather than rewriting it; the new surface is a differentiated language
+  organ with several bounded, output-tissue-only injection sites into frozen Qwen,
+  trained by a paired objective whose engine is a *live* wrong-passage differential
+  (common-mode inflation cancels exactly) with a zero-margin no-harm hinge against a
+  detached no-exposure baseline. The C1-review instrument defects are fixed
+  structurally there: fp32 label scoring, a scaffold-free bare floor, passage-prose
+  exposure with an answer-card lint, arms that are distinct computations or asserted
+  invariants, and guards that raise. Preregistrations: `fable2/experiments/`.
 
 ## Sharp Edges
 
