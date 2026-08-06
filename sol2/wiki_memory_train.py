@@ -39,6 +39,7 @@ from .wiki_coherent_value import (
     coherent_answer_value_target,
     coherent_recall_value_credit,
     designated_answer_token_mask,
+    fixed_rms_paired_targets,
     paired_coherent_recall_delta_credit,
     paired_sparse_coherent_transport_credit,
     sparse_coherent_transport_credit,
@@ -88,6 +89,7 @@ class WikiMemoryTrainConfig:
     coherent_transport_credit_weight: float = 0.0
     coherent_delta_credit_weight: float = 0.0
     coherent_delta_transport_credit_weight: float = 0.0
+    coherent_delta_target_rms: float = 0.0
     coherent_transport_temperature: float = 0.1
     semantic_credit_target_rms: float = 0.25
     semantic_credit_seed: int = 307
@@ -168,6 +170,8 @@ class WikiMemoryTrainConfig:
             raise ValueError("recall addressing temperature must be positive")
         if self.coherent_transport_temperature <= 0:
             raise ValueError("coherent transport temperature must be positive")
+        if self.coherent_delta_target_rms < 0:
+            raise ValueError("coherent delta target RMS must be nonnegative")
         if self.control_energy_weight < 0:
             raise ValueError("control energy weight must be nonnegative")
         if self.language_control_mode not in {"late_residual", "prefix"}:
@@ -865,6 +869,7 @@ def run_training(args: argparse.Namespace) -> dict:
         coherent_delta_transport_credit_weight=(
             args.coherent_delta_transport_credit_weight
         ),
+        coherent_delta_target_rms=args.coherent_delta_target_rms,
         coherent_transport_temperature=args.coherent_transport_temperature,
         semantic_credit_target_rms=args.semantic_credit_target_rms,
         semantic_credit_seed=args.semantic_credit_seed,
@@ -1428,6 +1433,28 @@ def run_training(args: argparse.Namespace) -> dict:
                 coherent_value_target_separation_rms = (
                     coherent_targets[0] - coherent_targets[1]
                 ).pow(2).mean().sqrt()
+                paired_coherent_targets = coherent_targets
+                if train_config.coherent_delta_target_rms > 0:
+                    (
+                        normalized_left_target,
+                        normalized_right_target,
+                        raw_target_rms,
+                        normalized_target_rms,
+                    ) = fixed_rms_paired_targets(
+                        coherent_targets[0],
+                        coherent_targets[1],
+                        target_rms=train_config.coherent_delta_target_rms,
+                    )
+                    if not torch.allclose(
+                        raw_target_rms,
+                        coherent_value_target_separation_rms,
+                    ):
+                        raise RuntimeError("raw coherent target telemetry disagrees")
+                    paired_coherent_targets = [
+                        normalized_left_target,
+                        normalized_right_target,
+                    ]
+                    coherent_delta_target_rms = normalized_target_rms
                 (
                     coherent_delta_credit_loss,
                     coherent_delta_alignment,
@@ -1437,8 +1464,8 @@ def run_training(args: argparse.Namespace) -> dict:
                 ) = paired_coherent_recall_delta_credit(
                     branch_results[0].recalled,
                     branch_results[1].recalled,
-                    coherent_targets[0],
-                    coherent_targets[1],
+                    paired_coherent_targets[0],
+                    paired_coherent_targets[1],
                 )
                 (
                     coherent_delta_transport_credit_loss,
@@ -1453,8 +1480,8 @@ def run_training(args: argparse.Namespace) -> dict:
                     branch_results[1].relay_state,
                     branch_results[0].output_state,
                     branch_results[1].output_state,
-                    coherent_targets[0],
-                    coherent_targets[1],
+                    paired_coherent_targets[0],
+                    paired_coherent_targets[1],
                     temperature=train_config.coherent_transport_temperature,
                 )
         if any(branch.controls is None for branch in branch_results):
@@ -1992,6 +2019,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--coherent-delta-credit-weight", type=float, default=0.0)
     parser.add_argument(
         "--coherent-delta-transport-credit-weight", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--coherent-delta-target-rms",
+        type=float,
+        default=0.0,
+        help="fixed RMS for detached paired coherent target differences; 0 keeps raw scale",
     )
     parser.add_argument("--coherent-transport-temperature", type=float, default=0.1)
     parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)

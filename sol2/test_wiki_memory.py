@@ -22,6 +22,7 @@ from .wiki_coherent_value import (
     coherent_answer_value_target,
     coherent_recall_value_credit,
     designated_answer_token_mask,
+    fixed_rms_paired_targets,
     paired_coherent_recall_delta_credit,
     paired_sparse_coherent_transport_credit,
     sparse_coherent_transport_credit,
@@ -578,6 +579,38 @@ def test_answer_span_coherent_value_and_sparse_transport_are_exact() -> None:
         left_target,
     )[0]
     assert torch.allclose(delta_loss.detach(), swapped_delta_loss)
+
+    normalized_left, normalized_right, raw_rms, normalized_rms = (
+        fixed_rms_paired_targets(
+            left_target,
+            right_target,
+            target_rms=0.25,
+        )
+    )
+    assert not normalized_left.requires_grad and not normalized_right.requires_grad
+    assert torch.allclose(
+        0.5 * (normalized_left + normalized_right),
+        0.5 * (left_target.detach() + right_target.detach()),
+    )
+    assert torch.allclose(raw_rms, target_delta_rms)
+    assert torch.allclose(normalized_rms, torch.tensor(0.25))
+    normalized_swapped = fixed_rms_paired_targets(
+        right_target,
+        left_target,
+        target_rms=0.25,
+    )
+    assert torch.allclose(normalized_left, normalized_swapped[1])
+    assert torch.allclose(normalized_right, normalized_swapped[0])
+    try:
+        fixed_rms_paired_targets(
+            left_target,
+            left_target,
+            target_rms=0.25,
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a zero paired target difference was normalized")
 
     left_relay = torch.tensor(
         [[[0.4, 0.0, 0.0], [0.0, 0.2, 0.0], [0.0, 0.0, 0.2]]],
@@ -1215,6 +1248,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 coherent_transport_credit_weight=4.0,
                 coherent_delta_credit_weight=5.0,
                 coherent_delta_transport_credit_weight=6.0,
+                coherent_delta_target_rms=0.05,
                 coherent_transport_temperature=0.075,
                 semantic_credit_target_rms=0.25,
                 semantic_credit_seed=307,
@@ -1263,6 +1297,7 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["coherent_transport_credit_weight"] == 4.0
         assert payload["train_config"]["coherent_delta_credit_weight"] == 5.0
         assert payload["train_config"]["coherent_delta_transport_credit_weight"] == 6.0
+        assert payload["train_config"]["coherent_delta_target_rms"] == 0.05
         assert payload["train_config"]["coherent_transport_temperature"] == 0.075
         assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
         assert payload["train_config"]["semantic_credit_seed"] == 307

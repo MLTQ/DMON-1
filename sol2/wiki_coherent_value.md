@@ -39,6 +39,13 @@ own stored sensory state, never an added inference input or learned readout.
 - **Rationale**: Prevents the absolute target's large common component from rewarding
   a passage-insensitive recall vector.
 
+### `fixed_rms_paired_targets`
+
+- **Does**: Rescales each detached counterfactual difference to one declared RMS while
+  preserving the pair midpoint, direction, branch order, and swap symmetry.
+- **Rationale**: Separates learning-signal scale from question-dependent Qwen feature
+  magnitude without inventing a new representation or inference input.
+
 ### `sparse_coherent_transport_credit`
 
 - **Does**: Soft-selects small relay and output subpopulations by target similarity,

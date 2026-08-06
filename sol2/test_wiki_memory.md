@@ -65,6 +65,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Paired coherent recall and transport losses detach exact target differences, are
   invariant to branch order, give identical endpoints opposing gradients, and select
   cells by live counterfactual utility rather than absolute common state.
+- Fixed-RMS paired targets preserve the detached midpoint and direction, normalize the
+  difference exactly, reject zero differences, and remain invariant under branch swap.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
@@ -78,7 +80,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
   state, corpus identity, update cursor, language-control mode, distillation settings,
   effect-distillation weight, local semantic-credit configuration, and
   reference-centering treatment, including coherent value/transport weights, recall
-  gain, sparse transport temperature, and paired coherent-delta weights.
+  gain, sparse transport temperature, paired coherent-delta weights, and the fixed
+  coherent-delta target RMS.
 - The matched evaluator emits all eight preregistered causal arms.
 - Reference-centered prefix evaluation makes no-exposure and explicit zero-control
   arms exact zero deltas.

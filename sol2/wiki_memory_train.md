@@ -21,7 +21,8 @@ bias are likewise serialized architectural treatments. Addressing-credit weight 
 teacher-target temperature are serialized training-only treatments. Coherent answer-
 value and sparse transport weights, recall gain, and transport temperature serialize
 the C1y local developmental treatment. Paired coherent-delta recall and transport
-weights serialize C1z's common-mode rejection treatment.
+weights serialize C1z's common-mode rejection treatment. An optional fixed paired-
+delta RMS serializes C1aa's developmental normalization; zero preserves raw C1z scale.
 
 ### `training_episode_start_state`
 
@@ -179,6 +180,10 @@ answer targets and aligns the live recall difference with that detached delta. R
 and output cells are selected by their live paired state difference rather than their
 absolute similarity to either target, so passage-common activity cannot satisfy the
 loss. The treatment reuses the same live anatomy and has no evaluation/inference path.
+
+When a fixed paired target RMS is declared, only the detached difference is rescaled;
+the target midpoint and direction remain exact. Telemetry retains raw answer-target
+separation separately from normalized delta target RMS, so the treatment is auditable.
 
 ### Reference-centered control delta
 

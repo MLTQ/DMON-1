@@ -161,6 +161,33 @@ def paired_coherent_recall_delta_credit(
     return loss, alignment, student_rms, target_rms, retention
 
 
+def fixed_rms_paired_targets(
+    left_target: torch.Tensor,
+    right_target: torch.Tensor,
+    *,
+    target_rms: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Rescale only the detached paired difference while preserving its midpoint."""
+
+    if left_target.shape != right_target.shape or left_target.ndim != 2:
+        raise ValueError("paired coherent targets must share [batch, hidden] shape")
+    if target_rms <= 0:
+        raise ValueError("fixed paired target RMS must be positive")
+    left = left_target.detach().float()
+    right = right_target.detach().float()
+    raw_delta = left - right
+    raw_per_example = raw_delta.pow(2).mean(dim=-1, keepdim=True).sqrt()
+    if bool((raw_per_example <= 1e-8).any()):
+        raise ValueError("cannot normalize a zero coherent target difference")
+    normalized_delta = raw_delta * (target_rms / raw_per_example)
+    midpoint = 0.5 * (left + right)
+    normalized_left = midpoint + 0.5 * normalized_delta
+    normalized_right = midpoint - 0.5 * normalized_delta
+    raw_rms = raw_delta.pow(2).mean().sqrt()
+    normalized_rms = normalized_delta.pow(2).mean().sqrt()
+    return normalized_left, normalized_right, raw_rms, normalized_rms
+
+
 def _sparse_tissue_pool(
     tissue: torch.Tensor,
     target: torch.Tensor,
