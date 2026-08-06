@@ -98,3 +98,40 @@ the first update behind the exact-zero effector initialization and must become n
 in the bounded learning run. The preflight licenses one fresh 25-update curve at this
 geometry; its single-update held-out behavior is only an initialization observation,
 not a causal-memory result.
+
+## Update-25 result
+
+The bounded run completed with exact peak allocation/reservation of 21.48/21.67 GiB.
+Qwen remained zero-trainable and zero-gradient. The raw artifact is
+`l0c1w-coherent-sparse-juvenile-s7-u25-result.json`, SHA-256
+`ed0c59bbc8e147875afba4885ffba4d2b266409e95ac6fb467020bc13d82ce4d`.
+
+Addressing passed its local learning gate. Across updates 1-12 versus 13-24,
+addressing KL fell from `0.13177` to `0.08564` (trailing-five `0.07588`), selected
+teacher mass rose from `0.51960` to `0.52435` (trailing `0.54264`), and newest-four
+mass rose from `0.40569` to `0.40948`. Attention remained broad inside the sparse set
+at roughly 14.24 effective slots. Query/key gradients remained nonzero late at
+`1.182e-4`/`2.256e-4`, though they declined 4.4x/3.1x from the early block.
+
+Coherent addressing did not by itself solve value semantics. Direct-recall alignment
+was `0.0252` early, `0.0142` late, and `-0.0462` trailing; separation fell from
+`0.00652` to `0.00469`. Value/output recall gradients declined about 7.6x/7.7x.
+Nevertheless, the organism was no longer bypassed: after the exact-zero update 1,
+connectome, tissue, transport, sensor, recall, and effector groups all received live
+gradients. Causal-advantage satisfaction improved from `0.3542` early to `0.5417`
+late and `0.6000` trailing, while control RMS settled near `0.0108` rather than
+continuing the update-4 overshoot.
+
+The held-out causal gate still failed. Normal exposure reached 87.5% accuracy but loss
+`0.69153`, worse than no exposure/zero/reset at `0.57526`, memory lesion at `0.57532`,
+and wrong passage at `0.67603`. It was only slightly better than internal lesion at
+`0.69373`. Normal won strict per-question likelihood on only 1/8 questions against
+the floor, memory lesion, and wrong passage, and 3/8 against internal lesion. Memory
+therefore causally drives the learned intervention, and internal tissue sometimes
+corrects it, but the expressed intervention is usually pointed in the wrong direction.
+
+C1w validates coherent sparse addressing and substantial organism recruitment, but
+rejects 25 updates as evidence of useful external memory. Since the causal training
+fraction continued improving after only two schedule cycles, the next frozen step is
+an exact checkpoint continuation to update 100 before adding answer-span value credit,
+sharper attention, utility protection, or growth.
