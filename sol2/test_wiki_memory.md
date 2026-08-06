@@ -55,6 +55,13 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Addressing credit constructs a detached frozen-feature target, exposes exact sparse
   attention telemetry, and sends gradients only through live content scores; checkpoint
   metadata preserves its weight and temperature.
+- Designated-answer spans align exactly through tokenizer offsets, map safely through
+  circular FIFO slots, and reject overwritten targets.
+- Coherent value targets detach the organism's own answer-slot observation; live recall
+  receives credit while the target path remains gradient-free.
+- Sparse relay/output pooling specializes a small active subpopulation, and the
+  integrated local objective recruits sensor, query/key/value/output recall,
+  connectome, tissue, and relay-output transport without backbone gradients.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
@@ -67,7 +74,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, update cursor, language-control mode, distillation settings,
   effect-distillation weight, local semantic-credit configuration, and
-  reference-centering treatment.
+  reference-centering treatment, including coherent value/transport weights, recall
+  gain, and sparse transport temperature.
 - The matched evaluator emits all eight preregistered causal arms.
 - Reference-centered prefix evaluation makes no-exposure and explicit zero-control
   arms exact zero deltas.

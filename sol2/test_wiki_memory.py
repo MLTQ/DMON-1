@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,9 +12,18 @@ import torch
 from torch import nn
 
 from .backbone_audit import summarize_binding_rows
-from .model import StepTrace
+from .language_backbone import ToyFrozenLanguageBackbone
+from .living_language import graft_language_backbone
+from .model import Sol2, StepTrace
 from .test_living_language import LANGUAGE_CFG, build_system
 from .wiki_causal_contrast import passage_causal_contrast_loss
+from .wiki_coherent_value import (
+    answer_memory_slots,
+    coherent_answer_value_target,
+    coherent_recall_value_credit,
+    designated_answer_token_mask,
+    sparse_coherent_transport_credit,
+)
 from .wiki_distillation import (
     control_delta_energy,
     full_vocab_effect_reverse_kl,
@@ -24,6 +34,7 @@ from .wiki_memory import (
     WikiDocument,
     WikiMemoryCorpus,
     WikiQuestion,
+    encode_text,
     format_wiki_question,
     label_token_ids,
     load_wiki_memory_corpus,
@@ -86,6 +97,28 @@ class RecordingTinyTokenizer(TinyTokenizer):
     def __call__(self, text: str, *, return_tensors: str):
         self.texts.append(text)
         return super().__call__(text, return_tensors=return_tensors)
+
+
+class OffsetTinyTokenizer(TinyTokenizer):
+    def __call__(
+        self,
+        text: str,
+        *,
+        return_tensors: str,
+        return_offsets_mapping: bool = False,
+    ):
+        encoded = super().__call__(text, return_tensors=return_tensors)
+        if not return_offsets_mapping:
+            return encoded
+        offsets = [(0, 0)]
+        cursor = 0
+        for word in text.split():
+            start = text.index(word, cursor)
+            end = start + len(word)
+            offsets.append((start, end))
+            cursor = end
+        encoded.offset_mapping = torch.tensor([offsets], dtype=torch.long)
+        return encoded
 
 
 def test_manifest_is_source_family_disjoint_and_complete() -> None:
@@ -441,6 +474,153 @@ def test_recall_addressing_credit_is_sparse_observable_and_detached() -> None:
     assert content_scores.grad is not None
     assert float(content_scores.grad.abs().sum()) > 0.0
     assert exposure.grad is None and teacher_effect.grad is None
+
+
+def test_answer_span_coherent_value_and_sparse_transport_are_exact() -> None:
+    tokenizer = OffsetTinyTokenizer()
+    memory = (
+        "Temporary archive binding for this episode.\n"
+        "Question: Which phrase is bound?\n"
+        "Designated answer: amber lattice\n"
+        "Use this temporary binding."
+    )
+    input_ids = tokenizer(memory, return_tensors="pt").input_ids
+    mask = designated_answer_token_mask(
+        tokenizer, memory, "amber lattice", input_ids
+    )
+    selected = mask.nonzero(as_tuple=False).flatten().tolist()
+    words = memory.split()
+    assert [words[index - 1] for index in selected] == ["amber", "lattice"]
+
+    wrapped = answer_memory_slots(
+        torch.tensor([False, True, True]), start_cursor=3, memory_capacity=4
+    )
+    assert wrapped.tolist() == [0, 1]
+    overwritten = torch.tensor([True, False, False, False, False])
+    try:
+        answer_memory_slots(overwritten, start_cursor=0, memory_capacity=4)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an overwritten answer span was accepted")
+
+    exposure = torch.arange(12, dtype=torch.float32).reshape(1, 4, 3)
+    exposure.requires_grad_()
+    answer_mask = torch.tensor([False, True, True])
+    target = coherent_answer_value_target(
+        exposure,
+        answer_mask,
+        start_cursor=3,
+        recall_gain=0.25,
+    )
+    expected = 0.25 * torch.tanh(exposure[:, [0, 1]].mean(dim=1))
+    assert torch.allclose(target, expected.detach())
+    assert not target.requires_grad
+
+    recalled = torch.zeros_like(target, requires_grad=True)
+    value_loss, alignment, student_rms, target_rms = (
+        coherent_recall_value_credit(recalled, target)
+    )
+    assert float(value_loss.detach()) > 0.0
+    assert float(alignment.detach()) == 0.0
+    assert float(student_rms.detach()) == 0.0 and float(target_rms.detach()) > 0.0
+    value_loss.backward()
+    assert recalled.grad is not None and float(recalled.grad.abs().sum()) > 0.0
+    assert exposure.grad is None
+
+    transport_target = torch.tensor([[1.0, 0.0, 0.0]], requires_grad=True)
+    relay = torch.tensor(
+        [[[0.8, 0.0, 0.0], [0.0, 0.5, 0.0], [-0.5, 0.0, 0.0]]],
+        requires_grad=True,
+    )
+    output = torch.tensor(
+        [[[0.7, 0.0, 0.0], [0.0, -0.5, 0.0]]], requires_grad=True
+    )
+    transport = sparse_coherent_transport_credit(
+        relay, output, transport_target, temperature=0.05
+    )
+    transport_loss, relay_alignment, output_alignment = transport[:3]
+    relay_effective, output_effective = transport[3:5]
+    assert float(transport_loss.detach()) > 0.0
+    assert float(relay_alignment.detach()) > 0.99
+    assert float(output_alignment.detach()) > 0.99
+    assert float(relay_effective.detach()) < 1.1
+    assert float(output_effective.detach()) < 1.1
+    transport_loss.backward()
+    assert relay.grad is not None and float(relay.grad.abs().sum()) > 0.0
+    assert output.grad is not None and float(output.grad.abs().sum()) > 0.0
+    assert transport_target.grad is None
+
+
+def test_coherent_local_credit_recruits_existing_anatomical_route() -> None:
+    cfg = replace(
+        LANGUAGE_CFG,
+        n_memory=64,
+        relay_output_attention=True,
+        relay_output_initial_gate=0.25,
+    )
+    torch.manual_seed(cfg.seed)
+    organism = Sol2(cfg)
+    backbone = ToyFrozenLanguageBackbone(cfg.vocab_size, 16, seed=cfg.seed + 2)
+    system = graft_language_backbone(
+        organism,
+        backbone,
+        n_control_tokens=3,
+        control_rank=4,
+        recall_gain=0.25,
+        coherent_recall=True,
+        recall_residual_gain=0.1,
+        recall_top_k=2,
+        seed=cfg.seed + 1,
+    )
+    tokenizer = OffsetTinyTokenizer()
+    corpus = load_wiki_memory_corpus(DATA_PATH)
+    source_document = corpus.split("meta_train")[0]
+    source_question = source_document.questions[0]
+    document, question = counterfactual_training_record(
+        source_document, source_question, epoch=0, compact=True
+    )
+    input_ids = encode_text(tokenizer, document.memory, "cpu", max_tokens=256)
+    answer_mask = designated_answer_token_mask(
+        tokenizer,
+        document.memory,
+        question.choices[question.answer],
+        input_ids,
+    )
+    result = run_wiki_memory_episode(
+        system,
+        tokenizer,
+        document,
+        question,
+        system.initial_state(1, "cpu"),
+        permutation_seed=3,
+        capture_recall=True,
+    )
+    assert result.exposure_memory_state is not None
+    assert result.recalled is not None
+    assert result.relay_state is not None and result.output_state is not None
+    target = coherent_answer_value_target(
+        result.exposure_memory_state,
+        answer_mask,
+        start_cursor=0,
+        recall_gain=0.25,
+    )
+    value_loss = coherent_recall_value_credit(result.recalled, target)[0]
+    transport_loss = sparse_coherent_transport_credit(
+        result.relay_state,
+        result.output_state,
+        target,
+        temperature=0.1,
+    )[0]
+    (value_loss + transport_loss).backward()
+    organ = system.organism.attached_organs["language"]
+    for component in ("recall_query", "recall_key", "recall_value", "recall_output"):
+        gradient = getattr(organ, component).weight.grad
+        assert gradient is not None and float(gradient.abs().sum()) > 0.0
+    groups = organism_gradient_groups(system)
+    for group in ("sensor", "recall", "connectome", "tissues", "transport"):
+        assert groups[group]["rms"] > 0.0
+    assert all(parameter.grad is None for parameter in system.backbone.parameters())
 
 
 def test_direct_recall_capture_and_semantic_credit_are_exact() -> None:
@@ -952,10 +1132,14 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 recall_semantic_credit_weight=4.0,
                 recall_addressing_credit_weight=2.0,
                 recall_addressing_temperature=0.05,
+                coherent_value_credit_weight=3.0,
+                coherent_transport_credit_weight=4.0,
+                coherent_transport_temperature=0.075,
                 semantic_credit_target_rms=0.25,
                 semantic_credit_seed=307,
                 control_energy_weight=0.1,
                 reference_centered_controls=True,
+                recall_gain=0.25,
                 coherent_recall=True,
                 recall_residual_gain=0.1,
                 recall_top_k=16,
@@ -994,10 +1178,14 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["recall_semantic_credit_weight"] == 4.0
         assert payload["train_config"]["recall_addressing_credit_weight"] == 2.0
         assert payload["train_config"]["recall_addressing_temperature"] == 0.05
+        assert payload["train_config"]["coherent_value_credit_weight"] == 3.0
+        assert payload["train_config"]["coherent_transport_credit_weight"] == 4.0
+        assert payload["train_config"]["coherent_transport_temperature"] == 0.075
         assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
         assert payload["train_config"]["semantic_credit_seed"] == 307
         assert payload["train_config"]["control_energy_weight"] == 0.1
         assert payload["train_config"]["reference_centered_controls"] is True
+        assert payload["train_config"]["recall_gain"] == 0.25
         assert payload["train_config"]["coherent_recall"] is True
         assert payload["train_config"]["recall_residual_gain"] == 0.1
         assert payload["train_config"]["recall_top_k"] == 16
@@ -1064,6 +1252,8 @@ def main() -> None:
         test_local_semantic_credit_is_differential_and_detached,
         test_training_lifetime_lane_policy_is_explicit_and_fresh,
         test_recall_addressing_credit_is_sparse_observable_and_detached,
+        test_answer_span_coherent_value_and_sparse_transport_are_exact,
+        test_coherent_local_credit_recruits_existing_anatomical_route,
         test_direct_recall_capture_and_semantic_credit_are_exact,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,

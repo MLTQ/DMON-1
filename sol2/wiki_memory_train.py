@@ -35,6 +35,12 @@ from .wiki_memory import (
     verify_wiki_sources,
 )
 from .wiki_causal_contrast import passage_causal_contrast_loss
+from .wiki_coherent_value import (
+    coherent_answer_value_target,
+    coherent_recall_value_credit,
+    designated_answer_token_mask,
+    sparse_coherent_transport_credit,
+)
 from .wiki_distillation import (
     control_delta_energy,
     full_vocab_effect_reverse_kl,
@@ -76,6 +82,9 @@ class WikiMemoryTrainConfig:
     recall_semantic_credit_weight: float = 0.0
     recall_addressing_credit_weight: float = 0.0
     recall_addressing_temperature: float = 0.1
+    coherent_value_credit_weight: float = 0.0
+    coherent_transport_credit_weight: float = 0.0
+    coherent_transport_temperature: float = 0.1
     semantic_credit_target_rms: float = 0.25
     semantic_credit_seed: int = 307
     control_energy_weight: float = 0.0
@@ -84,6 +93,7 @@ class WikiMemoryTrainConfig:
     language_control_mode: str = "late_residual"
     compact_bindings: bool = False
     control_gain: float = 1.0
+    recall_gain: float = 0.25
     coherent_recall: bool = False
     recall_residual_gain: float = 0.1
     recall_top_k: int = 0
@@ -127,24 +137,35 @@ class WikiMemoryTrainConfig:
             self.relay_semantic_credit_weight,
             self.recall_semantic_credit_weight,
             self.recall_addressing_credit_weight,
+            self.coherent_value_credit_weight,
+            self.coherent_transport_credit_weight,
         ) < 0:
-            raise ValueError("semantic credit weights must be nonnegative")
+            raise ValueError("local credit weights must be nonnegative")
         if (
             self.memory_semantic_credit_weight > 0
             or self.relay_semantic_credit_weight > 0
             or self.recall_semantic_credit_weight > 0
         ) and not self.paired_counterfactual:
             raise ValueError("semantic credit requires paired counterfactual training")
+        if (
+            self.coherent_value_credit_weight > 0
+            or self.coherent_transport_credit_weight > 0
+        ) and (not self.paired_counterfactual or not self.coherent_recall):
+            raise ValueError(
+                "coherent local credit requires paired counterfactual coherent recall"
+            )
         if self.semantic_credit_target_rms <= 0:
             raise ValueError("semantic credit target RMS must be positive")
         if self.recall_addressing_temperature <= 0:
             raise ValueError("recall addressing temperature must be positive")
+        if self.coherent_transport_temperature <= 0:
+            raise ValueError("coherent transport temperature must be positive")
         if self.control_energy_weight < 0:
             raise ValueError("control energy weight must be nonnegative")
         if self.language_control_mode not in {"late_residual", "prefix"}:
             raise ValueError("unknown language control mode")
-        if self.control_gain <= 0:
-            raise ValueError("control gain must be positive")
+        if self.control_gain <= 0 or self.recall_gain <= 0:
+            raise ValueError("control and recall gains must be positive")
         if min(
             self.recall_residual_gain,
             float(self.recall_top_k),
@@ -830,6 +851,9 @@ def run_training(args: argparse.Namespace) -> dict:
         recall_semantic_credit_weight=args.recall_semantic_credit_weight,
         recall_addressing_credit_weight=args.recall_addressing_credit_weight,
         recall_addressing_temperature=args.recall_addressing_temperature,
+        coherent_value_credit_weight=args.coherent_value_credit_weight,
+        coherent_transport_credit_weight=args.coherent_transport_credit_weight,
+        coherent_transport_temperature=args.coherent_transport_temperature,
         semantic_credit_target_rms=args.semantic_credit_target_rms,
         semantic_credit_seed=args.semantic_credit_seed,
         control_energy_weight=args.control_energy_weight,
@@ -838,6 +862,7 @@ def run_training(args: argparse.Namespace) -> dict:
         language_control_mode=args.language_control_mode,
         compact_bindings=args.compact_bindings,
         control_gain=args.control_gain,
+        recall_gain=args.recall_gain,
         coherent_recall=args.coherent_recall,
         recall_residual_gain=args.recall_residual_gain,
         recall_top_k=args.recall_top_k,
@@ -952,17 +977,38 @@ def run_training(args: argparse.Namespace) -> dict:
             max_tokens=train_config.max_question_tokens,
         )
         training_question_features = system.backbone.encode(training_question_ids)
-        training_exposure_features = [
-            system.backbone.encode(
-                encode_text(
-                    tokenizer,
-                    training_document.memory,
-                    episode_state.hidden.device,
-                    max_tokens=train_config.max_memory_tokens,
-                )
+        training_exposure_ids = [
+            encode_text(
+                tokenizer,
+                training_document.memory,
+                episode_state.hidden.device,
+                max_tokens=train_config.max_memory_tokens,
             )
             for training_document, _ in training_records
         ]
+        training_exposure_features = [
+            system.backbone.encode(exposure_ids)
+            for exposure_ids in training_exposure_ids
+        ]
+        coherent_credit_enabled = (
+            train_config.coherent_value_credit_weight > 0
+            or train_config.coherent_transport_credit_weight > 0
+        )
+        training_answer_masks = (
+            [
+                designated_answer_token_mask(
+                    tokenizer,
+                    training_document.memory,
+                    training_question.choices[training_question.answer],
+                    exposure_ids,
+                )
+                for (training_document, training_question), exposure_ids in zip(
+                    training_records, training_exposure_ids
+                )
+            ]
+            if coherent_credit_enabled
+            else []
+        )
         teacher_features: list[torch.Tensor] = []
         teacher_logits: list[torch.Tensor] = []
         teacher_enabled = (
@@ -1047,6 +1093,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 capture_recall=(
                     train_config.recall_semantic_credit_weight > 0
                     or train_config.recall_addressing_credit_weight > 0
+                    or train_config.coherent_value_credit_weight > 0
                     or train_config.coherent_recall
                 ),
             )
@@ -1101,6 +1148,18 @@ def run_training(args: argparse.Namespace) -> dict:
         recall_attention_entropy = task_loss.new_zeros(())
         recall_effective_slots = task_loss.new_zeros(())
         recall_newest_mass = task_loss.new_zeros(())
+        coherent_value_credit_loss = task_loss.new_zeros(())
+        coherent_value_alignment = task_loss.new_zeros(())
+        coherent_value_student_rms = task_loss.new_zeros(())
+        coherent_value_target_rms = task_loss.new_zeros(())
+        coherent_value_recall_separation_rms = task_loss.new_zeros(())
+        coherent_value_target_separation_rms = task_loss.new_zeros(())
+        coherent_transport_credit_loss = task_loss.new_zeros(())
+        coherent_relay_alignment = task_loss.new_zeros(())
+        coherent_output_alignment = task_loss.new_zeros(())
+        coherent_relay_effective_cells = task_loss.new_zeros(())
+        coherent_output_effective_cells = task_loss.new_zeros(())
+        coherent_transport_rms = task_loss.new_zeros(())
         if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
@@ -1279,6 +1338,69 @@ def run_training(args: argparse.Namespace) -> dict:
                 torch.stack([row[index] for row in addressing_rows]).mean()
                 for index in range(5)
             )
+        if coherent_credit_enabled:
+            if len(training_answer_masks) != len(branch_results):
+                raise RuntimeError("coherent targets do not match training branches")
+            if any(
+                branch.exposure_memory_state is None
+                or branch.recalled is None
+                or branch.relay_state is None
+                or branch.output_state is None
+                for branch in branch_results
+            ):
+                raise RuntimeError("coherent local credit requires captured live tissue")
+            coherent_targets = [
+                coherent_answer_value_target(
+                    branch.exposure_memory_state,
+                    answer_mask,
+                    start_cursor=episode_start_memory_cursor,
+                    recall_gain=train_config.recall_gain,
+                )
+                for branch, answer_mask in zip(
+                    branch_results, training_answer_masks
+                )
+            ]
+            value_rows = [
+                coherent_recall_value_credit(branch.recalled, target)
+                for branch, target in zip(branch_results, coherent_targets)
+            ]
+            (
+                coherent_value_credit_loss,
+                coherent_value_alignment,
+                coherent_value_student_rms,
+                coherent_value_target_rms,
+            ) = tuple(
+                torch.stack([row[index] for row in value_rows]).mean()
+                for index in range(4)
+            )
+            transport_rows = [
+                sparse_coherent_transport_credit(
+                    branch.relay_state,
+                    branch.output_state,
+                    target,
+                    temperature=train_config.coherent_transport_temperature,
+                )
+                for branch, target in zip(branch_results, coherent_targets)
+            ]
+            (
+                coherent_transport_credit_loss,
+                coherent_relay_alignment,
+                coherent_output_alignment,
+                coherent_relay_effective_cells,
+                coherent_output_effective_cells,
+                coherent_transport_rms,
+            ) = tuple(
+                torch.stack([row[index] for row in transport_rows]).mean()
+                for index in range(6)
+            )
+            if len(branch_results) == 2:
+                coherent_value_recall_separation_rms = (
+                    branch_results[0].recalled.float()
+                    - branch_results[1].recalled.float()
+                ).pow(2).mean().sqrt()
+                coherent_value_target_separation_rms = (
+                    coherent_targets[0] - coherent_targets[1]
+                ).pow(2).mean().sqrt()
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
         control_energy_loss = torch.stack(
@@ -1357,6 +1479,10 @@ def run_training(args: argparse.Namespace) -> dict:
             * recall_semantic_credit_loss
             + train_config.recall_addressing_credit_weight
             * recall_addressing_credit_loss
+            + train_config.coherent_value_credit_weight
+            * coherent_value_credit_loss
+            + train_config.coherent_transport_credit_weight
+            * coherent_transport_credit_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
@@ -1481,6 +1607,40 @@ def run_training(args: argparse.Namespace) -> dict:
             "recall_attention_entropy": float(recall_attention_entropy.detach()),
             "recall_effective_slots": float(recall_effective_slots.detach()),
             "recall_newest_mass": float(recall_newest_mass.detach()),
+            "coherent_value_credit_loss": float(
+                coherent_value_credit_loss.detach()
+            ),
+            "coherent_value_alignment": float(
+                coherent_value_alignment.detach()
+            ),
+            "coherent_value_student_rms": float(
+                coherent_value_student_rms.detach()
+            ),
+            "coherent_value_target_rms": float(
+                coherent_value_target_rms.detach()
+            ),
+            "coherent_value_recall_separation_rms": float(
+                coherent_value_recall_separation_rms.detach()
+            ),
+            "coherent_value_target_separation_rms": float(
+                coherent_value_target_separation_rms.detach()
+            ),
+            "coherent_transport_credit_loss": float(
+                coherent_transport_credit_loss.detach()
+            ),
+            "coherent_relay_alignment": float(
+                coherent_relay_alignment.detach()
+            ),
+            "coherent_output_alignment": float(
+                coherent_output_alignment.detach()
+            ),
+            "coherent_relay_effective_cells": float(
+                coherent_relay_effective_cells.detach()
+            ),
+            "coherent_output_effective_cells": float(
+                coherent_output_effective_cells.detach()
+            ),
+            "coherent_transport_rms": float(coherent_transport_rms.detach()),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
@@ -1548,6 +1708,12 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"selected={row['recall_selected_teacher_mass']:.3f} "
                 f"attn_eff={row['recall_effective_slots']:.2f} "
                 f"newest={row['recall_newest_mass']:.3f} "
+                f"value={row['coherent_value_credit_loss']:.4f} "
+                f"value_align={row['coherent_value_alignment']:.3f} "
+                f"value_sep={row['coherent_value_recall_separation_rms']:.4f} "
+                f"transport_value={row['coherent_transport_credit_loss']:.4f} "
+                f"relay_value_align={row['coherent_relay_alignment']:.3f} "
+                f"relay_value_eff={row['coherent_relay_effective_cells']:.1f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1723,6 +1889,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recall-semantic-credit-weight", type=float, default=0.0)
     parser.add_argument("--recall-addressing-credit-weight", type=float, default=0.0)
     parser.add_argument("--recall-addressing-temperature", type=float, default=0.1)
+    parser.add_argument("--coherent-value-credit-weight", type=float, default=0.0)
+    parser.add_argument("--coherent-transport-credit-weight", type=float, default=0.0)
+    parser.add_argument("--coherent-transport-temperature", type=float, default=0.1)
     parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)
     parser.add_argument("--semantic-credit-seed", type=int, default=307)
     parser.add_argument("--control-energy-weight", type=float, default=0.0)

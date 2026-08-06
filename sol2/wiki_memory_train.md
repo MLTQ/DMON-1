@@ -18,7 +18,9 @@ also serialized so developmental scaffolding cannot drift across resume. The lif
 lane policy explicitly distinguishes continuous state inheritance from fresh episodic
 training populations. Coherent-recall mode, residual gain, sparse top-k, and recency
 bias are likewise serialized architectural treatments. Addressing-credit weight and
-teacher-target temperature are serialized training-only treatments.
+teacher-target temperature are serialized training-only treatments. Coherent answer-
+value and sparse transport weights, recall gain, and transport temperature serialize
+the C1y local developmental treatment.
 
 ### `training_episode_start_state`
 
@@ -156,6 +158,19 @@ value/output paths, reorder circular memory chronologically, bias selection towa
 slots, and apply top-k before softmax. Defaults retain the legacy dense learned-only
 path. These are inference anatomy, not teacher shortcuts.
 
+### Answer-span coherent value transport
+
+When explicitly enabled, C1y locates the exact designated-answer tokens in each
+counterfactual exposure and observes the physical circular-memory cells written by
+those tokens. Their mean bounded state defines a detached ideal recall in the same
+hidden coordinate as coherent memory; the live final-token recall is aligned to it.
+
+A target-similarity soft pool then lets a small subset of relay and output cells carry
+that value. Both tissue states remain ordinary live organism tensors, so the loss can
+train recall, recurrent routing, and the existing relay-output tract without requiring
+every internal neuron to participate. Exact spans, stored values, targets, and pools
+are training-only and never enter language input, evaluation, or inference.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's
@@ -230,6 +245,8 @@ performs independent cellular transitions and language-head control.
   component gradient RMS values when recall credit is enabled.
 - Records addressing KL, selected teacher mass, attention concentration, and newest
   mass when addressing credit is enabled.
+- Records coherent recall/target alignment, RMS, counterfactual separation, sparse
+  relay/output alignment, and effective-cell counts when C1y credit is enabled.
 - Records start/end memory cursors so lane-policy behavior and saturation are auditable.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
@@ -317,6 +334,11 @@ performs independent cellular transitions and language-head control.
 - Recall semantic credit observes the exact final-question recall tensor from the
   ordinary step graph; teacher effects and projection axes remain detached, and the
   capture is absent from evaluation and inference unless explicitly requested.
+- Coherent answer targets are detached observations of exact surviving stream-memory
+  slots. Only live recall, relay, output, and their ordinary upstream anatomy receive
+  gradients; answer spans cannot bypass the organism or frozen language boundary.
+- Sparse transport pools are parameter-free and training-only. Their soft selection
+  permits specialized active cells while leaving unused plastic capacity unpenalized.
 - Reference controls are computed from the identical starting state and question,
   detached before subtraction, and serialized as a treatment flag rather than state.
 - Delta energy prices effective language intervention after reference subtraction, not
