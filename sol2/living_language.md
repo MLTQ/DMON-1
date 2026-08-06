@@ -12,7 +12,7 @@ state, identity, development, and adaptive control.
 
 Carries next-token logits, emitted control tokens, continuing organism state, and
 optional SOL2 health telemetry. Training callers may also request the exact live recall
-vector from the final perceived token.
+vector and its content/final scores and attention from the final perceived token.
 
 ### `LivingLanguageSystem`
 
@@ -34,8 +34,8 @@ vector from the final perceived token.
   pre-transformer soft prefix, allowing all frozen layers to reason over SOL2 output.
 - Optionally subtracts a detached, shape-matched homeostatic control reference before
   language decoding while leaving the organism's actual state transitions unchanged.
-- Optionally propagates the final transition's `StepTrace.recalled` tensor without
-  replaying attention or changing the scoring path.
+- Optionally propagates the final transition's live recall trace without replaying
+  attention or changing the scoring path.
 
 ### `graft_language_backbone`
 

@@ -16,9 +16,10 @@ and the largest effective operator norm beside behavioral loss.
 
 ### `StepTrace`
 
-Opt-in caller-owned observation of the exact live recall vector and memory view used by
-a transition. It does not detach, recompute, or modify either tensor and is empty when
-the step writes memory or has no recall-capable organ.
+Opt-in caller-owned observation of the exact live recall vector, chronological memory
+view, pre-recency content scores, final recency/top-k scores, and attention used by a
+transition. It does not detach, recompute, or modify those tensors and is empty when the
+step writes memory or has no recall-capable organ.
 
 ### `Sol2`
 
@@ -42,7 +43,7 @@ the step writes memory or has no recall-capable organ.
 - Selects one organ explicitly per step and exposes exact attach/detach/reattach,
   specialized-module attachment, and organ-parameter iteration operations.
 - Supports zero-and-freeze tissue interventions without changing the training path.
-- Can expose the existing content-addressed recall edge for training diagnostics while
+- Can expose the existing content-addressed recall edge and its addressing decisions for training diagnostics while
   preserving the ordinary three-value step return and transition semantics.
 
 ### `count_parameters`

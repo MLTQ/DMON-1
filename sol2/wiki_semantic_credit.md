@@ -41,11 +41,23 @@ without adding an inference route or constraining shared background state.
 - **Rationale**: Credit reaches recall query/key/value/output before recurrent dilution,
   while still constraining only a counterfactual difference.
 
+### `recall_addressing_credit`
+
+- **Does**: Builds a detached distribution over the newest stored exposure positions
+  from cosine similarity between frozen-Qwen token features and the passage-visible
+  teacher effect, then minimizes KL from that target to the live pre-recency content
+  scores.
+- **Reports**: Teacher mass admitted by sparse selection, live attention entropy and
+  effective-slot count, and mass on the four newest slots.
+- **Rationale**: Query/key addressing receives a direct training surface across all
+  valid slots. Recency and hard top-k still govern inference, but cannot hide a bad
+  content address from the loss.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 | --- | --- | --- |
-| `wiki_memory_train.py` | Four ordered outputs: loss, student RMS, alignment, raw teacher RMS | Return order or reduction |
+| `wiki_memory_train.py` | Ordered semantic-credit and addressing telemetry tuples | Return order or reduction |
 | `test_wiki_memory.py` | Seed reproducibility, detached targets, opposing endpoint gradients, swap invariance | RNG, detach, or sign convention |
 | C1t protocol | Memory seed `307`, relay seed `308`, target RMS `0.25` | Projection construction or normalization |
 | C1u protocol | Memory seed `307`, direct recall seed `309`, target RMS `0.25` | Projection construction or normalization |

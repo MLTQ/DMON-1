@@ -23,6 +23,10 @@ recent working set?
   and hard top-k selection before softmax. C1w uses bias `0.08` and top-k `16`.
 - Capture attention, selected-slot count, entropy, and newest-slot mass through the
   existing opt-in trace. These are observations, not inference inputs.
+- Add a training-only addressing KL at weight `1.0`. Its detached target ranks the
+  current exposure's frozen-Qwen token features by similarity to the passage-visible
+  teacher effect, using temperature `0.1`; the student surface is the raw content score
+  before recency and top-k, so excluded slots can still teach query/key parameters.
 - Initial juvenile geometry: 16 input, 1,024 memory, 512 compute, 128 relay, 16 output,
   hidden 128, 16/12 dendrites, three microsteps, eight output queries, eight rank-16
   prefix controls. Total initial cells: 1,696.
@@ -47,6 +51,12 @@ recent working set?
   The 2070S remains excluded.
 
 The first learning run will retain C1v fresh training lifetimes to measure the new
-anatomy without saturation. It must increase attention concentration and preserve
-query/key gradients, direct recall separation, and semantic alignment before held-out
-language control can license persistence or growth.
+anatomy without saturation. It preserves C1v's effect KL `1`, causal contrast `1`,
+memory semantic credit `4`, direct recall credit `4`, LR `0.001`, and recall/sensor/
+effector multipliers `20/4/1`; all other losses remain zero. It must reduce addressing
+KL, increase selected teacher mass, and preserve query/key gradients, direct recall
+separation, and semantic alignment before held-out language control can license
+persistence or growth.
+
+This addressing amendment was frozen after the trace implementation and before any
+C1w optimizer initialization or GPU preflight.

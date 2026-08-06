@@ -72,6 +72,9 @@ class WikiEpisodeResult:
     vocab_logits: torch.Tensor | None = None
     exposure_memory_state: torch.Tensor | None = None
     recalled: torch.Tensor | None = None
+    recall_content_scores: torch.Tensor | None = None
+    recall_scores: torch.Tensor | None = None
+    recall_attention: torch.Tensor | None = None
     relay_state: torch.Tensor | None = None
     output_state: torch.Tensor | None = None
 
@@ -355,6 +358,9 @@ def run_wiki_memory_episode(
         vocab_logits=scored.logits[0],
         exposure_memory_state=exposure_memory_state,
         recalled=scored.recalled,
+        recall_content_scores=scored.recall_content_scores,
+        recall_scores=scored.recall_scores,
+        recall_attention=scored.recall_attention,
         relay_state=relay,
         output_state=output,
     )

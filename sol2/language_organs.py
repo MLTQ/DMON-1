@@ -152,6 +152,7 @@ class ContinuousLanguageOrgan(nn.Module):
         *,
         valid_count: int,
         collect_health: bool = False,
+        trace: dict[str, torch.Tensor] | None = None,
     ) -> tuple[torch.Tensor, OrganHealth | None]:
         """Content-address stream memory and return a bounded recurrent drive."""
 
@@ -164,6 +165,11 @@ class ContinuousLanguageOrgan(nn.Module):
             raise ValueError("memory cells must have [batch, cells, hidden] shape")
         count = min(max(int(valid_count), 0), memory_cells.shape[1])
         if count == 0:
+            if trace is not None:
+                empty = query_embedding.new_empty(query_embedding.shape[0], 0)
+                trace["content_scores"] = empty
+                trace["scores"] = empty
+                trace["attention"] = empty
             return torch.zeros_like(query_embedding), None
         memory = memory_cells[:, :count]
         query = self.recall_query(query_embedding)
@@ -180,6 +186,7 @@ class ContinuousLanguageOrgan(nn.Module):
         else:
             scores = torch.einsum("bh,bnh->bn", query, keys)
             scores = scores * query.shape[-1] ** -0.5
+        content_scores = scores
         if self.coherent_recall:
             values = memory + self.recall_residual_gain * learned_values
         else:
@@ -194,6 +201,10 @@ class ContinuousLanguageOrgan(nn.Module):
             keep = torch.zeros_like(scores, dtype=torch.bool).scatter_(1, selected, True)
             scores = scores.masked_fill(~keep, -torch.inf)
         attention = torch.softmax(scores, dim=-1)
+        if trace is not None:
+            trace["content_scores"] = content_scores
+            trace["scores"] = scores
+            trace["attention"] = attention
         summary = torch.einsum("bn,bnh->bh", attention, values)
         learned_recall = self.recall_output(summary)
         recalled = (

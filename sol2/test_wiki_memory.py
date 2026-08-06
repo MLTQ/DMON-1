@@ -54,6 +54,7 @@ from .wiki_semantic_credit import (
     fixed_semantic_projection,
     paired_tissue_semantic_credit,
     paired_vector_semantic_credit,
+    recall_addressing_credit,
     semantic_target_delta,
 )
 
@@ -416,6 +417,32 @@ def test_training_lifetime_lane_policy_is_explicit_and_fresh() -> None:
         raise AssertionError("unknown lifetime lane policy was accepted")
 
 
+def test_recall_addressing_credit_is_sparse_observable_and_detached() -> None:
+    content_scores = torch.tensor([[0.2, -0.1, 0.0]], requires_grad=True)
+    attention = torch.tensor([[0.0, 0.25, 0.75]])
+    exposure = torch.tensor(
+        [[[0.0, 1.0], [-1.0, 0.0], [1.0, 0.0]]], requires_grad=True
+    )
+    teacher_effect = torch.tensor([[1.0, 0.0]], requires_grad=True)
+    loss, selected_mass, entropy, effective, newest = recall_addressing_credit(
+        content_scores,
+        attention,
+        exposure,
+        teacher_effect,
+        target_temperature=0.05,
+        newest_slots=1,
+    )
+    assert float(loss.detach()) > 0.0
+    assert float(selected_mass) > 0.99
+    assert 1.0 < float(effective) < 2.0
+    assert float(entropy) > 0.0
+    assert abs(float(newest) - 0.75) < 1e-6
+    loss.backward()
+    assert content_scores.grad is not None
+    assert float(content_scores.grad.abs().sum()) > 0.0
+    assert exposure.grad is None and teacher_effect.grad is None
+
+
 def test_direct_recall_capture_and_semantic_credit_are_exact() -> None:
     system, organ = build_system()
     system.eval()
@@ -443,12 +470,18 @@ def test_direct_recall_capture_and_semantic_credit_are_exact() -> None:
     )
     assert trace.recalled is not None and trace.recall_memory is not None
     expected_query, _ = organ.sense(query)
+    expected_trace: dict[str, torch.Tensor] = {}
     expected_recall, _ = organ.recall(
         expected_query,
         left_state.hidden[:, system.organism.memory_idx],
         valid_count=left_state.memory_cursor,
+        trace=expected_trace,
     )
     assert torch.equal(trace.recalled, expected_recall)
+    assert torch.equal(trace.recall_content_scores, expected_trace["content_scores"])
+    assert torch.equal(trace.recall_scores, expected_trace["scores"])
+    assert torch.equal(trace.recall_attention, expected_trace["attention"])
+    assert torch.allclose(trace.recall_attention.sum(dim=-1), torch.ones(1))
     assert torch.equal(plain_controls, traced_controls)
     assert torch.equal(plain_state.hidden, traced_state.hidden)
     assert plain_state.memory_cursor == traced_state.memory_cursor
@@ -917,6 +950,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 memory_semantic_credit_weight=4.0,
                 relay_semantic_credit_weight=4.0,
                 recall_semantic_credit_weight=4.0,
+                recall_addressing_credit_weight=2.0,
+                recall_addressing_temperature=0.05,
                 semantic_credit_target_rms=0.25,
                 semantic_credit_seed=307,
                 control_energy_weight=0.1,
@@ -957,6 +992,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["memory_semantic_credit_weight"] == 4.0
         assert payload["train_config"]["relay_semantic_credit_weight"] == 4.0
         assert payload["train_config"]["recall_semantic_credit_weight"] == 4.0
+        assert payload["train_config"]["recall_addressing_credit_weight"] == 2.0
+        assert payload["train_config"]["recall_addressing_temperature"] == 0.05
         assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
         assert payload["train_config"]["semantic_credit_seed"] == 307
         assert payload["train_config"]["control_energy_weight"] == 0.1
@@ -1026,6 +1063,7 @@ def main() -> None:
         test_dense_teacher_credit_is_detached_and_passage_visible,
         test_local_semantic_credit_is_differential_and_detached,
         test_training_lifetime_lane_policy_is_explicit_and_fresh,
+        test_recall_addressing_credit_is_sparse_observable_and_detached,
         test_direct_recall_capture_and_semantic_credit_are_exact,
         test_wiki_episode_exposes_scores_and_backpropagates,
         test_counterfactual_schedule_and_checkpoint_resume_are_exact,

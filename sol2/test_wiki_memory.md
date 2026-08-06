@@ -52,6 +52,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Opt-in recall capture is behaviorally exact, equals the vector used by the existing
   transition, and direct paired semantic credit reaches recall query/key/value/output
   plus the live memory view while leaving teacher and effector gradients absent.
+- Addressing credit constructs a detached frozen-feature target, exposes exact sparse
+  attention telemetry, and sends gradients only through live content scores; checkpoint
+  metadata preserves its weight and temperature.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared

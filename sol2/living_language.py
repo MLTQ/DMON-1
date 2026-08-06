@@ -21,6 +21,9 @@ class LanguageStep:
     state: OrganismState
     health: StepHealth | None
     recalled: torch.Tensor | None
+    recall_content_scores: torch.Tensor | None = None
+    recall_scores: torch.Tensor | None = None
+    recall_attention: torch.Tensor | None = None
 
 
 class LivingLanguageSystem(nn.Module):
@@ -61,13 +64,11 @@ class LivingLanguageSystem(nn.Module):
         write_memory: bool,
         collect_final_health: bool = False,
         capture_final_recall: bool = False,
-    ) -> tuple[
-        torch.Tensor, OrganismState, StepHealth | None, torch.Tensor | None
-    ]:
+    ) -> tuple[torch.Tensor, OrganismState, StepHealth | None, StepTrace | None]:
         controls = []
         next_state = state
         final_health = None
-        final_recall = None
+        final_trace = None
         for position in range(feature_sequence.shape[1]):
             features = feature_sequence[:, position].to(
                 device=next_state.hidden.device,
@@ -94,8 +95,8 @@ class LivingLanguageSystem(nn.Module):
             if health is not None:
                 final_health = health
             if trace is not None:
-                final_recall = trace.recalled
-        return torch.stack(controls, dim=1), next_state, final_health, final_recall
+                final_trace = trace
+        return torch.stack(controls, dim=1), next_state, final_health, final_trace
 
     def observe_sequence(
         self,
@@ -190,7 +191,7 @@ class LivingLanguageSystem(nn.Module):
 
         if feature_sequence.ndim != 3 or feature_sequence.shape[1] < 1:
             raise ValueError("features must have non-empty [batch, sequence, width] shape")
-        controls, next_state, health, recalled = self._evolve_feature_sequence(
+        controls, next_state, health, recall_trace = self._evolve_feature_sequence(
             feature_sequence,
             state,
             control_scale=control_scale,
@@ -228,7 +229,14 @@ class LivingLanguageSystem(nn.Module):
             controls=effective_controls,
             state=next_state,
             health=health,
-            recalled=recalled,
+            recalled=None if recall_trace is None else recall_trace.recalled,
+            recall_content_scores=(
+                None if recall_trace is None else recall_trace.recall_content_scores
+            ),
+            recall_scores=None if recall_trace is None else recall_trace.recall_scores,
+            recall_attention=(
+                None if recall_trace is None else recall_trace.recall_attention
+            ),
         )
 
     def advance(

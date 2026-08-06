@@ -21,6 +21,8 @@ adaptation, and lifetime state remain in the cellular substrate.
   value/output paths and selects a recency-biased top-k working set.
 - Reports sensor, recall, output-reader, and control-basis norms through normal health
   telemetry.
+- Optionally publishes the exact live content scores, post-recency/top-k scores, and
+  attention to a caller-owned trace without adding an inference input.
 
 ## Decisions
 
@@ -61,6 +63,8 @@ adaptation, and lifetime state remain in the cellular substrate.
   in `[-recall_gain, recall_gain]`.
 - Recency assumes memory is supplied oldest-to-newest. Sparse attention never selects
   more than `recall_top_k` valid slots and remains dense when top-k is zero or large.
+- Traced content scores precede recency and top-k; traced final scores and attention are
+  the exact tensors used to construct the recalled summary.
 - Recall is a sensory drive, never an effector input; output tissue remains an internal-
   only sink.
 - `control_rank` is positive and no larger than `language_width`.

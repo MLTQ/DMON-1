@@ -17,7 +17,8 @@ Local memory/relay semantic-credit weights, fixed projection seed, and target RM
 also serialized so developmental scaffolding cannot drift across resume. The lifetime
 lane policy explicitly distinguishes continuous state inheritance from fresh episodic
 training populations. Coherent-recall mode, residual gain, sparse top-k, and recency
-bias are likewise serialized architectural treatments.
+bias are likewise serialized architectural treatments. Addressing-credit weight and
+teacher-target temperature are serialized training-only treatments.
 
 ### `training_episode_start_state`
 
@@ -135,6 +136,19 @@ passage-visible Qwen effect relative to the question-only baseline. Projection s
 `semantic_credit_seed + 2`. This credit reaches recall query/key/value/output and live
 memory before recurrent or relay dilution; it has no effector or inference bypass.
 
+### Recall addressing credit
+
+When explicitly enabled, the trainer compares live pre-recency query/key content
+scores with a detached distribution over stored exposure positions. The target ranks
+frozen-Qwen exposure-token features by cosine similarity to the passage-visible
+teacher effect relative to the identical question-only baseline. All stored positions
+remain visible to this loss even when inference uses hard top-k, so a mistaken sparse
+choice can still teach the addresser. Teacher features and target distributions never
+enter organism state or evaluation.
+
+Telemetry reports KL, teacher probability mass admitted by the selected sparse slots,
+attention entropy/effective slots, and mass on the four newest slots.
+
 ### Coherent sparse recall
 
 The language graft may preserve stored sensory coordinates with identity-plus-residual
@@ -214,6 +228,8 @@ performs independent cellular transitions and language-head control.
   alignment, and pre-normalization teacher projection RMS when local credit is enabled.
 - Records the corresponding direct-recall loss/separation/alignment and all four recall
   component gradient RMS values when recall credit is enabled.
+- Records addressing KL, selected teacher mass, attention concentration, and newest
+  mass when addressing credit is enabled.
 - Records start/end memory cursors so lane-policy behavior and saturation are auditable.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.

@@ -46,6 +46,7 @@ from .wiki_semantic_credit import (
     fixed_semantic_projection,
     paired_tissue_semantic_credit,
     paired_vector_semantic_credit,
+    recall_addressing_credit,
 )
 
 
@@ -73,6 +74,8 @@ class WikiMemoryTrainConfig:
     memory_semantic_credit_weight: float = 0.0
     relay_semantic_credit_weight: float = 0.0
     recall_semantic_credit_weight: float = 0.0
+    recall_addressing_credit_weight: float = 0.0
+    recall_addressing_temperature: float = 0.1
     semantic_credit_target_rms: float = 0.25
     semantic_credit_seed: int = 307
     control_energy_weight: float = 0.0
@@ -123,6 +126,7 @@ class WikiMemoryTrainConfig:
             self.memory_semantic_credit_weight,
             self.relay_semantic_credit_weight,
             self.recall_semantic_credit_weight,
+            self.recall_addressing_credit_weight,
         ) < 0:
             raise ValueError("semantic credit weights must be nonnegative")
         if (
@@ -133,6 +137,8 @@ class WikiMemoryTrainConfig:
             raise ValueError("semantic credit requires paired counterfactual training")
         if self.semantic_credit_target_rms <= 0:
             raise ValueError("semantic credit target RMS must be positive")
+        if self.recall_addressing_temperature <= 0:
+            raise ValueError("recall addressing temperature must be positive")
         if self.control_energy_weight < 0:
             raise ValueError("control energy weight must be nonnegative")
         if self.language_control_mode not in {"late_residual", "prefix"}:
@@ -822,6 +828,8 @@ def run_training(args: argparse.Namespace) -> dict:
         memory_semantic_credit_weight=args.memory_semantic_credit_weight,
         relay_semantic_credit_weight=args.relay_semantic_credit_weight,
         recall_semantic_credit_weight=args.recall_semantic_credit_weight,
+        recall_addressing_credit_weight=args.recall_addressing_credit_weight,
+        recall_addressing_temperature=args.recall_addressing_temperature,
         semantic_credit_target_rms=args.semantic_credit_target_rms,
         semantic_credit_seed=args.semantic_credit_seed,
         control_energy_weight=args.control_energy_weight,
@@ -962,6 +970,7 @@ def run_training(args: argparse.Namespace) -> dict:
             or train_config.teacher_effect_distillation_weight > 0
             or train_config.relay_semantic_credit_weight > 0
             or train_config.recall_semantic_credit_weight > 0
+            or train_config.recall_addressing_credit_weight > 0
         )
         if teacher_enabled:
             teacher_outputs = [
@@ -984,6 +993,7 @@ def run_training(args: argparse.Namespace) -> dict:
             train_config.teacher_effect_distillation_weight > 0
             or train_config.relay_semantic_credit_weight > 0
             or train_config.recall_semantic_credit_weight > 0
+            or train_config.recall_addressing_credit_weight > 0
         ):
             (
                 teacher_baseline_features,
@@ -1034,7 +1044,11 @@ def run_training(args: argparse.Namespace) -> dict:
                 max_question_tokens=train_config.max_question_tokens,
                 control_mode=train_config.language_control_mode,
                 control_reference=control_reference,
-                capture_recall=train_config.recall_semantic_credit_weight > 0,
+                capture_recall=(
+                    train_config.recall_semantic_credit_weight > 0
+                    or train_config.recall_addressing_credit_weight > 0
+                    or train_config.coherent_recall
+                ),
             )
             branch_results.append(branch_result)
         no_exposure_result = None
@@ -1082,6 +1096,11 @@ def run_training(args: argparse.Namespace) -> dict:
         recall_semantic_separation_rms = task_loss.new_zeros(())
         recall_semantic_alignment = task_loss.new_zeros(())
         recall_teacher_projection_rms = task_loss.new_zeros(())
+        recall_addressing_credit_loss = task_loss.new_zeros(())
+        recall_selected_teacher_mass = task_loss.new_zeros(())
+        recall_attention_entropy = task_loss.new_zeros(())
+        recall_effective_slots = task_loss.new_zeros(())
+        recall_newest_mass = task_loss.new_zeros(())
         if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
@@ -1227,6 +1246,39 @@ def run_training(args: argparse.Namespace) -> dict:
                 recall_semantic_projection,
                 target_rms=train_config.semantic_credit_target_rms,
             )
+        if train_config.recall_addressing_credit_weight > 0:
+            if teacher_baseline_features is None or len(teacher_features) != len(
+                branch_results
+            ):
+                raise RuntimeError("recall addressing credit requires teacher effects")
+            if any(
+                branch.recall_content_scores is None
+                or branch.recall_attention is None
+                for branch in branch_results
+            ):
+                raise RuntimeError("recall addressing credit requires live attention")
+            addressing_rows = [
+                recall_addressing_credit(
+                    branch.recall_content_scores,
+                    branch.recall_attention,
+                    exposure_features,
+                    teacher_feature.float() - teacher_baseline_features.float(),
+                    target_temperature=train_config.recall_addressing_temperature,
+                )
+                for branch, exposure_features, teacher_feature in zip(
+                    branch_results, training_exposure_features, teacher_features
+                )
+            ]
+            (
+                recall_addressing_credit_loss,
+                recall_selected_teacher_mass,
+                recall_attention_entropy,
+                recall_effective_slots,
+                recall_newest_mass,
+            ) = tuple(
+                torch.stack([row[index] for row in addressing_rows]).mean()
+                for index in range(5)
+            )
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
         control_energy_loss = torch.stack(
@@ -1303,6 +1355,8 @@ def run_training(args: argparse.Namespace) -> dict:
             * relay_semantic_credit_loss
             + train_config.recall_semantic_credit_weight
             * recall_semantic_credit_loss
+            + train_config.recall_addressing_credit_weight
+            * recall_addressing_credit_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
@@ -1418,6 +1472,15 @@ def run_training(args: argparse.Namespace) -> dict:
             "recall_teacher_projection_rms": float(
                 recall_teacher_projection_rms.detach()
             ),
+            "recall_addressing_credit_loss": float(
+                recall_addressing_credit_loss.detach()
+            ),
+            "recall_selected_teacher_mass": float(
+                recall_selected_teacher_mass.detach()
+            ),
+            "recall_attention_entropy": float(recall_attention_entropy.detach()),
+            "recall_effective_slots": float(recall_effective_slots.detach()),
+            "recall_newest_mass": float(recall_newest_mass.detach()),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
@@ -1481,6 +1544,10 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"relay_align={row['relay_semantic_alignment']:.3f} "
                 f"recall_sem={row['recall_semantic_credit_loss']:.4f} "
                 f"recall_align={row['recall_semantic_alignment']:.3f} "
+                f"address_kl={row['recall_addressing_credit_loss']:.4f} "
+                f"selected={row['recall_selected_teacher_mass']:.3f} "
+                f"attn_eff={row['recall_effective_slots']:.2f} "
+                f"newest={row['recall_newest_mass']:.3f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1654,6 +1721,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--memory-semantic-credit-weight", type=float, default=0.0)
     parser.add_argument("--relay-semantic-credit-weight", type=float, default=0.0)
     parser.add_argument("--recall-semantic-credit-weight", type=float, default=0.0)
+    parser.add_argument("--recall-addressing-credit-weight", type=float, default=0.0)
+    parser.add_argument("--recall-addressing-temperature", type=float, default=0.1)
     parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)
     parser.add_argument("--semantic-credit-seed", type=int, default=307)
     parser.add_argument("--control-energy-weight", type=float, default=0.0)

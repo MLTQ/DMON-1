@@ -52,8 +52,9 @@ feature is sent through the vocabulary head.
   measurement, optionally retains the live full-vocabulary next-token logits for dense
   teacher credit, captures live memory tissue immediately after exposure and before
   reset/question operations, optionally captures the exact final-question recall
-  vector, and exposes final relay/output-tissue states for training-only causal credit
-  while serializing only detached scalar telemetry.
+  vector, pre-recency/final scores, and attention, and exposes final relay/output-tissue
+  states for training-only causal credit while serializing only detached scalar
+  telemetry.
 
 ### `summarize_results`
 

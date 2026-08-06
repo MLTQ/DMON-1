@@ -35,6 +35,9 @@ class StepTrace:
 
     recalled: torch.Tensor | None = None
     recall_memory: torch.Tensor | None = None
+    recall_content_scores: torch.Tensor | None = None
+    recall_scores: torch.Tensor | None = None
+    recall_attention: torch.Tensor | None = None
 
 
 class Sol2(nn.Module):
@@ -359,6 +362,9 @@ class Sol2(nn.Module):
         if trace is not None:
             trace.recalled = None
             trace.recall_memory = None
+            trace.recall_content_scores = None
+            trace.recall_scores = None
+            trace.recall_attention = None
 
         # Output tissue is a per-token interface, not an autonomous recurrent model.
         # It may integrate over microsteps, but it cannot carry a private sequence
@@ -388,15 +394,21 @@ class Sol2(nn.Module):
                 recall_memory, recall_count = self._chronological_memory(
                     hidden, state.memory_cursor
                 )
+                recall_trace = {} if trace is not None else None
                 recalled, _ = recall(
                     embedded,
                     recall_memory,
                     valid_count=recall_count,
                     collect_health=False,
+                    trace=recall_trace,
                 )
                 if trace is not None:
                     trace.recalled = recalled
                     trace.recall_memory = recall_memory
+                    assert recall_trace is not None
+                    trace.recall_content_scores = recall_trace["content_scores"]
+                    trace.recall_scores = recall_trace["scores"]
+                    trace.recall_attention = recall_trace["attention"]
                 sensory_drive = sensory_drive + recalled.unsqueeze(1)
 
         raw_message = None
