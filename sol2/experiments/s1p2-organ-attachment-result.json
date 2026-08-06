@@ -1,0 +1,52 @@
+{
+  "commit": "4a8f4d1",
+  "seed": 7,
+  "gpu_uuid": "GPU-21d45575-7ece-a97c-35a0-294f7bce9c39",
+  "source_update": 5000,
+  "protocol": {
+    "adaptation_updates": 2000,
+    "eval_every": 200,
+    "eval_batches": 16,
+    "final_eval_batches": 64,
+    "a_detached_updates": 500,
+    "recovery_updates": 250
+  },
+  "results": {
+    "control_a_length4": 0.9934895833333334,
+    "full_b_length4": 0.9576822916666666,
+    "organ_only_b_length4": 0.197265625,
+    "scratch_b_length4": 0.8483072916666666,
+    "full_minus_scratch_early_accuracy": 0.06562500277534125,
+    "full_a_return_length4": 0.12434895833333333,
+    "a_return_gap_from_control": 0.869140625,
+    "b_before_removal": 0.95703125,
+    "b_immediate_after_reattachment": 0.23567708333333334,
+    "b_after_25_recovery_updates": 0.7936197916666666,
+    "b_after_100_recovery_updates": 0.9739583333333334,
+    "b_after_250_recovery_updates": 0.9934895833333334,
+    "a_after_500_detached_updates": 0.9895833333333334,
+    "full_b_a_checkpoint_correlation": -0.920591188766197,
+    "full_updates_to_50pct": 800,
+    "scratch_updates_to_50pct": 1800,
+    "full_updates_to_80pct": 1000,
+    "scratch_updates_to_80pct": 2000,
+    "full_b_lesion_penalties": {
+      "freeze_internal": 0.8567708333333334,
+      "freeze_compute": 0.802734375,
+      "freeze_relay": 0.8561197916666666,
+      "topology_rewired": 0.7272135416666666
+    }
+  },
+  "integrity": {
+    "all_b_branches_preserved_a_organ": true,
+    "organ_only_preserved_substrate": true,
+    "zero_rejected_updates": true
+  },
+  "gates": {
+    "b_full_at_least_50pct": true,
+    "early_transfer_at_least_10pp": false,
+    "a_return_within_15pp_of_control": false,
+    "b_reattach_within_10pp_by_final_recovery": true
+  },
+  "strong_success": false
+}

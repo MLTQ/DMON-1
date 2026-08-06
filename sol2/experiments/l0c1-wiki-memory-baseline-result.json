@@ -1,0 +1,406 @@
+{
+  "schema": 1,
+  "model": "NousResearch/Meta-Llama-3-8B-Instruct",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "cuda_visible_devices": "GPU-21d45575-7ece-a97c-35a0-294f7bce9c39",
+  "cuda_device_name": "NVIDIA GeForce RTX 4090",
+  "corpus": "/home/m/Code/DMON-1-sol2-preflight/sol2/experiments/l0c1-wiki-memory-corpus.json",
+  "corpus_sha256": "8a8692716141da8135b255457b5ec67d851a39fa9b99d9bae3696b7ca4958c01",
+  "wiki_root": "/home/m/wiki",
+  "permutation_seed": 41,
+  "label_token_ids": [
+    362,
+    426,
+    356,
+    423
+  ],
+  "backbone_trainable_parameters": 0,
+  "splits": {
+    "meta_train": {
+      "count": 12,
+      "correct": 9,
+      "admitted": 3,
+      "accuracy": 0.75,
+      "admission_rate": 0.25
+    },
+    "development": {
+      "count": 4,
+      "correct": 3,
+      "admitted": 1,
+      "accuracy": 0.75,
+      "admission_rate": 0.25
+    },
+    "heldout": {
+      "count": 8,
+      "correct": 4,
+      "admitted": 4,
+      "accuracy": 0.5,
+      "admission_rate": 0.5
+    }
+  },
+  "rows": [
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.00872802734375,
+        "B": -6.0,
+        "C": -6.125,
+        "D": -5.5
+      }
+    },
+    {
+      "document_id": "actor_observer",
+      "question_id": "actor_rate",
+      "split": "meta_train",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "B",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -2.5625,
+        "B": -0.69140625,
+        "C": -1.4375,
+        "D": -1.6875
+      }
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_decomposition",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "C",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -4.53125,
+        "B": -4.53125,
+        "C": -0.027099609375,
+        "D": -5.28125
+      }
+    },
+    {
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_stability",
+      "split": "meta_train",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "B",
+      "correct_label": "D",
+      "label_log_probs": {
+        "A": -3.359375,
+        "B": -0.1123046875,
+        "C": -2.984375,
+        "D": -3.859375
+      }
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_axes",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.04638671875,
+        "B": -3.921875,
+        "C": -5.15625,
+        "D": -3.921875
+      }
+    },
+    {
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_sudoku",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -5.375,
+        "B": -0.00885009765625,
+        "C": -5.625,
+        "D": -7.375
+      }
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_phases",
+      "split": "meta_train",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "A",
+      "correct_label": "D",
+      "label_log_probs": {
+        "A": -0.58984375,
+        "B": -1.34375,
+        "C": -2.59375,
+        "D": -2.21875
+      }
+    },
+    {
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_cause",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.0220947265625,
+        "B": -5.28125,
+        "C": -5.15625,
+        "D": -4.53125
+      }
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_gain",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -2.71875,
+        "B": -0.08837890625,
+        "C": -4.84375,
+        "D": -4.59375
+      }
+    },
+    {
+      "document_id": "language_latent",
+      "question_id": "polygrpo_transfer",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.1044921875,
+        "B": -3.859375,
+        "C": -2.984375,
+        "D": -3.609375
+      }
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_action",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "C",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -4.28125,
+        "B": -5.28125,
+        "C": -0.031494140625,
+        "D": -4.40625
+      }
+    },
+    {
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_detection",
+      "split": "meta_train",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -1.3828125,
+        "B": -0.75390625,
+        "C": -1.6328125,
+        "D": -2.5
+      }
+    },
+    {
+      "document_id": "geometric_blind_spot",
+      "question_id": "blind_metric",
+      "split": "development",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.0230712890625,
+        "B": -4.53125,
+        "C": -4.90625,
+        "D": -5.40625
+      }
+    },
+    {
+      "document_id": "geometric_blind_spot",
+      "question_id": "blind_repair",
+      "split": "development",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "C",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -5.25,
+        "B": -6.0,
+        "C": -0.00787353515625,
+        "D": -8.75
+      }
+    },
+    {
+      "document_id": "entropy_cut",
+      "question_id": "entropy_proxy",
+      "split": "development",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -4.90625,
+        "B": -0.036376953125,
+        "C": -4.03125,
+        "D": -4.53125
+      }
+    },
+    {
+      "document_id": "entropy_cut",
+      "question_id": "entropy_mixing",
+      "split": "development",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "A",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -0.0869140625,
+        "B": -4.34375,
+        "C": -2.84375,
+        "D": -4.46875
+      }
+    },
+    {
+      "document_id": "scalelogic",
+      "question_id": "scalelogic_exponents",
+      "split": "heldout",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "A",
+      "correct_label": "D",
+      "label_log_probs": {
+        "A": -0.478515625,
+        "B": -3.484375,
+        "C": -1.4765625,
+        "D": -2.109375
+      }
+    },
+    {
+      "document_id": "scalelogic",
+      "question_id": "scalelogic_gain",
+      "split": "heldout",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "A",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -0.78125,
+        "B": -1.40625,
+        "C": -1.53125,
+        "D": -2.53125
+      }
+    },
+    {
+      "document_id": "skillos",
+      "question_id": "skillos_roles",
+      "split": "heldout",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -1.0078125,
+        "B": -0.75390625,
+        "C": -2.0,
+        "D": -3.5
+      }
+    },
+    {
+      "document_id": "skillos",
+      "question_id": "skillos_emergence",
+      "split": "heldout",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "C",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -4.40625,
+        "B": -4.40625,
+        "C": -0.0306396484375,
+        "D": -5.15625
+      }
+    },
+    {
+      "document_id": "training_free_grpo",
+      "question_id": "tfgrpo_advantage",
+      "split": "heldout",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "B",
+      "correct_label": "D",
+      "label_log_probs": {
+        "A": -1.1953125,
+        "B": -0.94921875,
+        "C": -2.578125,
+        "D": -1.4453125
+      }
+    },
+    {
+      "document_id": "training_free_grpo",
+      "question_id": "tfgrpo_update",
+      "split": "heldout",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "B",
+      "correct_label": "B",
+      "label_log_probs": {
+        "A": -3.265625,
+        "B": -0.1455078125,
+        "C": -5.15625,
+        "D": -2.390625
+      }
+    },
+    {
+      "document_id": "experience_faithfulness",
+      "question_id": "faithfulness_asymmetry",
+      "split": "heldout",
+      "correct": false,
+      "admitted": true,
+      "predicted_label": "A",
+      "correct_label": "C",
+      "label_log_probs": {
+        "A": -0.96484375,
+        "B": -2.84375,
+        "C": -0.96484375,
+        "D": -1.71875
+      }
+    },
+    {
+      "document_id": "experience_faithfulness",
+      "question_id": "faithfulness_scope",
+      "split": "heldout",
+      "correct": true,
+      "admitted": false,
+      "predicted_label": "A",
+      "correct_label": "A",
+      "label_log_probs": {
+        "A": -0.166015625,
+        "B": -3.296875,
+        "C": -2.921875,
+        "D": -2.796875
+      }
+    }
+  ],
+  "peak_cuda_allocated_bytes": 16119327232,
+  "peak_cuda_reserved_bytes": 16301162496
+}

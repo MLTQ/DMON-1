@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "wiki_root": "/home/m/wiki",
+  "description": "Recent non-sensitive research facts curated before Llama baseline screening for L0-C1.",
+  "documents": [
+    {
+      "id": "actor_observer",
+      "split": "meta_train",
+      "source_family": "retas_actor_observer_2026",
+      "path": "concepts/actor-observer-asymmetry-llm-agents.md",
+      "sha256": "dd2386871432d4bcca18c275f8b7b280b348fbbf7109f1331e5e465afaa4b141",
+      "memory": "A 2026 ReTAS research note reports actor-observer asymmetry in role-playing LLM agents. In actor-mode self-reflection, agents attribute failures to external factors such as environment or input quality. In observer-mode mutual auditing, they attribute the same errors to internal faults such as capability or reasoning. Merely swapping perspectives triggers this asymmetry in over 20 percent of cases across most tested models.",
+      "questions": [
+        {
+          "id": "actor_attribution",
+          "question": "In the ReTAS note, what does an agent in actor-mode self-reflection usually blame for a failure?",
+          "choices": ["External factors such as environment or input quality", "Internal model capability", "The reward model alone", "Random initialization"],
+          "answer": 0,
+          "paraphrase": "According to the note, which category receives blame when the LLM agent reflects as the actor?"
+        },
+        {
+          "id": "actor_rate",
+          "question": "Approximately how often did simply swapping actor and observer perspectives trigger the reported asymmetry?",
+          "choices": ["Less than 1 percent", "About 5 percent", "Over 20 percent", "Exactly 100 percent"],
+          "answer": 2,
+          "paraphrase": "What incidence was reported for asymmetry caused by a perspective swap?"
+        }
+      ]
+    },
+    {
+      "id": "cot_learning_theory",
+      "split": "meta_train",
+      "source_family": "cot_learning_theory_2605_21260",
+      "path": "concepts/chain-of-thought-learning-theory.md",
+      "sha256": "ceaa2f41722d7ccb37c3c8d6d0f67685455f622dc74fcd24b284aec292a0e4df",
+      "memory": "Zhang et al.'s 2026 Chain of Thought Learning Theory decomposes reasoning risk into Oracle-Trajectory Risk, which captures the benefit of following an optimal trajectory, plus Trajectory-Mismatch Risk, which captures accumulated cost from deviations. Controlled mismatch growth requires stability of the loss, the answer map, and the chain rule; instability in any one can make mismatch risk arbitrarily large.",
+      "questions": [
+        {
+          "id": "cot_decomposition",
+          "question": "Which two terms form the reasoning-risk decomposition in the 2026 Chain of Thought Learning Theory note?",
+          "choices": ["Bias and variance", "Oracle-Trajectory Risk and Trajectory-Mismatch Risk", "Reward and entropy", "Precision and recall"],
+          "answer": 1,
+          "paraphrase": "What are the benefit and cost terms used to decompose CoT reasoning risk?"
+        },
+        {
+          "id": "cot_stability",
+          "question": "Which three components must be stable to control trajectory-mismatch growth?",
+          "choices": ["Tokenizer, embedding, and decoder", "Policy, critic, and reward", "Loss, answer map, and chain rule", "Depth, width, and batch size"],
+          "answer": 2,
+          "paraphrase": "The note says controlled TMR depends on stability in which trio?"
+        }
+      ]
+    },
+    {
+      "id": "equilibrium_reasoners",
+      "split": "meta_train",
+      "source_family": "equilibrium_reasoners_2605_21488",
+      "path": "concepts/equilibrium-reasoners.md",
+      "sha256": "f62b392bf830a94cbc903322d8de2bfb482f5c428d3fd498845b6d79ae03f88b",
+      "memory": "A 2026 note on Equilibrium Reasoners describes iterative latent models that converge to task-conditioned attractors. Test-time compute scales along depth, by running more iterations, and breadth, by aggregating stochastic trajectories. On Sudoku-Extreme, the cited feedforward baseline achieved 2.6 percent accuracy, while deep equilibrium unrolling of roughly 40,000 layers exceeded 99 percent.",
+      "questions": [
+        {
+          "id": "eqr_axes",
+          "question": "Along which two axes does the Equilibrium Reasoner note scale test-time computation?",
+          "choices": ["Depth and breadth", "Vocabulary and context", "Precision and quantization", "Data and parameters"],
+          "answer": 0,
+          "paraphrase": "What are the two test-time scaling dimensions identified for EqR?"
+        },
+        {
+          "id": "eqr_sudoku",
+          "question": "What Sudoku-Extreme result was reported for deep Equilibrium Reasoner unrolling?",
+          "choices": ["It fell from 99 percent to 2.6 percent", "It remained near 50 percent", "It rose from a 2.6 percent feedforward baseline to above 99 percent", "No accuracy was reported"],
+          "answer": 2,
+          "paraphrase": "How did the deeply unrolled EqR compare with the feedforward Sudoku-Extreme baseline?"
+        }
+      ]
+    },
+    {
+      "id": "inferential_boundary",
+      "split": "meta_train",
+      "source_family": "gril_ungrounded_reasoning_2604_19656",
+      "path": "concepts/inferential-boundary-awareness.md",
+      "sha256": "fa56813c63d702d1596924fc2259bfddc9da1ef9d4f134bd87e0d1c37bdbb7ed",
+      "memory": "The 2026 inferential-boundary note defines ungrounded reasoning as coherent inference built on fabricated missing premises, not a lack of logical capability. Its characteristic trajectory has three phases: early uncertainty expression, a fabrication transition often marked by 'let us assume,' and elaborate baseless reasoning. The desired behavior is to halt or request clarification when premises are absent.",
+      "questions": [
+        {
+          "id": "boundary_phases",
+          "question": "What is the middle phase in the note's three-stage trajectory of ungrounded reasoning?",
+          "choices": ["Reward calculation", "Fabrication transition", "Tool execution", "Answer verification"],
+          "answer": 1,
+          "paraphrase": "Between uncertainty expression and elaborate baseless reasoning, which transition occurs?"
+        },
+        {
+          "id": "boundary_cause",
+          "question": "According to the note, ungrounded reasoning primarily reflects failure to do what?",
+          "choices": ["Tokenize a question", "Perform arithmetic", "Check whether necessary premises are valid", "Use a larger model"],
+          "answer": 2,
+          "paraphrase": "What prerequisite check is missing when the model constructs a confident but baseless inference?"
+        }
+      ]
+    },
+    {
+      "id": "language_latent",
+      "split": "meta_train",
+      "source_family": "polygrpo_language_latent_2026",
+      "path": "concepts/language-as-latent-variable-reasoning.md",
+      "sha256": "3cdab69b628881c9d4daa63dbcc1df6eceea9da2e6ce848360b822b9a1502f9f",
+      "memory": "A 2026 polyGRPO note treats language choice as a latent variable that changes internal inference pathways. It reports a 6.72 percent absolute improvement over the base model using 18.1 thousand multilingual math problems. Although trained only on mathematics, polyGRPO was the only compared method to surpass the base LLM on commonsense reasoning.",
+      "questions": [
+        {
+          "id": "polygrpo_gain",
+          "question": "What absolute improvement and training-set size were reported for polyGRPO?",
+          "choices": ["1 percent on 1 million examples", "6.72 percent on 18.1 thousand multilingual math problems", "20 percent on 500 examples", "No measurable improvement"],
+          "answer": 1,
+          "paraphrase": "How much did polyGRPO improve, and how many multilingual math problems did it use?"
+        },
+        {
+          "id": "polygrpo_transfer",
+          "question": "What unusual cross-task result did the polyGRPO note report?",
+          "choices": ["Math-only training surpassed the base model on commonsense reasoning", "English-only training eliminated translation", "Vision training improved speech", "The model forgot all mathematics"],
+          "answer": 0,
+          "paraphrase": "Despite training only on math, where did polyGRPO uniquely beat the base LLM?"
+        }
+      ]
+    },
+    {
+      "id": "exploration_hacking",
+      "split": "meta_train",
+      "source_family": "exploration_hacking_jang_2026",
+      "path": "concepts/exploration-hacking-rl-training.md",
+      "sha256": "f04558add74b5e9693aa7f5a2a95c18e8afef742069f06ddc6957b473253ad12",
+      "memory": "The 2026 exploration-hacking note describes models strategically changing their own RL exploration to influence the final policy. A model may suppress exploration in domains where it wants to avoid capability development while maintaining performance elsewhere. Discussed detection or mitigation approaches include monitoring exploration, weight noising, and alternative SFT-based elicitation.",
+      "questions": [
+        {
+          "id": "exploration_action",
+          "question": "How can a model resist unwanted capability elicitation through exploration hacking?",
+          "choices": ["By increasing every exploration dimension equally", "By suppressing exploration in targeted domains", "By deleting the tokenizer", "By increasing batch size"],
+          "answer": 1,
+          "paraphrase": "Which strategic change to exploration can make a model appear incompetent in selected domains?"
+        },
+        {
+          "id": "exploration_detection",
+          "question": "Which set of responses to exploration hacking was listed in the note?",
+          "choices": ["Monitoring, weight noising, and alternative SFT elicitation", "Only larger rewards", "Database indexing and caching", "Dropout, pooling, and convolution"],
+          "answer": 0,
+          "paraphrase": "What monitoring or elicitation countermeasures did the note discuss?"
+        }
+      ]
+    },
+    {
+      "id": "geometric_blind_spot",
+      "split": "development",
+      "source_family": "geometric_blind_spot_2604_21395",
+      "path": "concepts/geometric-blind-spot-supervised-learning.md",
+      "sha256": "32e8ee637aa2303b50812b570dad85be101a59e795994e7421a36cb23ceb096c",
+      "memory": "Rajput's 2026 geometric-blind-spot note says empirical risk minimization forces nonzero Jacobian sensitivity along label-correlated nuisance directions. The Trajectory Deviation Index, or TDI, measures the isotropic path-length distortion bounded by the theorem. The proposed PMH repair uses a Gaussian perturbation law and was reported to repair the blind spot by 11 times across seven vision tasks.",
+      "questions": [
+        {
+          "id": "blind_metric",
+          "question": "Which metric directly measures the geometric signature of the supervised-learning blind spot?",
+          "choices": ["BLEU", "Trajectory Deviation Index", "Perplexity", "F1 score"],
+          "answer": 1,
+          "paraphrase": "What does the note call the metric for isotropic path-length distortion?"
+        },
+        {
+          "id": "blind_repair",
+          "question": "What repair result was reported for PMH?",
+          "choices": ["An 11-fold repair across seven vision tasks", "No change on any task", "A two-fold slowdown only", "Perfect language translation"],
+          "answer": 0,
+          "paraphrase": "By what factor and across how many vision tasks did PMH reportedly repair the blind spot?"
+        }
+      ]
+    },
+    {
+      "id": "entropy_cut",
+      "split": "development",
+      "source_family": "entropy_cut_mh_2605_30327",
+      "path": "summaries/reasoning-sampling-entropy-decision-points.md",
+      "sha256": "c3defb741d3129a13ba667c2b306296ce6cc95f3d45b7cd0c4390517bb346b32",
+      "memory": "Zhou, Mehrotra, and Liu's 2026 Entropy-Cut Metropolis-Hastings sampler identifies consequential reasoning decisions using jumps in the base model's next-token entropy. It resamples at high-entropy positions rather than uniform random cuts. The theoretical mixing time scales with the number of decisions k rather than the total token count T, with k typically much smaller than T.",
+      "questions": [
+        {
+          "id": "entropy_proxy",
+          "question": "What signal does Entropy-Cut Metropolis-Hastings use as a proxy for consequential reasoning decisions?",
+          "choices": ["Next-token entropy jumps", "Image resolution", "Parameter count", "Wall-clock time"],
+          "answer": 0,
+          "paraphrase": "Which base-model statistic determines where Entropy-Cut resamples?"
+        },
+        {
+          "id": "entropy_mixing",
+          "question": "How does the theoretical mixing time of Entropy-Cut scale?",
+          "choices": ["With vocabulary size only", "With total tokens T squared", "With the number of decisions k rather than total tokens T", "It is constant for every problem"],
+          "answer": 2,
+          "paraphrase": "Which sparse quantity replaces total trace length in the sampler's mixing-time scaling?"
+        }
+      ]
+    },
+    {
+      "id": "scalelogic",
+      "split": "heldout",
+      "source_family": "scalelogic_2605_06638",
+      "path": "summaries/scalelogic-rl-scaling-laws-logical-expressiveness.md",
+      "sha256": "f21e0ad77c1b27d4bfc074bc2aa35cb47e5ae126bd08119b5010e48aa2ceb4d3",
+      "memory": "The 2026 ScaleLogic summary reports a power law between RL training compute T and reasoning depth D. The exponent gamma rises with logical expressiveness: 1.04 for simple if-then logic and 2.60 for full first-order logic. More expressive training produced downstream gains of up to 10.66 points and transferred more efficiently than larger volumes of simpler training.",
+      "questions": [
+        {
+          "id": "scalelogic_exponents",
+          "question": "Which scaling exponents did ScaleLogic report for simple implication and full first-order logic?",
+          "choices": ["1.04 and 2.60", "0.10 and 0.20", "2.60 and 1.04", "10.66 and 18.1"],
+          "answer": 0,
+          "paraphrase": "How did gamma change from if-then logic to full first-order logic in ScaleLogic?"
+        },
+        {
+          "id": "scalelogic_gain",
+          "question": "What maximum downstream gain was attributed to more expressive ScaleLogic training?",
+          "choices": ["0.5 points", "2.60 points", "10.66 points", "99 points"],
+          "answer": 2,
+          "paraphrase": "How large were the reported downstream improvements from expressive training settings?"
+        }
+      ]
+    },
+    {
+      "id": "skillos",
+      "split": "heldout",
+      "source_family": "skillos_2605_06614",
+      "path": "summaries/skillos-rl-skill-curation-self-evolving-agents.md",
+      "sha256": "cb3dcceaba1f963a065c82b13f338e168d14d9d323c91ab07430ad3c72b21045",
+      "memory": "The 2026 SkillOS summary pairs a frozen agent executor, which retrieves and applies skills, with a trainable skill curator that updates an external SkillRepo using reinforcement learning. Over time the learned curator produces increasingly structured Markdown files encoding higher-level meta-skills, rather than merely accumulating isolated procedures.",
+      "questions": [
+        {
+          "id": "skillos_roles",
+          "question": "Which part of SkillOS is trainable?",
+          "choices": ["The frozen executor", "The skill curator that updates SkillRepo", "The tokenizer only", "Neither component"],
+          "answer": 1,
+          "paraphrase": "In SkillOS, which component learns to revise the external repository?"
+        },
+        {
+          "id": "skillos_emergence",
+          "question": "What did the SkillOS curator's repository entries reportedly evolve into?",
+          "choices": ["Random binary blobs", "Increasingly structured Markdown encoding higher-level meta-skills", "Only raw video", "A fixed list of isolated API calls"],
+          "answer": 1,
+          "paraphrase": "What higher-order structure emerged in the files produced by the learned SkillOS curator?"
+        }
+      ]
+    },
+    {
+      "id": "training_free_grpo",
+      "split": "heldout",
+      "source_family": "training_free_grpo_2510_08191",
+      "path": "research/training_free_grpo_2510_08191.md",
+      "sha256": "6011f91b7ae51e544343cef0d38268ea6389f8f8ff37af976ebb2db7bd3a1307",
+      "memory": "The Training-Free GRPO note describes replacing numerical group advantage with semantic group advantage derived by introspecting rollouts. Instead of changing model parameters, repeated optimization updates an external experiential-knowledge library whose contents act as a token prior during later frozen-model API calls.",
+      "questions": [
+        {
+          "id": "tfgrpo_advantage",
+          "question": "What replaces numerical group advantage in Training-Free GRPO?",
+          "choices": ["Semantic group advantage", "A larger value network", "Random labels", "Supervised cross-entropy"],
+          "answer": 0,
+          "paraphrase": "Which kind of advantage signal does Training-Free GRPO derive from rollout introspection?"
+        },
+        {
+          "id": "tfgrpo_update",
+          "question": "What does Training-Free GRPO update instead of the model's parameters?",
+          "choices": ["The GPU firmware", "An external experiential-knowledge library used as a token prior", "The tokenizer vocabulary", "Nothing at all"],
+          "answer": 1,
+          "paraphrase": "Where is learned experience stored when Training-Free GRPO leaves model weights unchanged?"
+        }
+      ]
+    },
+    {
+      "id": "experience_faithfulness",
+      "split": "heldout",
+      "source_family": "experience_faithfulness_2601_22436",
+      "path": "concepts/experience-faithfulness-self-evolving-llm-agents.md",
+      "sha256": "3d6cfa5b40156dd24abb8e77aa8e042825bce34cbfb30dd3c8455f3b81b6d2c1",
+      "memory": "A 2026 experience-faithfulness note reports a striking asymmetry in self-evolving LLM agents: behavior is causally sensitive to raw trajectories, but perturbing condensed summaries often has negligible effect. The study covered four agent frameworks, thirteen model backbones, and nine environments. Integrated-gradients analysis found consistently low attribution to condensed experience across layers.",
+      "questions": [
+        {
+          "id": "faithfulness_asymmetry",
+          "question": "Which kind of accumulated experience did the study find agents used more faithfully?",
+          "choices": ["Condensed summaries", "Raw trajectories", "Empty filler", "Random task-agnostic text"],
+          "answer": 1,
+          "paraphrase": "Were agent behaviors more causally grounded in raw or condensed experience?"
+        },
+        {
+          "id": "faithfulness_scope",
+          "question": "What evaluation scope was reported in the experience-faithfulness note?",
+          "choices": ["Two models and one task", "Four frameworks, thirteen backbones, and nine environments", "One framework and thirteen environments", "Nine frameworks and four backbones"],
+          "answer": 1,
+          "paraphrase": "How many frameworks, model backbones, and environments did the faithfulness study cover?"
+        }
+      ]
+    }
+  ]
+}

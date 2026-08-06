@@ -1,0 +1,51 @@
+{
+  "branches": {
+    "plastic": {
+      "a_accuracy": 0.134765625,
+      "b_accuracy": 0.974609375,
+      "min_ab_accuracy": 0.134765625,
+      "rejected_updates": 0,
+      "expression_low_high_drift_ratio": 1.1845941474932367,
+      "edge_low_high_drift_ratio": 0.8651613687160474,
+      "b_high_utility_lesion_penalty": 0.6178385416666666,
+      "b_low_utility_lesion_penalty": 0.015625,
+      "a_organ_unchanged": true
+    },
+    "consolidated": {
+      "a_accuracy": 0.8697916666666666,
+      "b_accuracy": 0.3372395833333333,
+      "min_ab_accuracy": 0.3372395833333333,
+      "rejected_updates": 0,
+      "expression_low_high_drift_ratio": 7.626970486087952,
+      "edge_low_high_drift_ratio": 11.251971538093342,
+      "b_high_utility_lesion_penalty": 0.17968750000000003,
+      "b_low_utility_lesion_penalty": 0.056640625,
+      "a_organ_unchanged": true
+    },
+    "shuffled": {
+      "a_accuracy": 0.8313802083333334,
+      "b_accuracy": 0.3404947916666667,
+      "min_ab_accuracy": 0.3404947916666667,
+      "rejected_updates": 0,
+      "expression_low_high_drift_ratio": 0.9992310917892376,
+      "edge_low_high_drift_ratio": 0.94996762536808,
+      "b_high_utility_lesion_penalty": 0.20898437499999997,
+      "b_low_utility_lesion_penalty": 0.0026041666666666297,
+      "a_organ_unchanged": true
+    }
+  },
+  "contrasts": {
+    "consolidated_minus_plastic_min_ab": 0.20247395833333331,
+    "shuffled_minus_plastic_min_ab": 0.20572916666666669
+  },
+  "gates": {
+    "simultaneous_ab_80": false,
+    "measured_gain_at_least_20pp": true,
+    "shuffle_removes_half_gain": false,
+    "reserve_changes_more_expression": true,
+    "reserve_changes_more_edges": true,
+    "b_reuses_high_utility_more_than_low": true,
+    "stable_and_integrity_clean": true
+  },
+  "primary_success": false
+}

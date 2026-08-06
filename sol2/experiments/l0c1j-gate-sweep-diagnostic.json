@@ -1,0 +1,360 @@
+{
+  "schema": 1,
+  "kind": "l0c1j-counterfactual-gate-sweep",
+  "checkpoint_update": 25,
+  "questions": 4,
+  "summary": {
+    "learned": {
+      "requested_gate": null,
+      "actual_gate_rms": 0.011439464055001736,
+      "output_projection": 3.0124450859148055e-05,
+      "relay_separation_rms": 0.0058334626810392365,
+      "output_separation_rms": 0.0004684343739427277,
+      "output_relay_ratio": 0.09554122947156429,
+      "control_separation_rms": 0.0005845698633493157,
+      "label_logit_separation_rms": 0.015625
+    },
+    "closed": {
+      "requested_gate": 0.0,
+      "actual_gate_rms": 0.0,
+      "output_projection": 2.8336504328763112e-05,
+      "relay_separation_rms": 0.0058334628120064735,
+      "output_separation_rms": 0.00046860609745635884,
+      "output_relay_ratio": 0.09556072019040585,
+      "control_separation_rms": 0.0005842370192112867,
+      "label_logit_separation_rms": 0.015625
+    },
+    "gate_0.05": {
+      "requested_gate": 0.05,
+      "actual_gate_rms": 0.05000000074505806,
+      "output_projection": 3.616019239416346e-05,
+      "relay_separation_rms": 0.005833463030285202,
+      "output_separation_rms": 0.0004680883594119223,
+      "output_relay_ratio": 0.09550766739994287,
+      "control_separation_rms": 0.0005858291133336024,
+      "label_logit_separation_rms": 0.0
+    },
+    "gate_0.10": {
+      "requested_gate": 0.1,
+      "actual_gate_rms": 0.10000000149011612,
+      "output_projection": 4.398004966787994e-05,
+      "relay_separation_rms": 0.005833462862938177,
+      "output_separation_rms": 0.0004681819800680387,
+      "output_relay_ratio": 0.09553742595016956,
+      "control_separation_rms": 0.0005877153507753974,
+      "label_logit_separation_rms": 0.0
+    },
+    "gate_0.25": {
+      "requested_gate": 0.25,
+      "actual_gate_rms": 0.25,
+      "output_projection": 6.742582263541408e-05,
+      "relay_separation_rms": 0.005833462986629456,
+      "output_separation_rms": 0.0004721198574770824,
+      "output_relay_ratio": 0.09612312912940979,
+      "control_separation_rms": 0.000594596302107675,
+      "label_logit_separation_rms": 0.0
+    },
+    "gate_0.50": {
+      "requested_gate": 0.5,
+      "actual_gate_rms": 0.4999999701976776,
+      "output_projection": 0.00010647045928635634,
+      "relay_separation_rms": 0.005833462637383491,
+      "output_separation_rms": 0.0004902880918962182,
+      "output_relay_ratio": 0.09867787081748247,
+      "control_separation_rms": 0.0006085042259655893,
+      "label_logit_separation_rms": 0.0
+    },
+    "gate_0.90": {
+      "requested_gate": 0.9,
+      "actual_gate_rms": 0.8999999761581421,
+      "output_projection": 0.00016884235810721293,
+      "relay_separation_rms": 0.005833462979353499,
+      "output_separation_rms": 0.0005445992337627104,
+      "output_relay_ratio": 0.10629167221486568,
+      "control_separation_rms": 0.0006343021814245731,
+      "label_logit_separation_rms": 0.0
+    }
+  },
+  "rows": [
+    {
+      "condition": "learned",
+      "question_id": "actor_attribution",
+      "output_projection": -0.0023697444703429937,
+      "relay_separation_rms": 0.006764375604689121,
+      "output_separation_rms": 0.0006738948868587613,
+      "output_relay_ratio": 0.09962410479784012,
+      "control_separation_rms": 0.0010229824110865593,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "learned",
+      "question_id": "actor_rate",
+      "output_projection": -0.00013100120122544467,
+      "relay_separation_rms": 0.00038936169585213065,
+      "output_separation_rms": 5.156011684448458e-05,
+      "output_relay_ratio": 0.13242216408252716,
+      "control_separation_rms": 6.874927930766717e-05,
+      "label_logit_separation_rms": 0.0625
+    },
+    {
+      "condition": "learned",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0022215992212295532,
+      "relay_separation_rms": 0.0066560436971485615,
+      "output_separation_rms": 0.0006532007246278226,
+      "output_relay_ratio": 0.09813648462295532,
+      "control_separation_rms": 0.0011099308030679822,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "learned",
+      "question_id": "cot_stability",
+      "output_projection": 0.0003996442537754774,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.0004950817674398422,
+      "output_relay_ratio": 0.05198216438293457,
+      "control_separation_rms": 0.00013661695993505418,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "closed",
+      "question_id": "actor_attribution",
+      "output_projection": -0.002370337024331093,
+      "relay_separation_rms": 0.006764376536011696,
+      "output_separation_rms": 0.0006737731164321303,
+      "output_relay_ratio": 0.09960608929395676,
+      "control_separation_rms": 0.0010241727577522397,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "closed",
+      "question_id": "actor_rate",
+      "output_projection": -0.00013101617514621466,
+      "relay_separation_rms": 0.00038936128839850426,
+      "output_separation_rms": 5.1558763516368344e-05,
+      "output_relay_ratio": 0.13241882622241974,
+      "control_separation_rms": 6.867427146062255e-05,
+      "label_logit_separation_rms": 0.0625
+    },
+    {
+      "condition": "closed",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.002227922435849905,
+      "relay_separation_rms": 0.0066560436971485615,
+      "output_separation_rms": 0.0006535160355269909,
+      "output_relay_ratio": 0.09818385541439056,
+      "control_separation_rms": 0.0011102078715339303,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "closed",
+      "question_id": "cot_stability",
+      "output_projection": 0.00038677678094245493,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.0004955764743499458,
+      "output_relay_ratio": 0.05203410983085632,
+      "control_separation_rms": 0.00013389317609835416,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.05",
+      "question_id": "actor_attribution",
+      "output_projection": -0.0023677414283156395,
+      "relay_separation_rms": 0.006764376536011696,
+      "output_separation_rms": 0.0006744756828993559,
+      "output_relay_ratio": 0.09970995783805847,
+      "control_separation_rms": 0.0010190620087087154,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.05",
+      "question_id": "actor_rate",
+      "output_projection": -0.00013095841859467328,
+      "relay_separation_rms": 0.00038936169585213065,
+      "output_separation_rms": 5.157007399247959e-05,
+      "output_relay_ratio": 0.1324477344751358,
+      "control_separation_rms": 6.906859198352322e-05,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.05",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0022002714686095715,
+      "relay_separation_rms": 0.006656044162809849,
+      "output_separation_rms": 0.0006523538031615317,
+      "output_relay_ratio": 0.09800923615694046,
+      "control_separation_rms": 0.0011089476756751537,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.05",
+      "question_id": "cot_stability",
+      "output_projection": 0.00044306914787739515,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.000493953877594322,
+      "output_relay_ratio": 0.051863741129636765,
+      "control_separation_rms": 0.00014623817696701735,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.10",
+      "question_id": "actor_attribution",
+      "output_projection": -0.0023651341907680035,
+      "relay_separation_rms": 0.006764376536011696,
+      "output_separation_rms": 0.0006757088121958077,
+      "output_relay_ratio": 0.09989225119352341,
+      "control_separation_rms": 0.0010141212260350585,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.10",
+      "question_id": "actor_rate",
+      "output_projection": -0.00013090152060613036,
+      "relay_separation_rms": 0.00038936149212531745,
+      "output_separation_rms": 5.159251668374054e-05,
+      "output_relay_ratio": 0.13250544667243958,
+      "control_separation_rms": 6.943385960767046e-05,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.10",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0021726060658693314,
+      "relay_separation_rms": 0.0066560436971485615,
+      "output_separation_rms": 0.0006517245783470571,
+      "output_relay_ratio": 0.09791471064090729,
+      "control_separation_rms": 0.0011077295057475567,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.10",
+      "question_id": "cot_stability",
+      "output_projection": 0.0004993498441763222,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.0004937020130455494,
+      "output_relay_ratio": 0.05183729529380798,
+      "control_separation_rms": 0.0001595768117113039,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.25",
+      "question_id": "actor_attribution",
+      "output_projection": -0.002357284538447857,
+      "relay_separation_rms": 0.006764376536011696,
+      "output_separation_rms": 0.0006825635791756213,
+      "output_relay_ratio": 0.10090561211109161,
+      "control_separation_rms": 0.0010002998169511557,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.25",
+      "question_id": "actor_rate",
+      "output_projection": -0.0001307449274463579,
+      "relay_separation_rms": 0.0003893615212291479,
+      "output_separation_rms": 5.17285407113377e-05,
+      "output_relay_ratio": 0.13285478949546814,
+      "control_separation_rms": 7.064591045491397e-05,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.25",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0020896224305033684,
+      "relay_separation_rms": 0.006656044162809849,
+      "output_separation_rms": 0.0006530567770823836,
+      "output_relay_ratio": 0.09811484813690186,
+      "control_separation_rms": 0.0011039560195058584,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.25",
+      "question_id": "cot_stability",
+      "output_projection": 0.0006681103259325027,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.000501130532938987,
+      "output_relay_ratio": 0.05261726677417755,
+      "control_separation_rms": 0.00020348346151877195,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.50",
+      "question_id": "actor_attribution",
+      "output_projection": -0.002344063948839903,
+      "relay_separation_rms": 0.006764375604689121,
+      "output_separation_rms": 0.0007041085627861321,
+      "output_relay_ratio": 0.10409069806337357,
+      "control_separation_rms": 0.0009807682363316417,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.50",
+      "question_id": "actor_rate",
+      "output_projection": -0.000130452259327285,
+      "relay_separation_rms": 0.0003893615212291479,
+      "output_separation_rms": 5.2169729315210134e-05,
+      "output_relay_ratio": 0.1339878886938095,
+      "control_separation_rms": 7.259371341206133e-05,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.50",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0019513132283464074,
+      "relay_separation_rms": 0.0066560436971485615,
+      "output_separation_rms": 0.0006658502388745546,
+      "output_relay_ratio": 0.10003694146871567,
+      "control_separation_rms": 0.0010975863551720977,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.50",
+      "question_id": "cot_stability",
+      "output_projection": 0.0009490848169662058,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.0005390238366089761,
+      "output_relay_ratio": 0.05659595504403114,
+      "control_separation_rms": 0.00028306859894655645,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.90",
+      "question_id": "actor_attribution",
+      "output_projection": -0.002322545275092125,
+      "relay_separation_rms": 0.006764376536011696,
+      "output_separation_rms": 0.0007621131953783333,
+      "output_relay_ratio": 0.11266569793224335,
+      "control_separation_rms": 0.0009588495595380664,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.90",
+      "question_id": "actor_rate",
+      "output_projection": -0.00012993495329283178,
+      "relay_separation_rms": 0.00038936149212531745,
+      "output_separation_rms": 5.3421441407408565e-05,
+      "output_relay_ratio": 0.1372026801109314,
+      "control_separation_rms": 7.569821900688112e-05,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.90",
+      "question_id": "cot_decomposition",
+      "output_projection": 0.0017300191102549434,
+      "relay_separation_rms": 0.006656044162809849,
+      "output_separation_rms": 0.0007117610657587647,
+      "output_relay_ratio": 0.1069345474243164,
+      "control_separation_rms": 0.0010871695121750236,
+      "label_logit_separation_rms": 0.0
+    },
+    {
+      "condition": "gate_0.90",
+      "question_id": "cot_stability",
+      "output_projection": 0.001397830550558865,
+      "relay_separation_rms": 0.009524069726467133,
+      "output_separation_rms": 0.0006511012325063348,
+      "output_relay_ratio": 0.06836376339197159,
+      "control_separation_rms": 0.0004154914349783212,
+      "label_logit_separation_rms": 0.0
+    }
+  ]
+}

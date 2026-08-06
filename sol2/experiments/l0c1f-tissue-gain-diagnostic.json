@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "l0c1f-tissue-gain-diagnostic",
+  "checkpoint_update": 25,
+  "paired_examples": 4,
+  "tissue_separation_rms": {
+    "memory": 0.28898615576326847,
+    "input": 0.015687780280131847,
+    "compute": 0.00698783720145002,
+    "relay": 0.008292182887089439,
+    "internal": 0.007287235057447106,
+    "output": 0.0006160973571240902,
+    "controls": 0.000024305958220338653,
+    "label_logits": 0.0
+  },
+  "control_gain_sweep": {
+    "1": {
+      "paired_accuracy": 0.25,
+      "control_separation_rms": 0.000024305958220338653,
+      "label_logit_separation_rms": 0.0,
+      "mean_own_vs_mate_margin": 0.0
+    },
+    "4": {
+      "paired_accuracy": 0.25,
+      "control_separation_rms": 0.00009722338643314288,
+      "label_logit_separation_rms": 0.0,
+      "mean_own_vs_mate_margin": 0.0
+    },
+    "16": {
+      "paired_accuracy": 0.25,
+      "control_separation_rms": 0.00038889406960151973,
+      "label_logit_separation_rms": 0.0,
+      "mean_own_vs_mate_margin": 0.0
+    },
+    "64": {
+      "paired_accuracy": 0.375,
+      "control_separation_rms": 0.0015555868612864288,
+      "label_logit_separation_rms": 0.015625,
+      "mean_own_vs_mate_margin": 0.0
+    },
+    "256": {
+      "paired_accuracy": 0.5,
+      "control_separation_rms": 0.006222326584975235,
+      "label_logit_separation_rms": 0.0,
+      "mean_own_vs_mate_margin": 0.0
+    }
+  }
+}

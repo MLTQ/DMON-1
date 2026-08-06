@@ -1,0 +1,2588 @@
+{
+  "schema": 1,
+  "kind": "l0c1-wiki-memory",
+  "model": "NousResearch/Meta-Llama-3-8B-Instruct",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "corpus_sha256": "8a8692716141da8135b255457b5ec67d851a39fa9b99d9bae3696b7ca4958c01",
+  "updates": 25,
+  "organism_config": {
+    "n_input": 8,
+    "n_memory": 96,
+    "n_compute": 64,
+    "n_relay": 16,
+    "n_output": 8,
+    "hidden": 96,
+    "n_dendrites": 12,
+    "initial_active_dendrites": 8,
+    "steps_per_token": 3,
+    "organ_queries": 4,
+    "bounded_operators": true,
+    "cell_identity": true,
+    "operator_bound": 1.0,
+    "value_gain": 0.85,
+    "attention_temperature": 0.7,
+    "edge_logit_limit": 4.0,
+    "identity_gain": 0.5,
+    "identity_bias": 0.1,
+    "identity_time": 0.25,
+    "cell_adapter_rank": 0,
+    "cell_adapter_gain": 0.5,
+    "vocab_size": 2,
+    "batch_size": 12,
+    "chunk_length": 32,
+    "updates": 24000,
+    "lr": 0.001,
+    "lr_min": 0.001,
+    "warmup_updates": 200,
+    "schedule": "constant",
+    "weight_decay": 0.01,
+    "grad_clip": 1.0,
+    "reject_grad_norm": 10000.0,
+    "eval_every": 500,
+    "log_every": 100,
+    "eval_warmup_tokens": 256,
+    "eval_tokens": 2048,
+    "transformer_seq_len": 128,
+    "seed": 7,
+    "device": "cuda:0"
+  },
+  "train_config": {
+    "updates": 25,
+    "lr": 0.002,
+    "grad_clip": 1.0,
+    "eval_every": 25,
+    "checkpoint_every": 5,
+    "permutation_seed": 101,
+    "max_memory_tokens": 256,
+    "max_question_tokens": 256,
+    "seed": 7,
+    "paired_counterfactual": true,
+    "binding_margin": 1.0,
+    "binding_weight": 1.0
+  },
+  "organism_trainable_parameters": 807426,
+  "backbone_trainable_parameters": 0,
+  "backbone_gradient_tensors": 0,
+  "history": [
+    {
+      "update": 1,
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "loss": 5.75,
+      "bits": 8.29549648511154,
+      "objective_loss": 6.75,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.5,
+        0.5
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "B",
+        "D"
+      ],
+      "control_separation_rms": 0.0,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.0638299435377121,
+      "control_rms": 0.0,
+      "internal_activity": 0.09995509311556816,
+      "memory_activity": 0.8214292526245117
+    },
+    {
+      "update": 2,
+      "document_id": "actor_observer",
+      "question_id": "actor_rate",
+      "loss": 2.46875,
+      "bits": 3.5616533821946286,
+      "objective_loss": 3.46875,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.375,
+        0.375
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "A"
+      ],
+      "control_separation_rms": 3.9712544094072655e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.19948120415210724,
+      "control_rms": 0.0053300156723707914,
+      "internal_activity": 0.09962969273328781,
+      "memory_activity": 0.8253569006919861
+    },
+    {
+      "update": 3,
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_decomposition",
+      "loss": 5.65625,
+      "bits": 8.1602438250282,
+      "objective_loss": 6.65625,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.25,
+        0.25
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "D"
+      ],
+      "control_separation_rms": 6.11452423981973e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.4784853458404541,
+      "control_rms": 0.009737666230648756,
+      "internal_activity": 0.17086367309093475,
+      "memory_activity": 0.8937113583087921
+    },
+    {
+      "update": 4,
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_stability",
+      "loss": 1.953125,
+      "bits": 2.8177637517362566,
+      "objective_loss": 3.765625,
+      "binding_loss": 1.8125,
+      "binding_preferences": [
+        2.625,
+        -2.625
+      ],
+      "correct": true,
+      "branch_accuracy": 0.5,
+      "branch_answers": [
+        "C",
+        "B"
+      ],
+      "control_separation_rms": 2.1367713998188265e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.39379167556762695,
+      "control_rms": 0.0025649582967162132,
+      "internal_activity": 0.11832081526517868,
+      "memory_activity": 0.9214233458042145
+    },
+    {
+      "update": 5,
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_axes",
+      "loss": 2.921875,
+      "bits": 4.21537457259744,
+      "objective_loss": 3.921875,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        0.125,
+        -0.125
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "A",
+        "D"
+      ],
+      "control_separation_rms": 9.168938049697317e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.3690176010131836,
+      "control_rms": 0.014228254556655884,
+      "internal_activity": 0.15942483395338058,
+      "memory_activity": 0.9246325194835663
+    },
+    {
+      "update": 6,
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_sudoku",
+      "loss": 7.3125,
+      "bits": 10.549707486500544,
+      "objective_loss": 8.5,
+      "binding_loss": 1.1875,
+      "binding_preferences": [
+        -1.375,
+        1.375
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "C"
+      ],
+      "control_separation_rms": 4.16091934312135e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.7561724185943604,
+      "control_rms": 0.03945455700159073,
+      "internal_activity": 0.2680615335702896,
+      "memory_activity": 0.9452446401119232
+    },
+    {
+      "update": 7,
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_phases",
+      "loss": 1.5703125,
+      "bits": 2.2654820563959506,
+      "objective_loss": 2.5703125,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        0.625,
+        -0.625
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "B",
+        "D"
+      ],
+      "control_separation_rms": 1.0215458132734057e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.8601797223091125,
+      "control_rms": 0.046845363453030586,
+      "internal_activity": 0.2933255434036255,
+      "memory_activity": 0.9452908933162689
+    },
+    {
+      "update": 8,
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_cause",
+      "loss": 6.34375,
+      "bits": 9.152096665639363,
+      "objective_loss": 7.34375,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        0.875,
+        -0.875
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "B",
+        "C"
+      ],
+      "control_separation_rms": 8.110540875350125e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.9313836097717285,
+      "control_rms": 0.05532683990895748,
+      "internal_activity": 0.33288948237895966,
+      "memory_activity": 0.9541699886322021
+    },
+    {
+      "update": 9,
+      "document_id": "language_latent",
+      "question_id": "polygrpo_gain",
+      "loss": 5.5,
+      "bits": 7.934822724889299,
+      "objective_loss": 6.5,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.625,
+        0.625
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "B"
+      ],
+      "control_separation_rms": 7.320089480344905e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 2.012934446334839,
+      "control_rms": 0.05757104232907295,
+      "internal_activity": 0.3418412506580353,
+      "memory_activity": 0.9612689316272736
+    },
+    {
+      "update": 10,
+      "document_id": "language_latent",
+      "question_id": "polygrpo_transfer",
+      "loss": 5.40625,
+      "bits": 7.799570064805959,
+      "objective_loss": 6.78125,
+      "binding_loss": 1.375,
+      "binding_preferences": [
+        -1.75,
+        1.75
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "B"
+      ],
+      "control_separation_rms": 2.0479774320847355e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 3.01300311088562,
+      "control_rms": 0.05435800552368164,
+      "internal_activity": 0.3315419554710388,
+      "memory_activity": 0.9640224575996399
+    },
+    {
+      "update": 11,
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_action",
+      "loss": 4.59375,
+      "bits": 6.627380344083676,
+      "objective_loss": 5.65625,
+      "binding_loss": 1.0625,
+      "binding_preferences": [
+        1.125,
+        -1.125
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "A",
+        "C"
+      ],
+      "control_separation_rms": 3.981009740527952e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 3.5091497898101807,
+      "control_rms": 0.042877690866589546,
+      "internal_activity": 0.30578652024269104,
+      "memory_activity": 0.9685361087322235
+    },
+    {
+      "update": 12,
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_detection",
+      "loss": 2.78125,
+      "bits": 4.01249558247243,
+      "objective_loss": 3.78125,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.875,
+        0.875
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "B"
+      ],
+      "control_separation_rms": 2.2437869120039977e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.4040837287902832,
+      "control_rms": 0.021458202973008156,
+      "internal_activity": 0.262837752699852,
+      "memory_activity": 0.9669026434421539
+    },
+    {
+      "update": 13,
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "loss": 6.4375,
+      "bits": 9.287349325722703,
+      "objective_loss": 7.4375,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.375,
+        0.375
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "D"
+      ],
+      "control_separation_rms": 1.4073554666538257e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.9153940677642822,
+      "control_rms": 0.014350889716297388,
+      "internal_activity": 0.219970241189003,
+      "memory_activity": 0.9696499109268188
+    },
+    {
+      "update": 14,
+      "document_id": "actor_observer",
+      "question_id": "actor_rate",
+      "loss": 1.3125,
+      "bits": 1.8935372411667646,
+      "objective_loss": 2.5625,
+      "binding_loss": 1.25,
+      "binding_preferences": [
+        -1.5,
+        1.5
+      ],
+      "correct": false,
+      "branch_accuracy": 0.5,
+      "branch_answers": [
+        "A",
+        "C"
+      ],
+      "control_separation_rms": 1.744631299516186e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.9356142282485962,
+      "control_rms": 0.027493047527968884,
+      "internal_activity": 0.19756080210208893,
+      "memory_activity": 0.9728862941265106
+    },
+    {
+      "update": 15,
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_decomposition",
+      "loss": 4.96875,
+      "bits": 7.168390984417037,
+      "objective_loss": 6.40625,
+      "binding_loss": 1.4375,
+      "binding_preferences": [
+        -1.875,
+        1.875
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "C"
+      ],
+      "control_separation_rms": 1.537340722279623e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.3814691305160522,
+      "control_rms": 0.03491371497511864,
+      "internal_activity": 0.1841159239411354,
+      "memory_activity": 0.9619114100933075
+    },
+    {
+      "update": 16,
+      "document_id": "cot_learning_theory",
+      "question_id": "cot_stability",
+      "loss": 2.9375,
+      "bits": 4.23791668261133,
+      "objective_loss": 5.1875,
+      "binding_loss": 2.25,
+      "binding_preferences": [
+        -3.5,
+        3.5
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "B",
+        "C"
+      ],
+      "control_separation_rms": 1.6115689504658803e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 3.2132701873779297,
+      "control_rms": 0.0375750120729208,
+      "internal_activity": 0.17935285717248917,
+      "memory_activity": 0.9618915021419525
+    },
+    {
+      "update": 17,
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_axes",
+      "loss": 4.71875,
+      "bits": 6.807717224194796,
+      "objective_loss": 5.71875,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        0.125,
+        -0.125
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "B"
+      ],
+      "control_separation_rms": 6.03204061917495e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 4.747987747192383,
+      "control_rms": 0.028135407716035843,
+      "internal_activity": 0.16029072552919388,
+      "memory_activity": 0.9665879607200623
+    },
+    {
+      "update": 18,
+      "document_id": "equilibrium_reasoners",
+      "question_id": "eqr_sudoku",
+      "loss": 6.25,
+      "bits": 9.016844005556022,
+      "objective_loss": 7.75,
+      "binding_loss": 1.5,
+      "binding_preferences": [
+        2.0,
+        -2.0
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "D"
+      ],
+      "control_separation_rms": 1.597046502865851e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 1.7146557569503784,
+      "control_rms": 0.01270501222461462,
+      "internal_activity": 0.1448759064078331,
+      "memory_activity": 0.9682521522045135
+    },
+    {
+      "update": 19,
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_phases",
+      "loss": 1.953125,
+      "bits": 2.8177637517362566,
+      "objective_loss": 2.953125,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.875,
+        0.875
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "B"
+      ],
+      "control_separation_rms": 1.5321098771892139e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 3.353254795074463,
+      "control_rms": 0.008689085021615028,
+      "internal_activity": 0.1293814703822136,
+      "memory_activity": 0.9592561423778534
+    },
+    {
+      "update": 20,
+      "document_id": "inferential_boundary",
+      "question_id": "boundary_cause",
+      "loss": 5.09375,
+      "bits": 7.348727864528158,
+      "objective_loss": 6.15625,
+      "binding_loss": 1.0625,
+      "binding_preferences": [
+        -1.125,
+        1.125
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "D",
+        "C"
+      ],
+      "control_separation_rms": 4.451458516996354e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 2.888537645339966,
+      "control_rms": 0.007105306722223759,
+      "internal_activity": 0.12813297659158707,
+      "memory_activity": 0.9600978791713715
+    },
+    {
+      "update": 21,
+      "document_id": "language_latent",
+      "question_id": "polygrpo_gain",
+      "loss": 4.0,
+      "bits": 5.7707801635558535,
+      "objective_loss": 5.5625,
+      "binding_loss": 1.5625,
+      "binding_preferences": [
+        -2.125,
+        2.125
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "A"
+      ],
+      "control_separation_rms": 4.0165734390029684e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 4.646982192993164,
+      "control_rms": 0.005623846314847469,
+      "internal_activity": 0.11403060331940651,
+      "memory_activity": 0.9680945873260498
+    },
+    {
+      "update": 22,
+      "document_id": "language_latent",
+      "question_id": "polygrpo_transfer",
+      "loss": 3.25,
+      "bits": 4.688758882889132,
+      "objective_loss": 4.25,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        1.0,
+        -1.0
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "A",
+        "C"
+      ],
+      "control_separation_rms": 3.271279183536535e-06,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.9249384999275208,
+      "control_rms": 0.005806808592751622,
+      "internal_activity": 0.09797536209225655,
+      "memory_activity": 0.9702888131141663
+    },
+    {
+      "update": 23,
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_action",
+      "loss": 4.03125,
+      "bits": 5.815864383583634,
+      "objective_loss": 5.03125,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.5,
+        0.5
+      ],
+      "correct": false,
+      "branch_accuracy": 0.0,
+      "branch_answers": [
+        "C",
+        "A"
+      ],
+      "control_separation_rms": 3.934363849111833e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 7.205966472625732,
+      "control_rms": 0.014324563555419445,
+      "internal_activity": 0.08483745902776718,
+      "memory_activity": 0.9720891714096069
+    },
+    {
+      "update": 24,
+      "document_id": "exploration_hacking",
+      "question_id": "exploration_detection",
+      "loss": 0.96875,
+      "bits": 1.3976108208611833,
+      "objective_loss": 1.96875,
+      "binding_loss": 1.0,
+      "binding_preferences": [
+        -0.75,
+        0.75
+      ],
+      "correct": false,
+      "branch_accuracy": 0.5,
+      "branch_answers": [
+        "D",
+        "A"
+      ],
+      "control_separation_rms": 3.5880908399121836e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 0.21987377107143402,
+      "control_rms": 0.024079865776002407,
+      "internal_activity": 0.07408743724226952,
+      "memory_activity": 0.9748313724994659
+    },
+    {
+      "update": 25,
+      "document_id": "actor_observer",
+      "question_id": "actor_attribution",
+      "loss": 2.78125,
+      "bits": 4.01249558247243,
+      "objective_loss": 6.03125,
+      "binding_loss": 3.25,
+      "binding_preferences": [
+        -5.5,
+        5.5
+      ],
+      "correct": false,
+      "branch_accuracy": 0.5,
+      "branch_answers": [
+        "C",
+        "B"
+      ],
+      "control_separation_rms": 2.199964364990592e-05,
+      "label_logit_separation_rms": 0.0,
+      "grad_norm": 3.835688829421997,
+      "control_rms": 0.03064669668674469,
+      "internal_activity": 0.06887742504477501,
+      "memory_activity": 0.967788428068161
+    }
+  ],
+  "development": [
+    {
+      "split": "development",
+      "summaries": {
+        "normal": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3421363830566406,
+          "mean_bits": 0.4935984631435022,
+          "control_rms": 0.006779895978979766,
+          "internal_activity": 0.12570534646511078,
+          "memory_activity": 0.7882521599531174
+        },
+        "no_exposure": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.0014964085712563246,
+          "internal_activity": 0.012353824451565742,
+          "memory_activity": 0.0
+        },
+        "zero_control": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.0,
+          "internal_activity": 0.12568588182330132,
+          "memory_activity": 0.7877033948898315
+        },
+        "reset_after_exposure": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.0014964084257371724,
+          "internal_activity": 0.012353824684396386,
+          "memory_activity": 0.0
+        },
+        "wrong_passage": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3435630798339844,
+          "mean_bits": 0.4956567515090283,
+          "control_rms": 0.006777407601475716,
+          "internal_activity": 0.12567750737071037,
+          "memory_activity": 0.7877033948898315
+        },
+        "memory_lesion": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.001496401964686811,
+          "internal_activity": 0.01235396252013743,
+          "memory_activity": 0.0
+        },
+        "internal_lesion": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.001106104115024209,
+          "internal_activity": 0.0,
+          "memory_activity": 0.7877033948898315
+        },
+        "question_paraphrase": {
+          "count": 4.0,
+          "accuracy": 1.0,
+          "mean_loss": 0.0758819580078125,
+          "mean_bits": 0.10947452451081566,
+          "control_rms": 0.006776142749004066,
+          "internal_activity": 0.12561956234276295,
+          "memory_activity": 0.7877033948898315
+        },
+        "admitted_normal_accuracy": 0.0
+      },
+      "rows": [
+        {
+          "document_id": "geometric_blind_spot",
+          "question_id": "blind_metric",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0167236328125,
+              "label_log_probs": {
+                "A": -5.53125,
+                "B": -0.0167236328125,
+                "C": -6.40625,
+                "D": -4.53125
+              }
+            }
+          }
+        },
+        {
+          "document_id": "geometric_blind_spot",
+          "question_id": "blind_repair",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.007232666015625,
+              "label_log_probs": {
+                "A": -5.375,
+                "B": -6.0,
+                "C": -0.007232666015625,
+                "D": -8.75
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00726318359375,
+              "label_log_probs": {
+                "A": -5.625,
+                "B": -5.625,
+                "C": -0.00726318359375,
+                "D": -9.625
+              }
+            }
+          }
+        },
+        {
+          "document_id": "entropy_cut",
+          "question_id": "entropy_proxy",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.07568359375,
+              "label_log_probs": {
+                "A": -3.078125,
+                "B": -3.703125,
+                "C": -6.1875,
+                "D": -0.07568359375
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.039306640625,
+              "label_log_probs": {
+                "A": -3.546875,
+                "B": -5.40625,
+                "C": -5.28125,
+                "D": -0.039306640625
+              }
+            }
+          }
+        },
+        {
+          "document_id": "entropy_cut",
+          "question_id": "entropy_mixing",
+          "admitted": true,
+          "arms": {
+            "normal": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "no_exposure": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "zero_control": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "reset_after_exposure": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "wrong_passage": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "memory_lesion": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "internal_lesion": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.240234375,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.240234375,
+                "C": -3.609375,
+                "D": -1.7421875
+              }
+            }
+          }
+        }
+      ],
+      "update": 2
+    },
+    {
+      "split": "development",
+      "summaries": {
+        "normal": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.038351680152118206,
+          "internal_activity": 0.05416751466691494,
+          "memory_activity": 0.8603844344615936
+        },
+        "no_exposure": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.03867610264569521,
+          "internal_activity": 0.014321302296593785,
+          "memory_activity": 0.0
+        },
+        "zero_control": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.3437232971191406,
+          "mean_bits": 0.4958878961917879,
+          "control_rms": 0.0,
+          "internal_activity": 0.05416751466691494,
+          "memory_activity": 0.8603844046592712
+        },
+        "reset_after_exposure": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.038676101714372635,
+          "internal_activity": 0.014321302296593785,
+          "memory_activity": 0.0
+        },
+        "wrong_passage": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.038351722061634064,
+          "internal_activity": 0.054167880676686764,
+          "memory_activity": 0.8603844046592712
+        },
+        "memory_lesion": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.038676101714372635,
+          "internal_activity": 0.014321301830932498,
+          "memory_activity": 0.0
+        },
+        "internal_lesion": {
+          "count": 4.0,
+          "accuracy": 0.75,
+          "mean_loss": 0.5149688720703125,
+          "mean_bits": 0.7429430379480229,
+          "control_rms": 0.03854973427951336,
+          "internal_activity": 0.0,
+          "memory_activity": 0.8603844046592712
+        },
+        "question_paraphrase": {
+          "count": 4.0,
+          "accuracy": 1.0,
+          "mean_loss": 0.147491455078125,
+          "mean_bits": 0.21278519081470826,
+          "control_rms": 0.03834914322942495,
+          "internal_activity": 0.05418881122022867,
+          "memory_activity": 0.8603844046592712
+        },
+        "admitted_normal_accuracy": 0.0
+      },
+      "rows": [
+        {
+          "document_id": "geometric_blind_spot",
+          "question_id": "blind_metric",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0037384033203125,
+              "label_log_probs": {
+                "A": -6.0,
+                "B": -0.0037384033203125,
+                "C": -6.875,
+                "D": -8.375
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.013671875,
+              "label_log_probs": {
+                "A": -4.5,
+                "B": -0.013671875,
+                "C": -6.125,
+                "D": -7.625
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.0439453125,
+              "label_log_probs": {
+                "A": -4.03125,
+                "B": -0.0439453125,
+                "C": -5.78125,
+                "D": -3.796875
+              }
+            }
+          }
+        },
+        {
+          "document_id": "geometric_blind_spot",
+          "question_id": "blind_repair",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.00787353515625,
+              "label_log_probs": {
+                "A": -5.25,
+                "B": -6.0,
+                "C": -0.00787353515625,
+                "D": -8.75
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.01397705078125,
+              "label_log_probs": {
+                "A": -4.375,
+                "B": -6.625,
+                "C": -0.01397705078125,
+                "D": -8.625
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "C",
+              "correct_label": "C",
+              "loss": 0.0108642578125,
+              "label_log_probs": {
+                "A": -4.75,
+                "B": -6.125,
+                "C": -0.0108642578125,
+                "D": -9.5
+              }
+            }
+          }
+        },
+        {
+          "document_id": "entropy_cut",
+          "question_id": "entropy_proxy",
+          "admitted": false,
+          "arms": {
+            "normal": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "no_exposure": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "zero_control": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.08203125,
+              "label_log_probs": {
+                "A": -2.953125,
+                "B": -3.703125,
+                "C": -6.21875,
+                "D": -0.08203125
+              }
+            },
+            "reset_after_exposure": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "wrong_passage": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "memory_lesion": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "internal_lesion": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.1259765625,
+              "label_log_probs": {
+                "A": -2.25,
+                "B": -4.5,
+                "C": -6.25,
+                "D": -0.1259765625
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "D",
+              "correct_label": "D",
+              "loss": 0.060546875,
+              "label_log_probs": {
+                "A": -2.9375,
+                "B": -6.3125,
+                "C": -5.5625,
+                "D": -0.060546875
+              }
+            }
+          }
+        },
+        {
+          "document_id": "entropy_cut",
+          "question_id": "entropy_mixing",
+          "admitted": true,
+          "arms": {
+            "normal": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "no_exposure": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "zero_control": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.28125,
+              "label_log_probs": {
+                "A": -3.40625,
+                "B": -1.28125,
+                "C": -3.90625,
+                "D": -0.404296875
+              }
+            },
+            "reset_after_exposure": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "wrong_passage": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "memory_lesion": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "internal_lesion": {
+              "correct": false,
+              "predicted_label": "D",
+              "correct_label": "B",
+              "loss": 1.90625,
+              "label_log_probs": {
+                "A": -2.53125,
+                "B": -1.90625,
+                "C": -3.90625,
+                "D": -0.28515625
+              }
+            },
+            "question_paraphrase": {
+              "correct": true,
+              "predicted_label": "B",
+              "correct_label": "B",
+              "loss": 0.474609375,
+              "label_log_probs": {
+                "A": -3.21875,
+                "B": -0.474609375,
+                "C": -3.09375,
+                "D": -1.2265625
+              }
+            }
+          }
+        }
+      ],
+      "update": 25
+    }
+  ],
+  "heldout": {
+    "split": "heldout",
+    "summaries": {
+      "normal": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.177978515625,
+        "mean_bits": 1.69946376276593,
+        "control_rms": 0.03831974556669593,
+        "internal_activity": 0.04902207991108298,
+        "memory_activity": 0.7852277755737305
+      },
+      "no_exposure": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.177490234375,
+        "mean_bits": 1.698759321827996,
+        "control_rms": 0.0386764807626605,
+        "internal_activity": 0.014332693070173264,
+        "memory_activity": 0.0
+      },
+      "zero_control": {
+        "count": 8.0,
+        "accuracy": 0.375,
+        "mean_loss": 1.2010498046875,
+        "mean_bits": 1.7327485970833143,
+        "control_rms": 0.0,
+        "internal_activity": 0.049022079445421696,
+        "memory_activity": 0.7852277755737305
+      },
+      "reset_after_exposure": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.177490234375,
+        "mean_bits": 1.698759321827996,
+        "control_rms": 0.03867648122832179,
+        "internal_activity": 0.014332692953757942,
+        "memory_activity": 0.0
+      },
+      "wrong_passage": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.179931640625,
+        "mean_bits": 1.702281526517666,
+        "control_rms": 0.03831978561356664,
+        "internal_activity": 0.0490211839787662,
+        "memory_activity": 0.7852277755737305
+      },
+      "memory_lesion": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.177490234375,
+        "mean_bits": 1.698759321827996,
+        "control_rms": 0.03867648122832179,
+        "internal_activity": 0.01433269225526601,
+        "memory_activity": 0.0
+      },
+      "internal_lesion": {
+        "count": 8.0,
+        "accuracy": 0.625,
+        "mean_loss": 1.177978515625,
+        "mean_bits": 1.69946376276593,
+        "control_rms": 0.03854973381385207,
+        "internal_activity": 0.0,
+        "memory_activity": 0.7852277755737305
+      },
+      "question_paraphrase": {
+        "count": 8.0,
+        "accuracy": 0.75,
+        "mean_loss": 0.6032333374023438,
+        "mean_bits": 0.8702817443692602,
+        "control_rms": 0.0383203555829823,
+        "internal_activity": 0.04900496918708086,
+        "memory_activity": 0.7852277755737305
+      },
+      "admitted_normal_accuracy": 0.5
+    },
+    "rows": [
+      {
+        "document_id": "scalelogic",
+        "question_id": "scalelogic_exponents",
+        "admitted": true,
+        "arms": {
+          "normal": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "no_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "zero_control": {
+            "correct": false,
+            "predicted_label": "C",
+            "correct_label": "D",
+            "loss": 1.234375,
+            "label_log_probs": {
+              "A": -1.609375,
+              "B": -1.984375,
+              "C": -0.98828125,
+              "D": -1.234375
+            }
+          },
+          "reset_after_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "wrong_passage": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "memory_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "internal_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.3359375,
+            "label_log_probs": {
+              "A": -0.96484375,
+              "B": -2.84375,
+              "C": -1.2109375,
+              "D": -1.3359375
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.6796875,
+            "label_log_probs": {
+              "A": -1.0546875,
+              "B": -4.0625,
+              "C": -2.0625,
+              "D": -0.6796875
+            }
+          }
+        }
+      },
+      {
+        "document_id": "scalelogic",
+        "question_id": "scalelogic_gain",
+        "admitted": true,
+        "arms": {
+          "normal": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "no_exposure": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "zero_control": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.427734375,
+            "label_log_probs": {
+              "A": -0.427734375,
+              "B": -3.546875,
+              "C": -1.1796875,
+              "D": -4.5625
+            }
+          },
+          "reset_after_exposure": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "wrong_passage": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "memory_lesion": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "internal_lesion": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.1943359375,
+            "label_log_probs": {
+              "A": -0.1943359375,
+              "B": -4.8125,
+              "C": -1.8203125,
+              "D": -5.0625
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.06298828125,
+            "label_log_probs": {
+              "A": -0.06298828125,
+              "B": -5.4375,
+              "C": -2.9375,
+              "D": -5.5625
+            }
+          }
+        }
+      },
+      {
+        "document_id": "skillos",
+        "question_id": "skillos_roles",
+        "admitted": false,
+        "arms": {
+          "normal": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "no_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "zero_control": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 1.8984375,
+            "label_log_probs": {
+              "A": -1.1484375,
+              "B": -1.1484375,
+              "C": -1.8984375,
+              "D": -1.5234375
+            }
+          },
+          "reset_after_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "wrong_passage": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "memory_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "internal_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "C",
+            "loss": 2.21875,
+            "label_log_probs": {
+              "A": -0.59765625,
+              "B": -1.96875,
+              "C": -2.21875,
+              "D": -1.59375
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.0390625,
+            "label_log_probs": {
+              "A": -4.15625,
+              "B": -5.90625,
+              "C": -0.0390625,
+              "D": -3.90625
+            }
+          }
+        }
+      },
+      {
+        "document_id": "skillos",
+        "question_id": "skillos_emergence",
+        "admitted": false,
+        "arms": {
+          "normal": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "no_exposure": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "zero_control": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1806640625,
+            "label_log_probs": {
+              "A": -3.8125,
+              "B": -4.1875,
+              "C": -2.0625,
+              "D": -0.1806640625
+            }
+          },
+          "reset_after_exposure": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "wrong_passage": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "memory_lesion": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "internal_lesion": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.1982421875,
+            "label_log_probs": {
+              "A": -3.078125,
+              "B": -4.8125,
+              "C": -2.078125,
+              "D": -0.1982421875
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.01068115234375,
+            "label_log_probs": {
+              "A": -5.375,
+              "B": -8.625,
+              "C": -5.125,
+              "D": -0.01068115234375
+            }
+          }
+        }
+      },
+      {
+        "document_id": "training_free_grpo",
+        "question_id": "tfgrpo_advantage",
+        "admitted": true,
+        "arms": {
+          "normal": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.328125,
+            "label_log_probs": {
+              "A": -0.322265625,
+              "B": -1.5703125,
+              "C": -3.453125,
+              "D": -3.328125
+            }
+          },
+          "no_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.328125,
+            "label_log_probs": {
+              "A": -0.322265625,
+              "B": -1.5703125,
+              "C": -3.453125,
+              "D": -3.328125
+            }
+          },
+          "zero_control": {
+            "correct": false,
+            "predicted_label": "B",
+            "correct_label": "D",
+            "loss": 3.15625,
+            "label_log_probs": {
+              "A": -0.91015625,
+              "B": -0.66015625,
+              "C": -3.28125,
+              "D": -3.15625
+            }
+          },
+          "reset_after_exposure": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.328125,
+            "label_log_probs": {
+              "A": -0.322265625,
+              "B": -1.5703125,
+              "C": -3.453125,
+              "D": -3.328125
+            }
+          },
+          "wrong_passage": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.34375,
+            "label_log_probs": {
+              "A": -0.349609375,
+              "B": -1.4765625,
+              "C": -3.46875,
+              "D": -3.34375
+            }
+          },
+          "memory_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.328125,
+            "label_log_probs": {
+              "A": -0.322265625,
+              "B": -1.5703125,
+              "C": -3.453125,
+              "D": -3.328125
+            }
+          },
+          "internal_lesion": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 3.328125,
+            "label_log_probs": {
+              "A": -0.322265625,
+              "B": -1.5703125,
+              "C": -3.453125,
+              "D": -3.328125
+            }
+          },
+          "question_paraphrase": {
+            "correct": false,
+            "predicted_label": "A",
+            "correct_label": "D",
+            "loss": 1.71875,
+            "label_log_probs": {
+              "A": -0.59375,
+              "B": -3.21875,
+              "C": -1.46875,
+              "D": -1.71875
+            }
+          }
+        }
+      },
+      {
+        "document_id": "training_free_grpo",
+        "question_id": "tfgrpo_update",
+        "admitted": false,
+        "arms": {
+          "normal": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.34375,
+              "D": -0.7109375
+            }
+          },
+          "no_exposure": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.46875,
+              "D": -0.7109375
+            }
+          },
+          "zero_control": {
+            "correct": false,
+            "predicted_label": "B",
+            "correct_label": "D",
+            "loss": 0.89453125,
+            "label_log_probs": {
+              "A": -2.890625,
+              "B": -0.64453125,
+              "C": -4.53125,
+              "D": -0.89453125
+            }
+          },
+          "reset_after_exposure": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.46875,
+              "D": -0.7109375
+            }
+          },
+          "wrong_passage": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.34375,
+              "D": -0.7109375
+            }
+          },
+          "memory_lesion": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.46875,
+              "D": -0.7109375
+            }
+          },
+          "internal_lesion": {
+            "correct": true,
+            "predicted_label": "D",
+            "correct_label": "D",
+            "loss": 0.7109375,
+            "label_log_probs": {
+              "A": -1.8359375,
+              "B": -1.0859375,
+              "C": -4.46875,
+              "D": -0.7109375
+            }
+          },
+          "question_paraphrase": {
+            "correct": false,
+            "predicted_label": "B",
+            "correct_label": "D",
+            "loss": 2.234375,
+            "label_log_probs": {
+              "A": -2.484375,
+              "B": -0.23046875,
+              "C": -4.21875,
+              "D": -2.234375
+            }
+          }
+        }
+      },
+      {
+        "document_id": "experience_faithfulness",
+        "question_id": "faithfulness_asymmetry",
+        "admitted": true,
+        "arms": {
+          "normal": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "no_exposure": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "zero_control": {
+            "correct": false,
+            "predicted_label": "D",
+            "correct_label": "A",
+            "loss": 1.40625,
+            "label_log_probs": {
+              "A": -1.40625,
+              "B": -3.03125,
+              "C": -1.65625,
+              "D": -0.66015625
+            }
+          },
+          "reset_after_exposure": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "wrong_passage": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "memory_lesion": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "internal_lesion": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.87890625,
+            "label_log_probs": {
+              "A": -0.87890625,
+              "B": -4.0,
+              "C": -1.8828125,
+              "D": -0.87890625
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "A",
+            "correct_label": "A",
+            "loss": 0.06396484375,
+            "label_log_probs": {
+              "A": -0.06396484375,
+              "B": -7.3125,
+              "C": -6.6875,
+              "D": -2.8125
+            }
+          }
+        }
+      },
+      {
+        "document_id": "experience_faithfulness",
+        "question_id": "faithfulness_scope",
+        "admitted": false,
+        "arms": {
+          "normal": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.55859375,
+            "label_log_probs": {
+              "A": -1.3125,
+              "B": -3.0625,
+              "C": -0.55859375,
+              "D": -2.1875
+            }
+          },
+          "no_exposure": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.5546875,
+            "label_log_probs": {
+              "A": -1.3046875,
+              "B": -3.1875,
+              "C": -0.5546875,
+              "D": -2.1875
+            }
+          },
+          "zero_control": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.41015625,
+            "label_log_probs": {
+              "A": -2.03125,
+              "B": -2.40625,
+              "C": -0.41015625,
+              "D": -2.15625
+            }
+          },
+          "reset_after_exposure": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.5546875,
+            "label_log_probs": {
+              "A": -1.3046875,
+              "B": -3.1875,
+              "C": -0.5546875,
+              "D": -2.1875
+            }
+          },
+          "wrong_passage": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.55859375,
+            "label_log_probs": {
+              "A": -1.3125,
+              "B": -3.0625,
+              "C": -0.55859375,
+              "D": -2.1875
+            }
+          },
+          "memory_lesion": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.5546875,
+            "label_log_probs": {
+              "A": -1.3046875,
+              "B": -3.1875,
+              "C": -0.5546875,
+              "D": -2.1875
+            }
+          },
+          "internal_lesion": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.55859375,
+            "label_log_probs": {
+              "A": -1.3125,
+              "B": -3.0625,
+              "C": -0.55859375,
+              "D": -2.1875
+            }
+          },
+          "question_paraphrase": {
+            "correct": true,
+            "predicted_label": "C",
+            "correct_label": "C",
+            "loss": 0.016357421875,
+            "label_log_probs": {
+              "A": -4.78125,
+              "B": -6.28125,
+              "C": -0.016357421875,
+              "D": -5.15625
+            }
+          }
+        }
+      }
+    ]
+  },
+  "peak_cuda_allocated_bytes": 19867631616,
+  "peak_cuda_reserved_bytes": 20157825024
+}
