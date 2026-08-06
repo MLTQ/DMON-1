@@ -31,6 +31,14 @@ own stored sensory state, never an added inference input or learned readout.
 - **Does**: Aligns the live final-token recall vector with the detached stored-answer
   target and reports cosine alignment plus student/target RMS.
 
+### `paired_coherent_recall_delta_credit`
+
+- **Does**: Aligns the live incompatible-passage recall difference with the exact
+  detached difference between their stored answer values; reports alignment, RMS, and
+  the fraction of target separation retained.
+- **Rationale**: Prevents the absolute target's large common component from rewarding
+  a passage-insensitive recall vector.
+
 ### `sparse_coherent_transport_credit`
 
 - **Does**: Soft-selects small relay and output subpopulations by target similarity,
@@ -39,15 +47,23 @@ own stored sensory state, never an added inference input or learned readout.
 - **Rationale**: Some neurons may remain plastic or unused; the objective asks for a
   useful specialized route without forcing every cell into the same representation.
 
+### `paired_sparse_coherent_transport_credit`
+
+- **Does**: Computes each cell's live counterfactual state difference, selects cells by
+  alignment with the exact answer-value delta, and aligns sparse relay/output pools.
+- **Rationale**: Differential utility, rather than absolute background similarity,
+  determines which cells specialize.
+
 ## Contracts
 
 | Dependent | Expects | Breaking changes |
 | --- | --- | --- |
 | `wiki_memory_train.py` | Exact mask, detached target, ordered credit telemetry | Span semantics or tuple order |
 | `test_wiki_memory.py` | Offset/fallback exactness, circular-slot safety, detached targets, sparse gradients | Detach or pooling rule |
-| C1y protocol | No target enters cellular state, LLM input, evaluation, or inference | Adding a runtime teaching route |
+| C1y/C1z protocols | No target enters cellular state, LLM input, evaluation, or inference | Adding a runtime teaching route |
 
 ## Notes
 
 The output-pool term is downstream of the existing relay-output tract, so an enabled
 tract receives developmental gradients without exposing memory directly to the LLM.
+Paired losses are invariant to swapping the incompatible branches.

@@ -52,3 +52,48 @@ and demand-driven growth. Local alignment without passage-specific language cont
 licenses work on the relay/output-to-LLM interface. Failure with live local gradients
 rejects this exact value-transport treatment; failure from optimizer inertia licenses
 a fresh-weight ablation before rejecting the architecture.
+
+## Result
+
+C1y completed update 125 with Qwen frozen at zero trainable parameters and zero
+gradient tensors. Peak allocation/reservation was 21.85/22.44 GiB. The raw artifact is
+`l0c1y-answer-value-s7-u125-result.json`, SHA-256
+`d527a6d05aed5832b02fdb0e9b5cb3052f9e0a6f9e7ffddd7864680f78a8b8bf`.
+
+The local coherent route learned, but mostly as a passage-common representation.
+Across updates 101-112 versus 114-125:
+
+- addressing remained healthy: KL `0.0397 -> 0.0345`, selected teacher mass
+  `0.551 -> 0.540`, and effective slots `12.64 -> 12.75`;
+- recall-to-answer alignment improved `0.872 -> 0.910`, live/target RMS remained
+  closely matched at about `0.176/0.179`, and value loss fell `0.0080 -> 0.0057`;
+- relay alignment rose `0.447 -> 0.875` and output alignment `0.014 -> 0.281`, while
+  transport loss fell `0.0391 -> 0.0207`;
+- all sensor, recall, connectome, tissue, transport, and effector gradient groups stayed
+  finite and nonzero. Query/key remained strong; value/output recall gradients fell
+  but remained live.
+
+The paired geometry exposes the failure. Exact answer targets differed by RMS `0.0372`
+early and `0.0338` late, but live recall differed by only `0.00320` and `0.00345`:
+roughly one tenth of the available counterfactual signal. The absolute target's common
+component dominated its MSE. Relay selection initially concentrated to about 18-31
+cells, then broadened to `38.7` late and `43.5` in the last five updates; output
+pooling remained effectively all `15.9/16` cells. Control separation stayed around
+`1.4e-5`, and control RMS peaked near update 110 before returning to `0.00048` in the
+last five updates. Causal satisfaction improved only `0.271 -> 0.417` and ended at
+`0.35`, below C1w's late `0.542`.
+
+Development normal loss was `0.30249`, worse than the no-exposure floor `0.27222`,
+wrong passage `0.29785`, and memory lesion `0.29688`; it beat internal lesion only
+slightly (`0.30273`). Held out, normal was 75%/`0.56683`, better in mean loss than the
+floor `0.57526`, memory lesion `0.57751`, and internal lesion `0.59058`, but worse than
+wrong passage `0.56592`. Strictly it beat floor on 2/8 questions, wrong passage on 0/8
+with seven exact BF16 ties, memory lesion on 3/8, and internal lesion on 4/8.
+
+C1y therefore passes exact addressing, coherent-value, and anatomical-recruitment
+gates but fails passage-specific control. This does not reject coherent value transport:
+the loss allowed a predictable common-mode shortcut. The next treatment should compare
+the two paired branches directly in the same stored coordinate, select relay/output
+cells by their live counterfactual difference, and reward preservation of the exact
+target delta. Capacity, growth, and longer training remain deferred until that paired
+signal survives the route.

@@ -22,6 +22,8 @@ from .wiki_coherent_value import (
     coherent_answer_value_target,
     coherent_recall_value_credit,
     designated_answer_token_mask,
+    paired_coherent_recall_delta_credit,
+    paired_sparse_coherent_transport_credit,
     sparse_coherent_transport_credit,
 )
 from .wiki_distillation import (
@@ -551,6 +553,68 @@ def test_answer_span_coherent_value_and_sparse_transport_are_exact() -> None:
     assert output.grad is not None and float(output.grad.abs().sum()) > 0.0
     assert transport_target.grad is None
 
+    left_recall = torch.zeros(1, 3, requires_grad=True)
+    right_recall = torch.zeros(1, 3, requires_grad=True)
+    left_target = torch.tensor([[0.5, 0.0, 0.0]], requires_grad=True)
+    right_target = torch.tensor([[-0.5, 0.0, 0.0]], requires_grad=True)
+    delta_row = paired_coherent_recall_delta_credit(
+        left_recall, right_recall, left_target, right_target
+    )
+    delta_loss, delta_alignment, student_delta_rms, target_delta_rms, retention = (
+        delta_row
+    )
+    assert float(delta_loss.detach()) > 0.0
+    assert float(delta_alignment.detach()) == 0.0
+    assert float(student_delta_rms.detach()) == 0.0
+    assert float(target_delta_rms.detach()) > 0.0 and float(retention.detach()) == 0.0
+    delta_loss.backward()
+    assert left_recall.grad is not None and right_recall.grad is not None
+    assert torch.allclose(left_recall.grad, -right_recall.grad)
+    assert left_target.grad is None and right_target.grad is None
+    swapped_delta_loss = paired_coherent_recall_delta_credit(
+        right_recall.detach(),
+        left_recall.detach(),
+        right_target,
+        left_target,
+    )[0]
+    assert torch.allclose(delta_loss.detach(), swapped_delta_loss)
+
+    left_relay = torch.tensor(
+        [[[0.4, 0.0, 0.0], [0.0, 0.2, 0.0], [0.0, 0.0, 0.2]]],
+        requires_grad=True,
+    )
+    right_relay = -left_relay.detach().clone().requires_grad_()
+    left_output = torch.tensor(
+        [[[0.4, 0.0, 0.0], [0.0, 0.2, 0.0]]], requires_grad=True
+    )
+    right_output = -left_output.detach().clone().requires_grad_()
+    delta_transport = paired_sparse_coherent_transport_credit(
+        left_relay,
+        right_relay,
+        left_output,
+        right_output,
+        left_target,
+        right_target,
+        temperature=0.05,
+    )
+    assert float(delta_transport[1].detach()) > 0.99
+    assert float(delta_transport[2].detach()) > 0.99
+    assert float(delta_transport[3].detach()) < 1.1
+    assert float(delta_transport[4].detach()) < 1.1
+    swapped_delta_transport = paired_sparse_coherent_transport_credit(
+        right_relay,
+        left_relay,
+        right_output,
+        left_output,
+        right_target,
+        left_target,
+        temperature=0.05,
+    )[0]
+    assert torch.allclose(delta_transport[0], swapped_delta_transport)
+    delta_transport[0].backward()
+    assert left_relay.grad is not None and float(left_relay.grad.abs().sum()) > 0.0
+    assert left_output.grad is not None and float(left_output.grad.abs().sum()) > 0.0
+
 
 def test_coherent_local_credit_recruits_existing_anatomical_route() -> None:
     cfg = replace(
@@ -577,39 +641,54 @@ def test_coherent_local_credit_recruits_existing_anatomical_route() -> None:
     corpus = load_wiki_memory_corpus(DATA_PATH)
     source_document = corpus.split("meta_train")[0]
     source_question = source_document.questions[0]
-    document, question = counterfactual_training_record(
+    records = counterfactual_training_pair(
         source_document, source_question, epoch=0, compact=True
     )
-    input_ids = encode_text(tokenizer, document.memory, "cpu", max_tokens=256)
-    answer_mask = designated_answer_token_mask(
-        tokenizer,
-        document.memory,
-        question.choices[question.answer],
-        input_ids,
-    )
-    result = run_wiki_memory_episode(
-        system,
-        tokenizer,
-        document,
-        question,
-        system.initial_state(1, "cpu"),
-        permutation_seed=3,
-        capture_recall=True,
-    )
-    assert result.exposure_memory_state is not None
-    assert result.recalled is not None
-    assert result.relay_state is not None and result.output_state is not None
-    target = coherent_answer_value_target(
-        result.exposure_memory_state,
-        answer_mask,
-        start_cursor=0,
-        recall_gain=0.25,
-    )
-    value_loss = coherent_recall_value_credit(result.recalled, target)[0]
-    transport_loss = sparse_coherent_transport_credit(
-        result.relay_state,
-        result.output_state,
-        target,
+    start = system.initial_state(1, "cpu")
+    results = []
+    targets = []
+    for document, question in records:
+        input_ids = encode_text(tokenizer, document.memory, "cpu", max_tokens=256)
+        answer_mask = designated_answer_token_mask(
+            tokenizer,
+            document.memory,
+            question.choices[question.answer],
+            input_ids,
+        )
+        result = run_wiki_memory_episode(
+            system,
+            tokenizer,
+            document,
+            question,
+            start,
+            permutation_seed=3,
+            capture_recall=True,
+        )
+        assert result.exposure_memory_state is not None
+        assert result.recalled is not None
+        assert result.relay_state is not None and result.output_state is not None
+        results.append(result)
+        targets.append(
+            coherent_answer_value_target(
+                result.exposure_memory_state,
+                answer_mask,
+                start_cursor=0,
+                recall_gain=0.25,
+            )
+        )
+    value_loss = paired_coherent_recall_delta_credit(
+        results[0].recalled,
+        results[1].recalled,
+        targets[0],
+        targets[1],
+    )[0]
+    transport_loss = paired_sparse_coherent_transport_credit(
+        results[0].relay_state,
+        results[1].relay_state,
+        results[0].output_state,
+        results[1].output_state,
+        targets[0],
+        targets[1],
         temperature=0.1,
     )[0]
     (value_loss + transport_loss).backward()
@@ -1134,6 +1213,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 recall_addressing_temperature=0.05,
                 coherent_value_credit_weight=3.0,
                 coherent_transport_credit_weight=4.0,
+                coherent_delta_credit_weight=5.0,
+                coherent_delta_transport_credit_weight=6.0,
                 coherent_transport_temperature=0.075,
                 semantic_credit_target_rms=0.25,
                 semantic_credit_seed=307,
@@ -1180,6 +1261,8 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["recall_addressing_temperature"] == 0.05
         assert payload["train_config"]["coherent_value_credit_weight"] == 3.0
         assert payload["train_config"]["coherent_transport_credit_weight"] == 4.0
+        assert payload["train_config"]["coherent_delta_credit_weight"] == 5.0
+        assert payload["train_config"]["coherent_delta_transport_credit_weight"] == 6.0
         assert payload["train_config"]["coherent_transport_temperature"] == 0.075
         assert payload["train_config"]["semantic_credit_target_rms"] == 0.25
         assert payload["train_config"]["semantic_credit_seed"] == 307

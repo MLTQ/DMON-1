@@ -62,6 +62,9 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Sparse relay/output pooling specializes a small active subpopulation, and the
   integrated local objective recruits sensor, query/key/value/output recall,
   connectome, tissue, and relay-output transport without backbone gradients.
+- Paired coherent recall and transport losses detach exact target differences, are
+  invariant to branch order, give identical endpoints opposing gradients, and select
+  cells by live counterfactual utility rather than absolute common state.
 - Compact bindings remove the shared wiki paragraph while retaining the exact question
   and designated answer, and gradient telemetry exposes all causal subsystem groups.
 - Plasticity groups cover every organism parameter exactly once and apply the declared
@@ -75,7 +78,7 @@ transitions, and gradient ownership before using the real wiki or 4090.
   state, corpus identity, update cursor, language-control mode, distillation settings,
   effect-distillation weight, local semantic-credit configuration, and
   reference-centering treatment, including coherent value/transport weights, recall
-  gain, and sparse transport temperature.
+  gain, sparse transport temperature, and paired coherent-delta weights.
 - The matched evaluator emits all eight preregistered causal arms.
 - Reference-centered prefix evaluation makes no-exposure and explicit zero-control
   arms exact zero deltas.

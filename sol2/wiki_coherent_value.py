@@ -139,6 +139,28 @@ def coherent_recall_value_credit(
     return loss, alignment, student_rms, target_rms
 
 
+def paired_coherent_recall_delta_credit(
+    left_recalled: torch.Tensor,
+    right_recalled: torch.Tensor,
+    left_target: torch.Tensor,
+    right_target: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Preserve the exact counterfactual answer-value difference through recall."""
+
+    if left_recalled.shape != right_recalled.shape:
+        raise ValueError("paired recall vectors must have matching shapes")
+    if left_target.shape != right_target.shape or left_target.shape != left_recalled.shape:
+        raise ValueError("paired coherent targets must match live recall vectors")
+    student_delta = left_recalled.float() - right_recalled.float()
+    target_delta = left_target.detach().float() - right_target.detach().float()
+    loss = F.mse_loss(student_delta, target_delta)
+    alignment = F.cosine_similarity(student_delta, target_delta, dim=-1).mean()
+    student_rms = student_delta.pow(2).mean().sqrt()
+    target_rms = target_delta.pow(2).mean().sqrt()
+    retention = student_rms / target_rms.clamp_min(1e-8)
+    return loss, alignment, student_rms, target_rms, retention
+
+
 def _sparse_tissue_pool(
     tissue: torch.Tensor,
     target: torch.Tensor,
@@ -207,4 +229,61 @@ def sparse_coherent_transport_credit(
         relay_effective,
         output_effective,
         0.5 * (relay_rms + output_rms),
+    )
+
+
+def paired_sparse_coherent_transport_credit(
+    left_relay: torch.Tensor,
+    right_relay: torch.Tensor,
+    left_output: torch.Tensor,
+    right_output: torch.Tensor,
+    left_target: torch.Tensor,
+    right_target: torch.Tensor,
+    *,
+    temperature: float,
+) -> tuple[
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+]:
+    """Select cells by paired utility and preserve the coherent value difference."""
+
+    if left_relay.shape != right_relay.shape or left_output.shape != right_output.shape:
+        raise ValueError("paired tissue states must have matching shapes")
+    if left_target.shape != right_target.shape:
+        raise ValueError("paired coherent targets must have matching shapes")
+    target_delta = left_target.detach().float() - right_target.detach().float()
+    relay_delta = left_relay.float() - right_relay.float()
+    output_delta = left_output.float() - right_output.float()
+    relay_pool, _, relay_effective = _sparse_tissue_pool(
+        relay_delta, target_delta, temperature=temperature
+    )
+    output_pool, _, output_effective = _sparse_tissue_pool(
+        output_delta, target_delta, temperature=temperature
+    )
+    loss = 0.5 * (
+        F.mse_loss(relay_pool, target_delta)
+        + F.mse_loss(output_pool, target_delta)
+    )
+    relay_alignment = F.cosine_similarity(
+        relay_pool, target_delta, dim=-1
+    ).mean()
+    output_alignment = F.cosine_similarity(
+        output_pool, target_delta, dim=-1
+    ).mean()
+    relay_rms = relay_pool.pow(2).mean().sqrt()
+    output_rms = output_pool.pow(2).mean().sqrt()
+    target_rms = target_delta.pow(2).mean().sqrt()
+    return (
+        loss,
+        relay_alignment,
+        output_alignment,
+        relay_effective,
+        output_effective,
+        0.5 * (relay_rms + output_rms),
+        target_rms,
     )

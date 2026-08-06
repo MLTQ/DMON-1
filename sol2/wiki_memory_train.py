@@ -39,6 +39,8 @@ from .wiki_coherent_value import (
     coherent_answer_value_target,
     coherent_recall_value_credit,
     designated_answer_token_mask,
+    paired_coherent_recall_delta_credit,
+    paired_sparse_coherent_transport_credit,
     sparse_coherent_transport_credit,
 )
 from .wiki_distillation import (
@@ -84,6 +86,8 @@ class WikiMemoryTrainConfig:
     recall_addressing_temperature: float = 0.1
     coherent_value_credit_weight: float = 0.0
     coherent_transport_credit_weight: float = 0.0
+    coherent_delta_credit_weight: float = 0.0
+    coherent_delta_transport_credit_weight: float = 0.0
     coherent_transport_temperature: float = 0.1
     semantic_credit_target_rms: float = 0.25
     semantic_credit_seed: int = 307
@@ -139,6 +143,8 @@ class WikiMemoryTrainConfig:
             self.recall_addressing_credit_weight,
             self.coherent_value_credit_weight,
             self.coherent_transport_credit_weight,
+            self.coherent_delta_credit_weight,
+            self.coherent_delta_transport_credit_weight,
         ) < 0:
             raise ValueError("local credit weights must be nonnegative")
         if (
@@ -150,6 +156,8 @@ class WikiMemoryTrainConfig:
         if (
             self.coherent_value_credit_weight > 0
             or self.coherent_transport_credit_weight > 0
+            or self.coherent_delta_credit_weight > 0
+            or self.coherent_delta_transport_credit_weight > 0
         ) and (not self.paired_counterfactual or not self.coherent_recall):
             raise ValueError(
                 "coherent local credit requires paired counterfactual coherent recall"
@@ -853,6 +861,10 @@ def run_training(args: argparse.Namespace) -> dict:
         recall_addressing_temperature=args.recall_addressing_temperature,
         coherent_value_credit_weight=args.coherent_value_credit_weight,
         coherent_transport_credit_weight=args.coherent_transport_credit_weight,
+        coherent_delta_credit_weight=args.coherent_delta_credit_weight,
+        coherent_delta_transport_credit_weight=(
+            args.coherent_delta_transport_credit_weight
+        ),
         coherent_transport_temperature=args.coherent_transport_temperature,
         semantic_credit_target_rms=args.semantic_credit_target_rms,
         semantic_credit_seed=args.semantic_credit_seed,
@@ -993,6 +1005,8 @@ def run_training(args: argparse.Namespace) -> dict:
         coherent_credit_enabled = (
             train_config.coherent_value_credit_weight > 0
             or train_config.coherent_transport_credit_weight > 0
+            or train_config.coherent_delta_credit_weight > 0
+            or train_config.coherent_delta_transport_credit_weight > 0
         )
         training_answer_masks = (
             [
@@ -1094,6 +1108,7 @@ def run_training(args: argparse.Namespace) -> dict:
                     train_config.recall_semantic_credit_weight > 0
                     or train_config.recall_addressing_credit_weight > 0
                     or train_config.coherent_value_credit_weight > 0
+                    or train_config.coherent_delta_credit_weight > 0
                     or train_config.coherent_recall
                 ),
             )
@@ -1160,6 +1175,18 @@ def run_training(args: argparse.Namespace) -> dict:
         coherent_relay_effective_cells = task_loss.new_zeros(())
         coherent_output_effective_cells = task_loss.new_zeros(())
         coherent_transport_rms = task_loss.new_zeros(())
+        coherent_delta_credit_loss = task_loss.new_zeros(())
+        coherent_delta_alignment = task_loss.new_zeros(())
+        coherent_delta_student_rms = task_loss.new_zeros(())
+        coherent_delta_target_rms = task_loss.new_zeros(())
+        coherent_delta_retention = task_loss.new_zeros(())
+        coherent_delta_transport_credit_loss = task_loss.new_zeros(())
+        coherent_delta_relay_alignment = task_loss.new_zeros(())
+        coherent_delta_output_alignment = task_loss.new_zeros(())
+        coherent_delta_relay_effective_cells = task_loss.new_zeros(())
+        coherent_delta_output_effective_cells = task_loss.new_zeros(())
+        coherent_delta_transport_rms = task_loss.new_zeros(())
+        coherent_delta_transport_target_rms = task_loss.new_zeros(())
         if teacher_enabled:
             if len(teacher_logits) != len(branch_results):
                 raise RuntimeError("teacher/student branch count mismatch")
@@ -1401,6 +1428,35 @@ def run_training(args: argparse.Namespace) -> dict:
                 coherent_value_target_separation_rms = (
                     coherent_targets[0] - coherent_targets[1]
                 ).pow(2).mean().sqrt()
+                (
+                    coherent_delta_credit_loss,
+                    coherent_delta_alignment,
+                    coherent_delta_student_rms,
+                    coherent_delta_target_rms,
+                    coherent_delta_retention,
+                ) = paired_coherent_recall_delta_credit(
+                    branch_results[0].recalled,
+                    branch_results[1].recalled,
+                    coherent_targets[0],
+                    coherent_targets[1],
+                )
+                (
+                    coherent_delta_transport_credit_loss,
+                    coherent_delta_relay_alignment,
+                    coherent_delta_output_alignment,
+                    coherent_delta_relay_effective_cells,
+                    coherent_delta_output_effective_cells,
+                    coherent_delta_transport_rms,
+                    coherent_delta_transport_target_rms,
+                ) = paired_sparse_coherent_transport_credit(
+                    branch_results[0].relay_state,
+                    branch_results[1].relay_state,
+                    branch_results[0].output_state,
+                    branch_results[1].output_state,
+                    coherent_targets[0],
+                    coherent_targets[1],
+                    temperature=train_config.coherent_transport_temperature,
+                )
         if any(branch.controls is None for branch in branch_results):
             raise RuntimeError("student episode did not emit controls")
         control_energy_loss = torch.stack(
@@ -1483,6 +1539,10 @@ def run_training(args: argparse.Namespace) -> dict:
             * coherent_value_credit_loss
             + train_config.coherent_transport_credit_weight
             * coherent_transport_credit_loss
+            + train_config.coherent_delta_credit_weight
+            * coherent_delta_credit_loss
+            + train_config.coherent_delta_transport_credit_weight
+            * coherent_delta_transport_credit_loss
             + train_config.control_energy_weight * control_energy_loss
             + train_config.output_credit_weight * output_credit_loss
             + train_config.output_eligibility_weight * output_eligibility_loss
@@ -1641,6 +1701,38 @@ def run_training(args: argparse.Namespace) -> dict:
                 coherent_output_effective_cells.detach()
             ),
             "coherent_transport_rms": float(coherent_transport_rms.detach()),
+            "coherent_delta_credit_loss": float(
+                coherent_delta_credit_loss.detach()
+            ),
+            "coherent_delta_alignment": float(coherent_delta_alignment.detach()),
+            "coherent_delta_student_rms": float(
+                coherent_delta_student_rms.detach()
+            ),
+            "coherent_delta_target_rms": float(
+                coherent_delta_target_rms.detach()
+            ),
+            "coherent_delta_retention": float(coherent_delta_retention.detach()),
+            "coherent_delta_transport_credit_loss": float(
+                coherent_delta_transport_credit_loss.detach()
+            ),
+            "coherent_delta_relay_alignment": float(
+                coherent_delta_relay_alignment.detach()
+            ),
+            "coherent_delta_output_alignment": float(
+                coherent_delta_output_alignment.detach()
+            ),
+            "coherent_delta_relay_effective_cells": float(
+                coherent_delta_relay_effective_cells.detach()
+            ),
+            "coherent_delta_output_effective_cells": float(
+                coherent_delta_output_effective_cells.detach()
+            ),
+            "coherent_delta_transport_rms": float(
+                coherent_delta_transport_rms.detach()
+            ),
+            "coherent_delta_transport_target_rms": float(
+                coherent_delta_transport_target_rms.detach()
+            ),
             "control_energy_loss": float(control_energy_loss.detach()),
             "no_exposure_loss": (
                 0.0
@@ -1714,6 +1806,12 @@ def run_training(args: argparse.Namespace) -> dict:
                 f"transport_value={row['coherent_transport_credit_loss']:.4f} "
                 f"relay_value_align={row['coherent_relay_alignment']:.3f} "
                 f"relay_value_eff={row['coherent_relay_effective_cells']:.1f} "
+                f"delta={row['coherent_delta_credit_loss']:.4f} "
+                f"delta_align={row['coherent_delta_alignment']:.3f} "
+                f"delta_keep={row['coherent_delta_retention']:.3f} "
+                f"delta_transport={row['coherent_delta_transport_credit_loss']:.4f} "
+                f"delta_relay_align={row['coherent_delta_relay_alignment']:.3f} "
+                f"delta_relay_eff={row['coherent_delta_relay_effective_cells']:.1f} "
                 f"teacher_acc={row['teacher_label_accuracy']:.2f} "
                 f"energy={row['control_energy_loss']:.6f} "
                 f"output_credit={row['output_credit_loss']:.4f} "
@@ -1891,6 +1989,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recall-addressing-temperature", type=float, default=0.1)
     parser.add_argument("--coherent-value-credit-weight", type=float, default=0.0)
     parser.add_argument("--coherent-transport-credit-weight", type=float, default=0.0)
+    parser.add_argument("--coherent-delta-credit-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--coherent-delta-transport-credit-weight", type=float, default=0.0
+    )
     parser.add_argument("--coherent-transport-temperature", type=float, default=0.1)
     parser.add_argument("--semantic-credit-target-rms", type=float, default=0.25)
     parser.add_argument("--semantic-credit-seed", type=int, default=307)

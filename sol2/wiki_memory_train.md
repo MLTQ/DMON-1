@@ -20,7 +20,8 @@ training populations. Coherent-recall mode, residual gain, sparse top-k, and rec
 bias are likewise serialized architectural treatments. Addressing-credit weight and
 teacher-target temperature are serialized training-only treatments. Coherent answer-
 value and sparse transport weights, recall gain, and transport temperature serialize
-the C1y local developmental treatment.
+the C1y local developmental treatment. Paired coherent-delta recall and transport
+weights serialize C1z's common-mode rejection treatment.
 
 ### `training_episode_start_state`
 
@@ -171,6 +172,14 @@ train recall, recurrent routing, and the existing relay-output tract without req
 every internal neuron to participate. Exact spans, stored values, targets, and pools
 are training-only and never enter language input, evaluation, or inference.
 
+### Paired differential coherent transport
+
+When explicitly enabled, C1z subtracts the two incompatible branches' exact stored-
+answer targets and aligns the live recall difference with that detached delta. Relay
+and output cells are selected by their live paired state difference rather than their
+absolute similarity to either target, so passage-common activity cannot satisfy the
+loss. The treatment reuses the same live anatomy and has no evaluation/inference path.
+
 ### Reference-centered control delta
 
 When explicitly enabled, a detached no-exposure organism pass supplies the question's
@@ -247,6 +256,8 @@ performs independent cellular transitions and language-head control.
   mass when addressing credit is enabled.
 - Records coherent recall/target alignment, RMS, counterfactual separation, sparse
   relay/output alignment, and effective-cell counts when C1y credit is enabled.
+- Records paired coherent-delta loss, alignment, separation retention, differential
+  relay/output alignment, effective-cell counts, and carried-value RMS for C1z.
 - Records start/end memory cursors so lane-policy behavior and saturation are auditable.
 - Evaluates development data at frozen intervals and saves atomic checkpoints.
 - Evaluates held-out data once after the final update and writes complete JSON telemetry.
@@ -339,6 +350,9 @@ performs independent cellular transitions and language-head control.
   gradients; answer spans cannot bypass the organism or frozen language boundary.
 - Sparse transport pools are parameter-free and training-only. Their soft selection
   permits specialized active cells while leaving unused plastic capacity unpenalized.
+- Paired delta targets are detached and swap-invariant. Differential cell selection
+  scores only live branch differences and cannot be satisfied by a shared background
+  representation.
 - Reference controls are computed from the identical starting state and question,
   detached before subtraction, and serialized as a treatment flag rather than state.
 - Delta energy prices effective language intervention after reference subtraction, not
