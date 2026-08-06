@@ -123,6 +123,24 @@ work returns here.
 - **[2026-07] Capability is verified before economy is layered on** — petridish's own
   order. If prediction and metabolism arrive together and it fails, the failure is not
   attributable.
+- **[2026-08] The LLM is a replaceable language organ, not the creature** — DMON must
+  own persistent state, development, adaptation, mode, and intent. Fluent frozen-model
+  output without organism-dependent causal differences is not progress toward the
+  central claim.
+- **[2026-08] Procedural transfer is the strongest substrate evidence** — SOL2 learned
+  a deep generated procedure through causally necessary compute/relay/topology,
+  accelerated a newly attached organ versus scratch, and rapidly recovered old modes.
+  BPC comparisons are descriptive opportunity cost, not the organism objective.
+- **[2026-08] Exact same-coordinate wiki transport is retired after C1aa** — coherent
+  addressing works and paired differential credit briefly improved correct versus
+  wrong passage, but larger tissue, longer training, absolute targets, raw paired
+  targets, and fixed-RMS staged targets did not preserve a usable recall delta. The
+  next language treatment permits learned representational transformation and several
+  bounded transformer-depth injection sites.
+- **[2026-08] Growth must be recruited, not merely triggered** — pressure-triggered
+  append-only growth preserved the organism mechanically, but lesions showed the new
+  cells were unused. Capacity is not credited until grown tissue becomes causally
+  useful.
 
 ## Sharp Edges
 

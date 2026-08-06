@@ -11,35 +11,44 @@ creature is the network: an asynchronously stimulated NCA fed by streamed input.
 
 ## Where things stand
 
-The streaming core (`dmon/stream/`) is being built now. Everything else in `dmon/` is
-the bookmarked display-organ work and should not be extended.
+`sol2/` is the active line. It has a typed, bounded cellular kernel, private cell
+expression/adapters, append-only growth, persistent state, organ attachment, a frozen
+language graft, wiki-memory causal evaluation, and extensive CPU contracts. Read
+`sol2/experiments/program-review-2026-08-06.md` before proposing the next experiment.
 
-Compute is `m@192.168.0.202` (host `Aine`), RTX 4090 + RTX 2070S.
-`CUDA_VISIBLE_DEVICES=0` selects the **4090** — CUDA orders fastest-first while
-`nvidia-smi` calls the 2070S index 0. Check which card is busy before believing you are
-on the big one.
+The strongest result is procedural rather than linguistic: differentiated internal
+tissue mastered a deep generated procedure, accelerated a newly attached organ versus
+scratch, and was highly sensitive to compute/relay/topology lesions. Anchors improved
+the simultaneous retention/adaptation frontier; triggered growth worked mechanically
+but its new cells were not recruited.
+
+The latest language-memory line learned coherent addressing and can steer frozen Qwen,
+but exact same-coordinate value transport failed through C1aa. Fixed target scale,
+isolated local training, larger tissue, and longer duration have now been tested. Do
+not continue that route by escalating any of them. The next interface treatment is a
+differentiated, bounded, output-tissue-only language organ with several transformer-
+depth injection sites and paired causal attribution.
+
+Compute is `m@192.168.0.202` (host `Aine`), RTX 4090 + RTX 2070S. Select by UUID, not
+CUDA ordinal. SOL2 may use only 4090 UUID
+`GPU-21d45575-7ece-a97c-35a0-294f7bce9c39`; the 2070S is reserved for `jewels`.
 
 ---
 
 ## Do this first, in this order
 
-1. **S0: character-level prediction on a continuous stream.** Input region, mirror
-   cells, output region, online backprop concurrent with the stream. The metric is
-   bits-per-character. This follows petridish's own precedent — verify the machinery
-   against a hard number before chasing emergence.
-
-2. **Run the null models alongside, not afterwards.** Parameter-matched GRU and
-   transformer on the identical stream. "The NCA substrate is doing something" is a
-   measurement. Under the previous architecture a trained rule scored *worse than having
-   no network at all*, and that surfaced only because the control existed.
-
-3. **Only then, S1: the energy economy.** Deplete per step, replenish on prediction
-   *progress*. Not before S0 works — if capability and economy arrive together, a
-   failure is unattributable.
-
-4. **S2: grow the lattice at runtime** and show added cells are recruited. This is the
-   claim that justifies choosing cellular automata at all, so it needs testing rather
-   than assuming.
+1. **Build the multi-depth language-organ treatment.** A small number of bounded
+   low-rank effectors may read only differentiated output tissue and inject into frozen
+   Qwen at preregistered depths. No memory-to-LLM bypass.
+2. **Keep the paired causal assay.** Correct passage must beat wrong passage, floor,
+   reset, memory lesion, and internal lesion in likelihood, not merely accuracy.
+3. **If behavior passes, withdraw developmental scaffolds.** Restore interleaved
+   continuous lifetimes and test delayed retention before adding capacity or growth.
+4. **Return to mode and thought-pattern curricula.** Interleaved generated procedures,
+   delayed return, novel organ attachment, and language-mediated plans are closer to
+   the project goal than memorizing isolated facts.
+5. **Only then combine anchors, pressure, and growth.** A growth event counts only when
+   new cells become causally useful.
 
 ---
 
@@ -76,8 +85,9 @@ something that already happened here, not a hypothetical.
   it honest. Satiety is a day-one invariant here.
 - **Resuming the resource-field morphology work as the main line.** It is the display
   organ and it returns at S4. See `BOOKMARK-morphology.md`.
-- **Episodic training with a reset.** If the creature has to stop to learn, it is not
-  asynchronous and S0 has not been passed.
+- **Treating fresh developmental episodes as a lifetime result.** Fresh populations
+  may teach shared developmental rules and diagnose saturation, but the intended
+  creature must ultimately learn and act without resetting its lifetime state.
 - **Assuming an invariant holds because a channel is masked.** Energy was masked out of
   the rule's update and the rule minted it anyway, through an operator it controlled.
   Check the operators.

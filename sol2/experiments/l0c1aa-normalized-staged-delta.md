@@ -69,3 +69,44 @@ likelihood with a majority of strict per-question wins.
 A local pass with a behavioral fail promotes the multi-depth differentiated language
 organ described in `program-review-2026-08-06.md`. A behavioral pass promotes scaffold
 withdrawal and continuous-lifetime retention. Neither outcome licenses blind scaling.
+
+## Stage-A result and stop
+
+Stage A completed update 175 on the physical RTX 4090 and failed its route-formation
+gate, so Stage B was not run. Qwen remained at zero trainable parameters and zero
+gradient tensors. Peak allocation/reservation was 21.97/22.29 GiB. The raw artifact is
+`l0c1aa-normalized-stage-a-s7-u175-result.json`, SHA-256
+`41ab76d7ad8b82e714465cd139598bf22458772c5d89c7b8de9cbd6047260ea9`.
+
+Normalization and optimization were mechanically healthy. Across updates 151--162
+versus 164--175:
+
+- raw target RMS varied `0.0343 -> 0.0365`, while the trained target remained exactly
+  `0.0500` in both blocks;
+- addressing KL improved `0.0601 -> 0.0385`, selected teacher mass stayed near
+  `0.539 -> 0.529`, and every intended recurrent/local gradient group remained live;
+- recall delta RMS was `0.00324 -> 0.00311`; retention therefore stayed
+  `0.0648 -> 0.0623` and fell to `0.0581` in the last five updates, far below the
+  required `0.50` and below C1z's late raw-scale retention;
+- recall alignment rose only `0.082 -> 0.125` and fell to `0.066` in the tail. Relay
+  alignment rose `0.168 -> 0.213`, but output alignment fell `0.0766 -> 0.0570`;
+- carried differential transport RMS grew `0.00107 -> 0.00300`, while relay selection
+  used about `29.7 -> 24.0` effective cells and output selection broadened
+  `10.9 -> 12.4` of 16 cells. This is downstream response without recall-value capture.
+
+The inherited language interface remained active even without behavioral reward.
+Held-out normal loss was `0.56598`, better than the no-control floor `0.57526` and
+internal lesion `0.61682`, but worse than wrong passage `0.56219` and memory lesion
+`0.56897`. Strict normal wins/ties were `4/0` versus floor, `1/5` versus wrong passage,
+`3/1` versus memory lesion, and `6/0` versus internal lesion. Development normal
+`0.29175` was worse than floor `0.27222`, memory lesion `0.28833`, and wrong passage
+`0.29443` only by a small margin in the favorable direction.
+
+Fixed scale and removal of competing behavioral credit therefore do not repair this
+exact same-coordinate copy route. The result localizes the failure more strongly than
+C1z: one final-token content recall and a moving organism-derived sensory target do not
+form a stable differentiated value representation under this curriculum. Escalating
+the loss, extending the run, or enlarging the creature is not licensed. The next
+architecture should allow learned representational transformation and give the
+language organ several bounded, output-tissue-only injection sites, while retaining
+paired behavioral and lesion attribution.

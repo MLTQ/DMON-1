@@ -87,3 +87,12 @@ The next major curriculum should move from isolated fact bindings to persistent 
 and patterns of thought: interleaved procedural contexts, delayed return to earlier
 modes, novel organ attachment, and language-mediated plans whose success cannot be
 supplied by the frozen language model alone.
+
+## C1aa confirmation
+
+C1aa subsequently held the detached target at exact RMS `0.05` and removed competing
+language rewards for 25 updates. Recall retention remained about 6% and declined in the
+tail; correct passage still lost to wrong passage held out. Stage B was therefore
+stopped by rule. This confirms the review's boundary: the project should now leave the
+exact same-coordinate single-recall route rather than answer with more capacity,
+duration, or loss weight.
