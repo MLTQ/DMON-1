@@ -81,6 +81,10 @@ class WikiMemoryTrainConfig:
     language_control_mode: str = "late_residual"
     compact_bindings: bool = False
     control_gain: float = 1.0
+    coherent_recall: bool = False
+    recall_residual_gain: float = 0.1
+    recall_top_k: int = 0
+    recall_recency_bias: float = 0.0
     recall_lr_multiplier: float = 1.0
     sensor_lr_multiplier: float = 1.0
     effector_lr_multiplier: float = 1.0
@@ -135,6 +139,12 @@ class WikiMemoryTrainConfig:
             raise ValueError("unknown language control mode")
         if self.control_gain <= 0:
             raise ValueError("control gain must be positive")
+        if min(
+            self.recall_residual_gain,
+            float(self.recall_top_k),
+            self.recall_recency_bias,
+        ) < 0:
+            raise ValueError("recall structure values must be nonnegative")
         if min(
             self.recall_lr_multiplier,
             self.sensor_lr_multiplier,
@@ -777,6 +787,10 @@ def build_system(args: argparse.Namespace):
         control_rank=args.control_rank,
         control_gain=args.control_gain,
         recall_gain=args.recall_gain,
+        coherent_recall=args.coherent_recall,
+        recall_residual_gain=args.recall_residual_gain,
+        recall_top_k=args.recall_top_k,
+        recall_recency_bias=args.recall_recency_bias,
         seed=args.seed + 1,
     )
     return system, tokenizer, cfg
@@ -816,6 +830,10 @@ def run_training(args: argparse.Namespace) -> dict:
         language_control_mode=args.language_control_mode,
         compact_bindings=args.compact_bindings,
         control_gain=args.control_gain,
+        coherent_recall=args.coherent_recall,
+        recall_residual_gain=args.recall_residual_gain,
+        recall_top_k=args.recall_top_k,
+        recall_recency_bias=args.recall_recency_bias,
         recall_lr_multiplier=args.recall_lr_multiplier,
         sensor_lr_multiplier=args.sensor_lr_multiplier,
         effector_lr_multiplier=args.effector_lr_multiplier,
@@ -1649,6 +1667,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--compact-bindings", action="store_true")
     parser.add_argument("--control-gain", type=float, default=1.0)
     parser.add_argument("--recall-gain", type=float, default=0.25)
+    parser.add_argument("--coherent-recall", action="store_true")
+    parser.add_argument("--recall-residual-gain", type=float, default=0.1)
+    parser.add_argument("--recall-top-k", type=int, default=0)
+    parser.add_argument("--recall-recency-bias", type=float, default=0.0)
     parser.add_argument("--recall-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--sensor-lr-multiplier", type=float, default=1.0)
     parser.add_argument("--effector-lr-multiplier", type=float, default=1.0)

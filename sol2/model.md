@@ -25,6 +25,8 @@ the step writes memory or has no recall-capable organ.
 - Builds explicit input, memory, compute, relay, and output index buffers.
 - Writes bounded token embeddings into a FIFO sensory-memory tissue when the
   selected processing phase opens its write gate.
+- Reorders circular FIFO storage oldest-to-newest before content recall, preserving
+  exact chronology both before and after physical wraparound.
 - Applies one rule per mutable tissue type.
 - Optionally gives every mutable cell bounded private target/time-constant expression.
 - Optionally gives every mutable cell a private low-rank transition residual over its
@@ -86,6 +88,8 @@ Counts only trainable parameters for matched controls.
 - Only the external stream writes memory cells.
 - A closed write gate preserves both memory contents and the FIFO cursor while sensory
   input and mutable-tissue evolution continue normally.
+- Recall receives exactly the valid chronological FIFO prefix; a full wrapped store
+  begins at the physical next-write slot and ends at the newest slot.
 - Output cells are sinks in the connectome.
 - Output cells receive only from compute/relay tissue and retain state only within a
   token's microsteps.

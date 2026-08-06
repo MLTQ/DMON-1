@@ -32,6 +32,10 @@ class ContinuousLanguageOrgan(nn.Module):
         attention_temperature: float,
         control_gain: float = 1.0,
         recall_gain: float = 0.25,
+        coherent_recall: bool = False,
+        recall_residual_gain: float = 0.1,
+        recall_top_k: int = 0,
+        recall_recency_bias: float = 0.0,
     ) -> None:
         super().__init__()
         if language_width < 1 or n_control_tokens < 1 or control_rank < 1:
@@ -44,6 +48,8 @@ class ContinuousLanguageOrgan(nn.Module):
             raise ValueError("control_gain must be positive")
         if not 0 < recall_gain <= 1.0:
             raise ValueError("recall_gain must be in (0, 1]")
+        if recall_residual_gain < 0 or recall_top_k < 0 or recall_recency_bias < 0:
+            raise ValueError("recall residual, top-k, and recency values must be nonnegative")
 
         self.language_width = language_width
         self.n_control_tokens = n_control_tokens
@@ -97,6 +103,10 @@ class ContinuousLanguageOrgan(nn.Module):
             bound=operator_bound,
         )
         self.recall_gain = float(recall_gain)
+        self.coherent_recall = bool(coherent_recall)
+        self.recall_residual_gain = float(recall_residual_gain)
+        self.recall_top_k = int(recall_top_k)
+        self.recall_recency_bias = float(recall_recency_bias)
         self.value_gain = value_gain
         self.attention_temperature = attention_temperature
         self.bounded_operators = bounded_operators
@@ -158,21 +168,39 @@ class ContinuousLanguageOrgan(nn.Module):
         memory = memory_cells[:, :count]
         query = self.recall_query(query_embedding)
         keys = self.recall_key(memory)
-        values = self.recall_value(memory)
+        learned_values = self.recall_value(memory)
         if self.bounded_operators:
             query = torch.tanh(query)
             keys = torch.tanh(keys)
             query = query / query.norm(dim=-1, keepdim=True).clamp_min(1.0)
             keys = keys / keys.norm(dim=-1, keepdim=True).clamp_min(1.0)
-            values = self.value_gain * torch.tanh(values)
+            learned_values = self.value_gain * torch.tanh(learned_values)
             scores = torch.einsum("bh,bnh->bn", query, keys)
             scores = scores / self.attention_temperature
         else:
             scores = torch.einsum("bh,bnh->bn", query, keys)
             scores = scores * query.shape[-1] ** -0.5
+        if self.coherent_recall:
+            values = memory + self.recall_residual_gain * learned_values
+        else:
+            values = learned_values
+        if self.recall_recency_bias > 0:
+            ages = torch.arange(
+                count - 1, -1, -1, device=scores.device, dtype=scores.dtype
+            )
+            scores = scores - self.recall_recency_bias * ages.unsqueeze(0)
+        if 0 < self.recall_top_k < count:
+            selected = scores.topk(self.recall_top_k, dim=-1).indices
+            keep = torch.zeros_like(scores, dtype=torch.bool).scatter_(1, selected, True)
+            scores = scores.masked_fill(~keep, -torch.inf)
         attention = torch.softmax(scores, dim=-1)
         summary = torch.einsum("bn,bnh->bh", attention, values)
-        recalled = self.recall_output(summary)
+        learned_recall = self.recall_output(summary)
+        recalled = (
+            summary + self.recall_residual_gain * torch.tanh(learned_recall)
+            if self.coherent_recall
+            else learned_recall
+        )
         recalled = self.recall_gain * torch.tanh(recalled)
         health = None
         if collect_health:

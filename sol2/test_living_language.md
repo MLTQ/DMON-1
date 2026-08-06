@@ -19,6 +19,9 @@ backbone or GPU training is attempted.
   bounded sensor.
 - Stream-memory writes preserve delayed gradients into the sensor, and content recall
   is bounded, masks unwritten slots, and backpropagates through valid memory only.
+- Circular FIFO recall is chronological after wraparound; coherent zero-residual recall
+  preserves stored coordinates, recency top-k selects the newest valid slot exactly,
+  and positive residual gain recruits value/output maps without removing memory credit.
 - Language loss first recruits the zero-up control decoder and subsequently reaches
   the sensor and deeper closed loop.
 - One-pass vectorized teacher forcing exactly matches the causal repeated-prefix

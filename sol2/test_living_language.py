@@ -225,6 +225,65 @@ def test_stream_memory_write_and_content_recall_are_differentiable() -> None:
     )
 
 
+def test_coherent_sparse_recall_preserves_coordinates_and_fifo_order() -> None:
+    system, _ = build_system()
+    hidden = torch.zeros(1, system.organism.n_cells, LANGUAGE_CFG.hidden)
+    for index, cell in enumerate(system.organism.memory_idx):
+        hidden[:, cell] = float(index + 1)
+    ordered, count = system.organism._chronological_memory(hidden, memory_cursor=6)
+    assert count == 4
+    assert ordered[:, :, 0].tolist() == [[3.0, 4.0, 1.0, 2.0]]
+
+    organ = ContinuousLanguageOrgan(
+        2,
+        LANGUAGE_CFG.hidden,
+        language_width=16,
+        n_queries=2,
+        n_control_tokens=2,
+        control_rank=2,
+        bounded_operators=True,
+        operator_bound=1.0,
+        value_gain=0.85,
+        attention_temperature=0.7,
+        recall_gain=1.0,
+        coherent_recall=True,
+        recall_residual_gain=0.0,
+        recall_top_k=1,
+        recall_recency_bias=100.0,
+    )
+    query = torch.zeros(1, LANGUAGE_CFG.hidden)
+    memory = torch.stack(
+        [torch.full((LANGUAGE_CFG.hidden,), value) for value in (0.1, 0.2, 0.3)],
+        dim=0,
+    ).unsqueeze(0)
+    recalled, health = organ.recall(query, memory, valid_count=3, collect_health=True)
+    assert torch.allclose(recalled, torch.tanh(memory[:, -1]), atol=1e-6)
+    assert health is not None and abs(health.effective_cells - 1.0) < 1e-6
+
+    residual = ContinuousLanguageOrgan(
+        2,
+        LANGUAGE_CFG.hidden,
+        language_width=16,
+        n_queries=2,
+        n_control_tokens=2,
+        control_rank=2,
+        bounded_operators=True,
+        operator_bound=1.0,
+        value_gain=0.85,
+        attention_temperature=0.7,
+        coherent_recall=True,
+        recall_residual_gain=0.1,
+    )
+    live_memory = torch.randn(1, 3, LANGUAGE_CFG.hidden, requires_grad=True)
+    live_query = torch.randn(1, LANGUAGE_CFG.hidden, requires_grad=True)
+    residual.recall(live_query, live_memory, valid_count=3)[0].square().mean().backward()
+    assert residual.recall_value.weight.grad is not None
+    assert residual.recall_output.weight.grad is not None
+    assert float(residual.recall_value.weight.grad.abs().sum()) > 0.0
+    assert float(residual.recall_output.weight.grad.abs().sum()) > 0.0
+    assert live_memory.grad is not None and float(live_memory.grad.abs().sum()) > 0.0
+
+
 def test_vectorized_teacher_forcing_matches_causal_prefix_steps() -> None:
     system, organ = build_system()
     with torch.no_grad():
@@ -515,6 +574,7 @@ def main() -> None:
         test_prefix_control_backpropagates_through_every_frozen_layer,
         test_reference_centered_prefix_is_exact_noop_with_live_student_gradient,
         test_stream_memory_write_and_content_recall_are_differentiable,
+        test_coherent_sparse_recall_preserves_coordinates_and_fifo_order,
         test_vectorized_teacher_forcing_matches_causal_prefix_steps,
         test_observation_scoring_and_masked_loss_preserve_sequence_causality,
         test_generation_feeds_tokens_back_into_continuing_state,

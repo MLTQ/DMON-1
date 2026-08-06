@@ -59,6 +59,8 @@ transitions, and gradient ownership before using the real wiki or 4090.
 - Lifetime lane policy preserves continuous state exactly or creates a zero-cursor,
   zero-hidden fresh episode with the same anatomy, dtype, device, and weight version;
   invalid policies fail and checkpoints serialize the selected treatment.
+- Checkpoints preserve coherent-recall mode, residual gain, sparse top-k, and recency
+  bias as explicit architecture rather than implicit command-line state.
 - Atomic checkpoints reproduce organism/graft weights, optimizer metadata, continuing
   state, corpus identity, update cursor, language-control mode, distillation settings,
   effect-distillation weight, local semantic-credit configuration, and

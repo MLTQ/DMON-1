@@ -17,6 +17,8 @@ adaptation, and lifetime state remain in the cellular substrate.
   low-rank basis instead of decoding vocabulary logits.
 - Content-addresses valid stream-memory slots from the current contextual language
   feature and returns a bounded recall vector to sensory/recurrent tissue.
+- Optionally preserves stored sensory coordinates through identity-plus-learned-residual
+  value/output paths and selects a recency-biased top-k working set.
 - Reports sensor, recall, output-reader, and control-basis norms through normal health
   telemetry.
 
@@ -39,6 +41,9 @@ adaptation, and lifetime state remain in the cellular substrate.
   values and recalled drive are bounded before entering persistent dynamics.
 - Recall gain is an explicit immutable construction value in `(0, 1]`. Experiments may
   raise it without changing parameter count or creating an unbounded state injection.
+- Coherent recall keeps stored values as the dominant coordinate frame; its fixed
+  residual gain prices learned transformation without removing gradients from the
+  value/output maps. Top-k zero means dense legacy attention.
 - Control gain is likewise an explicit positive construction value. It changes the
   bounded effector range without adding a dense vocabulary bypass; protocols must
   report it because too-small BF16 residuals can quantize to an exact language no-op.
@@ -54,6 +59,8 @@ adaptation, and lifetime state remain in the cellular substrate.
   recall sub-interface may read valid memory slots, and only to create sensory drive.
 - Recall may read only valid stream-memory slots, has shape `[batch, hidden]`, and lies
   in `[-recall_gain, recall_gain]`.
+- Recency assumes memory is supplied oldest-to-newest. Sparse attention never selects
+  more than `recall_top_k` valid slots and remains dense when top-k is zero or large.
 - Recall is a sensory drive, never an effector input; output tissue remains an internal-
   only sink.
 - `control_rank` is positive and no larger than `language_width`.

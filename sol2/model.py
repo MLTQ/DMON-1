@@ -385,11 +385,13 @@ class Sol2(nn.Module):
         elif organ_name != "A":
             recall = getattr(self.attached_organs[organ_name], "recall", None)
             if callable(recall):
-                recall_memory = hidden[:, self.memory_idx]
+                recall_memory, recall_count = self._chronological_memory(
+                    hidden, state.memory_cursor
+                )
                 recalled, _ = recall(
                     embedded,
                     recall_memory,
-                    valid_count=min(state.memory_cursor, len(self.memory_idx)),
+                    valid_count=recall_count,
                     collect_health=False,
                 )
                 if trace is not None:
@@ -483,6 +485,20 @@ class Sol2(nn.Module):
             ),
             health,
         )
+
+    def _chronological_memory(
+        self, hidden: torch.Tensor, memory_cursor: int
+    ) -> tuple[torch.Tensor, int]:
+        """Return valid FIFO slots oldest-to-newest across circular wraparound."""
+
+        capacity = len(self.memory_idx)
+        count = min(max(int(memory_cursor), 0), capacity)
+        memory = hidden[:, self.memory_idx]
+        if count < capacity:
+            return memory[:, :count], count
+        start = memory_cursor % capacity
+        order = (torch.arange(capacity, device=hidden.device) + start) % capacity
+        return memory.index_select(1, order), count
 
     def forward_chunk(
         self,

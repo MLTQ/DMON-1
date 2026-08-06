@@ -41,7 +41,8 @@ vector from the final perceived token.
 
 Builds a deterministic continuous organ sized to a backbone's hidden width, attaches
 it to an existing organism, and returns the closed-loop system without consuming the
-caller's random stream. Control and recall gains are explicit graft properties.
+caller's random stream. Control gain, recall gain, coherent residual mode, top-k, and
+recency bias are explicit graft properties.
 
 ## Decisions
 
@@ -94,6 +95,8 @@ caller's random stream. Control and recall gains are explicit graft properties.
 - Recall gain changes only the bounded memory-to-sensory amplitude and never the frozen
   backbone, control gain, topology, or initialization RNG stream. Control gain changes
   only the final bounded output-tissue effector amplitude.
+- Coherent/sparse recall construction values are deterministic and do not alter the
+  frozen backbone or create a memory-to-effector route.
 - A loss mask changes credit assignment only; every input token still advances the
   same continuing cellular state.
 - Cached features must retain `[batch, sequence, backbone_width]` shape and remain

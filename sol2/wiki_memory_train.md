@@ -16,7 +16,8 @@ passage-effect, control-energy, and reference-centering treatments.
 Local memory/relay semantic-credit weights, fixed projection seed, and target RMS are
 also serialized so developmental scaffolding cannot drift across resume. The lifetime
 lane policy explicitly distinguishes continuous state inheritance from fresh episodic
-training populations.
+training populations. Coherent-recall mode, residual gain, sparse top-k, and recency
+bias are likewise serialized architectural treatments.
 
 ### `training_episode_start_state`
 
@@ -133,6 +134,13 @@ on the final question token and aligns its paired difference with the detached
 passage-visible Qwen effect relative to the question-only baseline. Projection seed is
 `semantic_credit_seed + 2`. This credit reaches recall query/key/value/output and live
 memory before recurrent or relay dilution; it has no effector or inference bypass.
+
+### Coherent sparse recall
+
+The language graft may preserve stored sensory coordinates with identity-plus-residual
+value/output paths, reorder circular memory chronologically, bias selection toward recent
+slots, and apply top-k before softmax. Defaults retain the legacy dense learned-only
+path. These are inference anatomy, not teacher shortcuts.
 
 ### Reference-centered control delta
 
@@ -273,6 +281,9 @@ performs independent cellular transitions and language-head control.
   parameter counts, and moments in checkpoints/results.
 - Positive control gain is passed unchanged into graft construction and serialized in
   `train_config`; it does not change topology, parameter count, or backbone weights.
+- Coherent recall, residual gain, top-k, and recency bias are serialized and passed
+  unchanged into graft construction; sparse selection sees valid chronological memory
+  only and recalled drive still enters input tissue.
 - Output credit has no trainable parameters and cannot create a memory-to-Llama bypass.
 - Eligibility credit has no trainable parameters, detaches its relay gate, and is absent
   from development, held-out evaluation, and inference.

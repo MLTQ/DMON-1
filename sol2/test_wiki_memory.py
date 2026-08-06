@@ -921,6 +921,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
                 semantic_credit_seed=307,
                 control_energy_weight=0.1,
                 reference_centered_controls=True,
+                coherent_recall=True,
+                recall_residual_gain=0.1,
+                recall_top_k=16,
+                recall_recency_bias=0.08,
             ),
             model_name="toy",
             dtype="float32",
@@ -957,6 +961,10 @@ def test_counterfactual_schedule_and_checkpoint_resume_are_exact() -> None:
         assert payload["train_config"]["semantic_credit_seed"] == 307
         assert payload["train_config"]["control_energy_weight"] == 0.1
         assert payload["train_config"]["reference_centered_controls"] is True
+        assert payload["train_config"]["coherent_recall"] is True
+        assert payload["train_config"]["recall_residual_gain"] == 0.1
+        assert payload["train_config"]["recall_top_k"] == 16
+        assert payload["train_config"]["recall_recency_bias"] == 0.08
         assert torch.equal(restored_state.hidden, lane_state.hidden)
         assert restored_state.memory_cursor == lane_state.memory_cursor
         left = system.organism.state_dict()
