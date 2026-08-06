@@ -44,4 +44,20 @@ on the 4090, that is a G0 failure, not a license to use the 2070S.
 
 ## Result
 
-Pending.
+Complete 2026-08-06 on the physical RTX 4090. **All gates pass**; G1 is licensed.
+Artifact: `runs/fable2-g0/g0-audit.json` on Aine, SHA-256
+`2bd6e254781de1eef960ce665f4fd5b2b5b3ec56d678c3b556b3cdfa7dfbfb29`.
+
+- Qwen3.5-4B exposes **32** decoder layers (l0c1q's audit table said 24 hybrid
+  blocks for the 2B/4B; the fraction design absorbed the discrepancy — resolved
+  depths 7/15/23/31). `native_logit_error` was exactly 0.0.
+- Zero-init no-op: max |injected − bare| logit delta exactly 0.0 on the live
+  gradient path.
+- Per-depth fp32 label sensitivity to bounded random controls: 7.38 (d7), 2.46
+  (d15), 0.98 (d23), 0.93 (d31); max/min ratio 7.97 — nondegenerate, no
+  amendment required. Shallower sites are amplified by more downstream compute,
+  as expected.
+- Recruitment: all four depth heads live at exact zero-init (norms 0.003–0.025);
+  after one optimizer step trunk, sensor, bases, organism tissues, graph, and
+  expression all live. Zero backbone gradient tensors in both stages.
+- Peak allocation/reservation 15.25/16.13 GiB.

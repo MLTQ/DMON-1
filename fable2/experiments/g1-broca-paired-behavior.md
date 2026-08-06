@@ -50,6 +50,25 @@ questions = 12.5-point resolution; one question is not a result).
 4. `memory_lesion` and `internal_lesion` each cost measurable loss (> 0.01 mean),
    so the effect runs through tissue, not through the effector alone.
 
+## Train-time influence (amendment 1, added at update ~100, before any gate
+## interpretation)
+
+Every run must produce `python -m fable2.curves` output — figures plus
+`trend.json` — before its gates are interpreted, and the recorded verdicts join
+the result:
+
+- If `heldout_margin_vs_wrong_passage` is `still_improving_at_stop`, a gate fail
+  is recorded as **undertrained-fail**: the preregistered follow-up is one
+  continuation of the same checkpoint to 600 updates (a resume, not a new
+  treatment), exactly once. This is the single sanctioned duration extension.
+- If the verdict is `degrading_tail`, the result is read at `best_update`'s
+  checkpoint and the tail is reported as overtraining waste; no extension.
+- A `silenced_depth_indices` warning is reported alongside any pass (a passing
+  run that silenced depths is a narrower pass than it looks).
+
+Operator direction 2026-08-06: both under-training and over-training have cost
+this project real time; duration influence must be measured, not argued.
+
 ## Fail / stop rules
 
 - Any gate fails at update 300 → record, stop, no extension of updates, no capacity

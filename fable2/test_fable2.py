@@ -437,6 +437,69 @@ def test_learnability_smoke() -> None:
     )
 
 
+def test_trend_verdicts() -> None:
+    from .curves import classify_series, compute_trends
+
+    updates = [25, 50, 75, 100, 125]
+    descending = classify_series(updates, [1.0, 0.8, 0.6, 0.4, 0.2], better="lower")
+    assert descending["verdict"] == "still_improving_at_stop", descending
+    v_shape = classify_series(updates, [1.0, 0.5, 0.2, 0.5, 0.9], better="lower")
+    assert v_shape["verdict"] == "degrading_tail" and v_shape["best_update"] == 75
+    flat = classify_series(updates, [0.5, 0.5, 0.5, 0.5, 0.5], better="lower")
+    assert flat["verdict"] == "plateau" and flat["plateau_since_update"] == 25
+    rising_margin = classify_series(updates, [0.0, 0.1, 0.2, 0.3, 0.4], better="higher")
+    assert rising_margin["verdict"] == "still_improving_at_stop"
+    assert classify_series([25, 50], [1.0, 0.9], better="lower")["verdict"] == (
+        "insufficient_evals"
+    )
+
+    def arm_block(loss):
+        return {"mean_loss": loss}
+
+    def evaluation(update, normal, wrong):
+        block = {
+            "normal": arm_block(normal),
+            "wrong_passage": arm_block(wrong),
+            "bare_floor": arm_block(1.4),
+            "no_exposure": arm_block(1.39),
+            "memory_lesion": arm_block(1.38),
+            "internal_lesion": arm_block(1.5),
+            "depth_lesions": {"7": {"mean_loss": 1.41}},
+        }
+        return {"update": update, "development": block, "heldout": block}
+
+    result = {
+        "depths": [7],
+        "telemetry": [
+            {
+                "update": u + 1,
+                "loss": 1.0 / (u + 1),
+                "advantage_vs_wrong_passage": 0.01 * u,
+                "advantage_vs_no_exposure": 0.005 * u,
+                "per_depth_control_rms": [0.1],
+                "grad_norm": 1.0,
+            }
+            for u in range(30)
+        ],
+        "evaluations": [
+            evaluation(25, 1.30, 1.35),
+            evaluation(50, 1.25, 1.36),
+            evaluation(75, 1.20, 1.37),
+        ],
+    }
+    trends = compute_trends(result)
+    assert trends["heldout_normal_loss"]["verdict"] == "still_improving_at_stop"
+    assert trends["heldout_margin_vs_wrong_passage"]["verdict"] == (
+        "still_improving_at_stop"
+    )
+    assert trends["silenced_depth_indices"] == []
+    try:
+        compute_trends({"telemetry": [], "evaluations": []})
+        raise AssertionError("empty-result guard did not fire")
+    except ValueError:
+        pass
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -450,6 +513,7 @@ TESTS = [
     test_mate_constraints,
     test_checkpoint_roundtrip,
     test_learnability_smoke,
+    test_trend_verdicts,
 ]
 
 
