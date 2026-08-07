@@ -610,6 +610,9 @@ def test_mode_language_gates() -> None:
     assert identify_language(FR) == "french"
     assert identify_language(DE) == "german"
     assert identify_language("purely english text with no markers") is None
+    # Short single sentences must identify through character signals.
+    assert identify_language("C'est la diffusion de la lumière du soleil.") == "french"
+    assert identify_language("Die Sonne erwärmt die Erde ungleichmäßig.") == "german"
     try:
         validate_twins("p", {"french": DE, "german": FR})
         raise AssertionError("twin language gate did not fire on swapped twins")

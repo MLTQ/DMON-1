@@ -23,11 +23,20 @@ MODES = ("french", "german")
 FRENCH_MARKERS = (
     " le ", " la ", " les ", " est ", " et ", " une ", " un ", " dans ",
     " pour ", " que ", " des ", " du ", " avec ", " sont ", " plus ",
+    " de ", " en ", " au ", " aux ", " ce ", " cette ", " qui ", " par ",
+    " sur ", " se ", " leur ", " son ", " sa ",
 )
 GERMAN_MARKERS = (
     " der ", " die ", " das ", " ist ", " und ", " eine ", " ein ", " nicht ",
     " mit ", " sind ", " werden ", " auch ", " dem ", " den ", " zu ",
+    " im ", " am ", " auf ", " von ", " durch ", " wird ", " sich ", " als ",
+    " zur ", " zum ", " sie ", " es ", " weil ", " wenn ",
 )
+# Character-level signals rescue short sentences, where function words are
+# scarce: elisions and acute/grave accents are decisively French; umlauts and
+# eszett decisively German.
+FRENCH_CHAR_MARKERS = ("é", "è", "ê", "ç", "à", "l'", "d'", "qu'", "c'", "s'")
+GERMAN_CHAR_MARKERS = ("ä", "ö", "ü", "ß")
 
 PROMPT_TOPICS = (
     "why the sky appears blue", "how bread rises", "what causes tides",
@@ -51,17 +60,21 @@ PROMPT_TOPICS = (
 )
 
 
-def language_score(text: str, markers: tuple[str, ...]) -> int:
+def language_score(
+    text: str, word_markers: tuple[str, ...], char_markers: tuple[str, ...]
+) -> int:
     padded = f" {text.lower()} "
-    return sum(padded.count(marker) for marker in markers)
+    words = sum(padded.count(marker) for marker in word_markers)
+    chars = sum(padded.count(marker) for marker in char_markers)
+    return 2 * words + chars
 
 
 def identify_language(text: str) -> str | None:
-    french = language_score(text, FRENCH_MARKERS)
-    german = language_score(text, GERMAN_MARKERS)
-    if french >= 2 and french > 2 * german:
+    french = language_score(text, FRENCH_MARKERS, FRENCH_CHAR_MARKERS)
+    german = language_score(text, GERMAN_MARKERS, GERMAN_CHAR_MARKERS)
+    if french >= 3 and french > 1.5 * german:
         return "french"
-    if german >= 2 and german > 2 * french:
+    if german >= 3 and german > 1.5 * french:
         return "german"
     return None
 
@@ -330,7 +343,7 @@ def sha_seed(*parts: object) -> int:
     return int.from_bytes(digest[:8], "big") % (2**62)
 
 
-GENERATION_TEMPLATE = """Answer the question below in one or two short sentences, writing ONLY in {language}.
+GENERATION_TEMPLATE = """Answer the question below in ONE short sentence of at most twelve words, writing ONLY in {language}.
 Do not use any English words. Question: {prompt}"""
 
 
@@ -388,7 +401,10 @@ def build_mode_corpus(args: argparse.Namespace) -> dict:
         "items": {"meta_train": 30, "development": 8, "heldout": 16},
         "demos": {"meta_train": 24, "development": 8, "heldout": 12},
     }
-    phrasings = ("Explain {}.", "Describe {}.", "Tell me about {}.", "Summarize {}.")
+    phrasings = (
+        "Explain {}.", "Describe {}.", "Tell me about {}.", "Summarize {}.",
+        "What explains {}?", "Give the reason for {}.",
+    )
     candidates = [
         phrasing.format(topic) for phrasing in phrasings for topic in PROMPT_TOPICS
     ]
@@ -397,7 +413,26 @@ def build_mode_corpus(args: argparse.Namespace) -> dict:
     ).tolist()
     needed = sum(quotas["items"].values()) + sum(quotas["demos"].values())
     entries = []
-    rejects = {"language": 0, "parity": 0, "length": 0}
+    rejects = {"language": 0, "parity": 0, "length": 0, "indifference": 0}
+
+    def bare_twin_margin(prompt: str, twins: dict) -> float:
+        prompt_text = f"Q: {prompt}\nA:"
+        start = len(tokenizer(prompt_text).input_ids)
+        llh = {}
+        with torch.no_grad():
+            for mode in MODES:
+                full = tokenizer(
+                    prompt_text + " " + twins[mode], return_tensors="pt"
+                ).input_ids.to(device)
+                span = (
+                    backbone.bare_logits(full)[:, start - 1 : -1]
+                    .float()
+                    .log_softmax(dim=-1)
+                )
+                llh[mode] = float(
+                    span.gather(-1, full[:, start:].unsqueeze(-1)).mean()
+                )
+        return llh[MODES[0]] - llh[MODES[1]]
     for index in order:
         if len(entries) >= needed:
             break
@@ -423,6 +458,17 @@ def build_mode_corpus(args: argparse.Namespace) -> dict:
         if too_long:
             rejects["length"] += 1
             print(f"reject {prompt!r}: demo-format length above 56 tokens", flush=True)
+            continue
+        # Every entry must also pass the item-format bare-indifference gate (the
+        # floor must not already prefer one language for this content), whichever
+        # role the split assignment later gives it. Mirrors ModeBank's gate.
+        margin = bare_twin_margin(prompt, twins)
+        if abs(margin) > 0.5:
+            rejects["indifference"] += 1
+            print(
+                f"reject {prompt!r}: bare twin margin {margin:+.3f} outside band",
+                flush=True,
+            )
             continue
         entries.append({"prompt": prompt, "twins": twins})
         print(f"admitted {len(entries)}/{needed}: {prompt!r}", flush=True)
@@ -464,7 +510,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--max-new-tokens", type=int, default=80)
+    parser.add_argument("--max-new-tokens", type=int, default=48)
     parser.add_argument("--out", required=True)
     return parser.parse_args()
 
