@@ -36,6 +36,13 @@ fixed structurally.
   term drove static inflation into coefficient saturation that erased the
   differential bit-exact. Whether exposure *helps* over no exposure is measured by
   the evaluation gates, not trained.
+- **The wrong arm is pinned at-or-above baseline** (anti-sabotage hinge, added as
+  a preregistered G2 amendment after the G2a probes). The bare live differential
+  has a degenerate optimum G1 actually found: recognize a mismatched
+  passage/question pair and degrade it. G2a made it visible — trained passages
+  were poison off-pair (0.84 vs 0.60 no-exposure) while token soup helped. With
+  the wrong arm hinged to the no-exposure baseline, the margin is only reachable
+  by raising the exposed arm through matched content.
 - **Mate constraints**: same split, different source family (the mate passage
   cannot support the question), different formatted correct label (margins compare
   distinguishable targets). Selection is deterministic; an unsatisfiable corpus

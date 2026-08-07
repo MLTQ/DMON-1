@@ -280,9 +280,18 @@ def paired_contrast_loss(
         (
             exposed_log_probs[target] - neutral_log_probs[target],
             exposed_log_probs[target] - wrong_log_probs[target],
+            wrong_log_probs[target] - neutral_log_probs[target],
         )
     )
     no_harm = torch.relu(-advantages[0])
     differential = torch.relu(advantages.new_tensor(margin) - advantages[1])
-    loss = no_harm + differential
+    # Anti-sabotage hinge (G2 amendment, justified by the G2a probes): the wrong
+    # arm may not fall below the no-exposure baseline. Without it, the live
+    # differential has a demonstrated degenerate optimum — recognize a mismatched
+    # passage/question pair and degrade it — which produced G1's train-time
+    # "differential", its off-domain catastrophe, and no heldout transfer. With
+    # the wrong arm pinned at-or-above baseline, the margin is only reachable by
+    # raising the exposed arm through matched content.
+    anti_sabotage = torch.relu(-advantages[2])
+    loss = no_harm + differential + anti_sabotage
     return loss, advantages.detach()

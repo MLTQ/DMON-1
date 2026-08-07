@@ -270,6 +270,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 "loss": float(loss.detach()),
                 "advantage_vs_no_exposure": float(advantages[0]),
                 "advantage_vs_wrong_passage": float(advantages[1]),
+                "wrong_vs_no_exposure": float(advantages[2]),
                 "grad_norm": grad_norm,
                 "control_rms": exposed.control_rms,
                 "per_depth_control_rms": list(exposed.per_depth_control_rms),
@@ -287,6 +288,15 @@ def run_training(args: argparse.Namespace) -> dict:
             evaluations.append(evaluation)
         if finished_update % cfg.checkpoint_every == 0 or finished_update == cfg.updates:
             save_checkpoint(checkpoint_path, system, optimizer, cfg, finished_update)
+            # Retain a per-eval copy: G1's best-update model (u150) was destroyed
+            # by its own degrading tail because the rolling checkpoint overwrote it.
+            save_checkpoint(
+                out_dir / f"broca-u{finished_update}.pt",
+                system,
+                optimizer,
+                cfg,
+                finished_update,
+            )
             _write_result(out_dir, cfg, system, telemetry, evaluations, started, device)
 
     return _write_result(out_dir, cfg, system, telemetry, evaluations, started, device)

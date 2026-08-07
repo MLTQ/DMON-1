@@ -298,9 +298,19 @@ def test_paired_loss_arithmetic_and_detachment() -> None:
     wrong = fake([0.0, 1.0, 0.0, 0.0], False)
     neutral = fake([0.0, 0.0, 1.0, 0.0], False)
     loss, advantages = paired_contrast_loss(exposed, wrong, neutral, margin=0.1)
-    assert advantages.shape == (2,)
-    assert float(advantages.min()) > 0
+    assert advantages.shape == (3,)
+    assert float(advantages[0]) > 0 and float(advantages[1]) > 0
     assert float(loss.detach()) == 0.0, "satisfied margins must produce zero loss"
+
+    # Sabotage configuration: exposed beats wrong by miles, but only because the
+    # wrong arm was crushed below the no-exposure baseline. Must be penalized.
+    saboteur = fake([-5.0, 5.0, 0.0, 0.0], True)
+    loss, advantages = paired_contrast_loss(exposed, saboteur, neutral, margin=0.1)
+    assert float(advantages[1]) > 0.1, "sabotage still clears the raw margin"
+    assert float(advantages[2]) < 0, "sabotage drives wrong below baseline"
+    assert float(loss.detach()) > 0, (
+        "anti-sabotage hinge must penalize a crushed wrong arm"
+    )
     exposed_live = fake([0.0, 2.0, 0.0, 0.0], True)
     loss, _ = paired_contrast_loss(exposed_live, wrong, neutral, margin=0.1)
     loss.backward()
@@ -500,6 +510,56 @@ def test_trend_verdicts() -> None:
         pass
 
 
+def test_probe_conditions() -> None:
+    from .probes import CONDITIONS, _exposure_ids
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_bank(cfg, backbone)
+    tokenizer = TinyTokenizer(vocab_size=97)
+    corpus = toy_corpus()
+    exposure_token_ids = {
+        document.id: tokenizer(document.memory).input_ids
+        for document in corpus.documents
+    }
+    token_pool = torch.cat([ids.flatten() for ids in exposure_token_ids.values()])
+    meta_docs = [d for d in corpus.documents if d.split == "meta_train"]
+    item = bank.split_items("heldout")[0]
+    own_doc = next(d for d in corpus.documents if d.id == item.document_id)
+    off_map = {
+        item.document_id: next(
+            d.id for d in meta_docs if d.source_family != own_doc.source_family
+        )
+    }
+
+    own = exposure_token_ids[item.document_id]
+    for condition in CONDITIONS:
+        if condition == "off_domain":
+            args = (condition, item, bank, exposure_token_ids, token_pool, off_map, 7)
+        else:
+            args = (condition, item, bank, exposure_token_ids, token_pool, {}, 7)
+        first = _exposure_ids(*args)
+        second = _exposure_ids(*args)
+        if condition in ("bare", "none"):
+            assert first is None and second is None
+            continue
+        assert first is not None and torch.equal(first, second), (
+            f"probe condition {condition} is not deterministic"
+        )
+        if condition in ("shuffled_own", "pool_random"):
+            assert first.shape == own.shape, (
+                f"{condition} must be length-matched to the own passage"
+            )
+    shuffled = _exposure_ids(
+        "shuffled_own", item, bank, exposure_token_ids, token_pool, {}, 7
+    )
+    assert shuffled is not None
+    assert torch.equal(
+        shuffled.flatten().sort().values, own.flatten().sort().values
+    ), "shuffled_own must preserve the unigram multiset"
+    assert not torch.equal(shuffled, own), "shuffled_own must destroy order"
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -514,6 +574,7 @@ TESTS = [
     test_checkpoint_roundtrip,
     test_learnability_smoke,
     test_trend_verdicts,
+    test_probe_conditions,
 ]
 
 
