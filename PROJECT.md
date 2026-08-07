@@ -141,6 +141,16 @@ work returns here.
   append-only growth preserved the organism mechanically, but lesions showed the new
   cells were unused. Capacity is not credited until grown tissue becomes causally
   useful.
+- **[2026-08] Mode transport through tissue is real — the program's first
+  replicated positive** — M0: language-mode demonstrations experienced only by
+  the organism, erased from every scoring context, shift frozen-Qwen behavior on
+  never-seen prompts in the demonstrated direction (+0.083–0.088 nats/token,
+  30–32/32 strict wins, replicated on fresh demonstration samples,
+  lesion-attributed, sabotage-free). The same substrate/graft/objective that
+  failed three times on content transport passed on first attempt at mode
+  transport — the division of labor is now empirical: the organism carries
+  modes; content needs a mechanism (H-line). Acquisition still reads from the
+  FIFO tape; persistence past FIFO turnover is M1's question.
 - **[2026-08] Corpus scale is exonerated; the language-interface bottleneck is
   architectural** — G2 ran the sabotage-guarded multi-depth graft on a 6× corpus
   whose admission gate pinned the bare floor at chance. No held-out content

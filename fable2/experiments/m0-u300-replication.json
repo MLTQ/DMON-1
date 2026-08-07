@@ -1,0 +1,23 @@
+{
+  "checkpoint_update": 300,
+  "replicates": {
+    "rep1": {
+      "differential_mean": 0.08296357811195776,
+      "strict_wins": 31,
+      "episodes": 32,
+      "mode_margin_by_direction": {
+        "french": 0.1854859385639429,
+        "german": -0.013766544871032238
+      }
+    },
+    "rep2": {
+      "differential_mean": 0.08269986428786069,
+      "strict_wins": 30,
+      "episodes": 32,
+      "mode_margin_by_direction": {
+        "french": 0.18485714495182037,
+        "german": -0.011969645973294973
+      }
+    }
+  }
+}

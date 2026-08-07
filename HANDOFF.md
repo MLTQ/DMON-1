@@ -37,14 +37,17 @@ CUDA ordinal. SOL2 may use only 4090 UUID
 
 ## Do this first, in this order
 
-1. **The multi-depth treatment ran and failed honestly — G0/G1/G2/G2a verdicts are
-   in `fable2/experiments/`.** Capacity, duration, and data are each individually
-   falsified for the exact-recall differential; the G2 stop rule names the next
-   treatment: **question-conditioned read-out** (G3) — the organism's memory queried
-   at scoring time instead of being summarized into question-blind final-state
-   control banks. Preregister G3 before building; keep the anti-sabotage objective,
-   the chance-floor corpus, the curves/trend artifact, and the new
-   permutation-replication rule for any read-at-best claim.
+1. **M0 passed (qualified): mode transport through tissue is real and replicated**
+   — verdict and artifacts in `fable2/experiments/m0-acquired-language-mode.md`.
+   Next: **M1** (bead filed) — M1a retention curve on the frozen M0 checkpoint
+   (no training; the record predicts a decay cliff at FIFO turnover), then M1b
+   delayed-expression training, then slow cells only if the existing anatomy
+   cannot hold a mode across the cliff. Instrument upgrades preregistered from
+   M0's one failed clause: floor-anchored margins, aggregate-tilt corpus gate.
+   G3 (question-conditioned read-out) stays deferred; H0 (fast-weight memory
+   organ) queued in parallel after M1a. The G-line record (G0–G2a) stands as the
+   falsification base: capacity, duration, and data are each individually
+   exonerated for content transport.
 2. **Keep the paired causal assay.** Correct passage must beat wrong passage, floor,
    reset, memory lesion, and internal lesion in likelihood, not merely accuracy.
 3. **If behavior passes, withdraw developmental scaffolds.** Restore interleaved

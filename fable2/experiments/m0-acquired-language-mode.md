@@ -104,4 +104,59 @@ read-at-best and the single sanctioned resume-to-600 on
 
 ## Result
 
-Pending.
+Complete 2026-08-07, 300 updates on the physical RTX 4090 (259 min, peak 14.9
+GiB, zero gradient rejections, no late-run collapse). Artifacts:
+`m0-acquired-language-mode-result.json`, `-trend.json`, `m0-corpus.json`,
+`m0-u300-replication.json`, `figures/m0-*.png`.
+
+**Verdict: qualified pass — the differential core replicated (the program's
+first replicated positive result); the absolute per-direction symmetry clause
+failed as written, for a measured instrument reason.**
+
+Gates at the final update (no read-point selection; the final round passes
+everything the best rounds pass):
+
+1. Mean margins: wrong-mode +0.088 ✓, floor +1.302 ✓, no-exposure +0.036 ✓,
+   memory lesion +0.036 ✓, internal lesion +0.037 ✓. **Per-direction clause
+   fails**: French-exposed mode margin +0.185, German-exposed −0.013.
+2. Strict wins vs wrong-mode: 30/32 ✓ (band 23–32/32 across all twelve rounds;
+   never near the majority line).
+3. Depth attribution: depth-15 lesion costs +0.285 (29/32), depth-7 +0.074
+   (23/32); the two deep sites are mildly counterproductive ✓.
+4. Anti-sabotage: wrong − no-exposure = +0.052 ✓ (wrong-mode demos still help
+   over nothing; no sabotage optimum).
+5. **Replication (the G2 rule): PASSED.** On fresh demonstration samples the
+   differential held at +0.083 with 31/32 and 30/32 strict wins — numerically
+   indistinguishable from the in-run values.
+
+On the failed clause: the replication's per-direction decomposition shows a
+standing French tilt in the injection stacked on the corpus floor's own +0.07
+French tilt (admitted by a per-item band that never constrained the aggregate).
+Exposure moves the margin by ~+0.11 (French) and ~+0.06 (German) *relative to
+the floor* — conditional motion in both directions, with the German direction
+starting 0.07 underwater and finishing at −0.013. This floor-anchored reading
+is post-hoc and recorded as such; it does not amend this verdict. M1
+preregisters floor-anchored margins as primary and an aggregate-tilt gate on
+corpus admission, so the next assay cannot confuse a floor tilt with an
+expression asymmetry.
+
+What M0 established:
+
+- **Mode acquisition through tissue is real.** Demonstrations experienced only
+  by the organism, erased from every scoring context, shift frozen-Qwen
+  behavior on never-seen prompts in the demonstrated direction — replicated,
+  lesion-attributed (mid-depth injection sites and tissue both causal),
+  sabotage-free by construction and by measurement.
+- The modulation-competence reading of the program's record is confirmed: the
+  same substrate, graft, objective, and instruments that failed three times on
+  content transport passed on the first attempt at mode transport.
+- `memory_lesion ≡ no_exposure` held again (margins identical to 4 decimals):
+  acquisition still reads from the FIFO tape. Persistence beyond FIFO turnover
+  is exactly M1's question.
+- Train-time: mild oscillation with a small drift after u150; ~150 updates
+  would likely have sufficed (recorded as overtraining-lite; nothing like the
+  G-line toxicity).
+
+Per the pass path: M1 (persistence) proceeds — M1a measures the retention
+curve on this checkpoint (no training); M1b trains under delayed-expression
+pressure. H0 remains queued in parallel.

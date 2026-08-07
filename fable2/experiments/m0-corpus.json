@@ -1,0 +1,893 @@
+{
+  "schema": 1,
+  "modes": [
+    "french",
+    "german"
+  ],
+  "items": [
+    {
+      "id": "m0-item-0",
+      "split": "meta_train",
+      "prompt": "Describe how vaccines train immunity.",
+      "twins": {
+        "french": "Les vaccins entra\u00eenent le syst\u00e8me immunitaire \u00e0 reconna\u00eetre les pathog\u00e8nes.",
+        "german": "Impfungen trainieren das Immunsystem, Erreger zu erkennen und zu bek\u00e4mpfen."
+      }
+    },
+    {
+      "id": "m0-item-1",
+      "split": "meta_train",
+      "prompt": "Summarize how snowflakes form.",
+      "twins": {
+        "french": "Les cristaux de glace se forment dans les nuages froids.",
+        "german": "Wassertr\u00f6pfchen gefrieren zu Kristallen, die sich zu Schneeflocken entwickeln."
+      }
+    },
+    {
+      "id": "m0-item-2",
+      "split": "meta_train",
+      "prompt": "Tell me about why oil and water separate.",
+      "twins": {
+        "french": "L'huile et l'eau ne se m\u00e9langent pas car elles sont immiscibles.",
+        "german": "\u00d6l und Wasser trennen sich, weil sie unterschiedliche Dichten haben."
+      }
+    },
+    {
+      "id": "m0-item-3",
+      "split": "meta_train",
+      "prompt": "Summarize how corks seal wine.",
+      "twins": {
+        "french": "Le li\u00e8ge scelle le vin par son \u00e9lasticit\u00e9 naturelle.",
+        "german": "Der Kork verschlie\u00dft den Wein durch seine elastische Struktur."
+      }
+    },
+    {
+      "id": "m0-item-4",
+      "split": "meta_train",
+      "prompt": "What explains what causes tides?",
+      "twins": {
+        "french": "La Lune et le Soleil attirent les oc\u00e9ans par gravit\u00e9.",
+        "german": "Die Schwerkraft des Mondes und der Sonne verursacht die Gezeiten."
+      }
+    },
+    {
+      "id": "m0-item-5",
+      "split": "meta_train",
+      "prompt": "Summarize what causes hiccups.",
+      "twins": {
+        "french": "Les spasmes du diaphragme causent les b\u00e9b\u00e9s.",
+        "german": "Husten oder Nahrungsmittelreizung l\u00f6st die Zuckungen aus."
+      }
+    },
+    {
+      "id": "m0-item-6",
+      "split": "meta_train",
+      "prompt": "Give the reason for why cats purr.",
+      "twins": {
+        "french": "Les chats miaulent pour se calmer et communiquer.",
+        "german": "Katzen miauen, um sich zu beruhigen."
+      }
+    },
+    {
+      "id": "m0-item-7",
+      "split": "meta_train",
+      "prompt": "Give the reason for what causes rainbows.",
+      "twins": {
+        "french": "Les gouttes d'eau dispersent la lumi\u00e8re du soleil.",
+        "german": "Regenbogen entsteht durch Lichtbrechung und Reflexion in Wassertropfen."
+      }
+    },
+    {
+      "id": "m0-item-8",
+      "split": "meta_train",
+      "prompt": "Give the reason for what makes rust form.",
+      "twins": {
+        "french": "La rouille se forme par l'oxydation du fer.",
+        "german": "Rost entsteht durch die Reaktion von Eisen mit Sauerstoff und Wasser."
+      }
+    },
+    {
+      "id": "m0-item-9",
+      "split": "meta_train",
+      "prompt": "Describe what makes rust form.",
+      "twins": {
+        "french": "La rouille se forme par l'oxydation du fer.",
+        "german": "Rost entsteht durch die Reaktion von Eisen mit Sauerstoff und Wasser."
+      }
+    },
+    {
+      "id": "m0-item-10",
+      "split": "meta_train",
+      "prompt": "Tell me about how echoes work.",
+      "twins": {
+        "french": "Les \u00e9chos sont des sons r\u00e9fl\u00e9chis par des surfaces.",
+        "german": "Echos entstehen, wenn Schallwellen an W\u00e4nden reflektiert werden."
+      }
+    },
+    {
+      "id": "m0-item-11",
+      "split": "meta_train",
+      "prompt": "Give the reason for what causes earthquakes.",
+      "twins": {
+        "french": "Les tremblements de terre sont caus\u00e9s par des mouvements tectoniques.",
+        "german": "Erdbeben entstehen durch pl\u00f6tzliche Verschiebungen unterirdischer Gesteinsschichten."
+      }
+    },
+    {
+      "id": "m0-item-12",
+      "split": "meta_train",
+      "prompt": "Give the reason for how birds navigate migration.",
+      "twins": {
+        "french": "Les oiseaux utilisent le soleil, la lune et les \u00e9toiles pour naviguer.",
+        "german": "V\u00f6gel nutzen den Sternenhimmel und das Erdmagnetfeld zur Orientierung."
+      }
+    },
+    {
+      "id": "m0-item-13",
+      "split": "meta_train",
+      "prompt": "Summarize what causes rainbows.",
+      "twins": {
+        "french": "Les gouttes de pluie r\u00e9fractent et dispersent la lumi\u00e8re du soleil.",
+        "german": "Regenbogen entsteht durch Lichtbrechung und Reflexion in Wassertropfen."
+      }
+    },
+    {
+      "id": "m0-item-14",
+      "split": "meta_train",
+      "prompt": "Summarize how rivers carve canyons.",
+      "twins": {
+        "french": "Les rives creusent des canyons par l'\u00e9rosion de l'eau.",
+        "german": "Fl\u00fcsse graben durch Erosion tiefe Schluchten in den Felsen."
+      }
+    },
+    {
+      "id": "m0-item-15",
+      "split": "meta_train",
+      "prompt": "What explains how echoes work?",
+      "twins": {
+        "french": "Les \u00e9chos sont caus\u00e9s par la r\u00e9flexion du son.",
+        "german": "Echos entstehen durch die Reflexion von Schallwellen an Oberfl\u00e4chen."
+      }
+    },
+    {
+      "id": "m0-item-16",
+      "split": "meta_train",
+      "prompt": "What explains why hot air rises?",
+      "twins": {
+        "french": "L'air chaud est moins dense et monte.",
+        "german": "Hei\u00dfe Luft steigt auf, weil sie leichter ist."
+      }
+    },
+    {
+      "id": "m0-item-17",
+      "split": "meta_train",
+      "prompt": "Give the reason for what makes thunder.",
+      "twins": {
+        "french": "Le tonnerre est caus\u00e9 par la foudre qui cr\u00e9e un choc \u00e9lectrique.",
+        "german": "Donner entsteht durch die schnelle Erw\u00e4rmung von Luft."
+      }
+    },
+    {
+      "id": "m0-item-18",
+      "split": "meta_train",
+      "prompt": "Explain why bread goes stale.",
+      "twins": {
+        "french": "Le pain durcit car l'eau s'\u00e9vapore et les amidons se transforment.",
+        "german": "Brot wird alt, weil Feuchtigkeit entweicht und es austrocknet."
+      }
+    },
+    {
+      "id": "m0-item-19",
+      "split": "meta_train",
+      "prompt": "Explain how echoes work.",
+      "twins": {
+        "french": "Les \u00e9chos sont des sons r\u00e9fl\u00e9chis par des surfaces.",
+        "german": "Echos entstehen durch die Reflexion von Schallwellen an Oberfl\u00e4chen."
+      }
+    },
+    {
+      "id": "m0-item-20",
+      "split": "meta_train",
+      "prompt": "Explain how vaccines train immunity.",
+      "twins": {
+        "french": "Les vaccins entra\u00eenent le syst\u00e8me immunitaire \u00e0 reconna\u00eetre les pathog\u00e8nes.",
+        "german": "Impfungen trainieren das Immunsystem, Erreger zu erkennen und zu bek\u00e4mpfen."
+      }
+    },
+    {
+      "id": "m0-item-21",
+      "split": "meta_train",
+      "prompt": "Tell me about why hot air rises.",
+      "twins": {
+        "french": "L'air chaud monte car il est moins dense que l'air froid.",
+        "german": "Hei\u00dfe Luft steigt auf, weil sie leichter ist als kalte Luft."
+      }
+    },
+    {
+      "id": "m0-item-22",
+      "split": "meta_train",
+      "prompt": "Tell me about what makes popcorn pop.",
+      "twins": {
+        "french": "La chaleur fait gonfler les grains de ma\u00efs.",
+        "german": "Wasser verdampft und sprengt die Schale."
+      }
+    },
+    {
+      "id": "m0-item-23",
+      "split": "meta_train",
+      "prompt": "Summarize what makes rust form.",
+      "twins": {
+        "french": "La rouille se forme par l'oxydation du fer en pr\u00e9sence d'eau et d'air.",
+        "german": "Rost entsteht durch die Reaktion von Eisen mit Sauerstoff und Wasser."
+      }
+    },
+    {
+      "id": "m0-item-24",
+      "split": "meta_train",
+      "prompt": "Tell me about why bread goes stale.",
+      "twins": {
+        "french": "Le pain durcit car l'eau s'\u00e9vapore et les amidons se transforment.",
+        "german": "Brot wird alt, weil Feuchtigkeit entweicht und Mikroben wachsen."
+      }
+    },
+    {
+      "id": "m0-item-25",
+      "split": "meta_train",
+      "prompt": "Summarize why bread goes stale.",
+      "twins": {
+        "french": "Le pain durcit car l'eau s'\u00e9vapore et les amidons se transforment.",
+        "german": "Brot wird alt, weil Feuchtigkeit entweicht und Mikroben wachsen."
+      }
+    },
+    {
+      "id": "m0-item-26",
+      "split": "meta_train",
+      "prompt": "Explain how tea changes color with lemon.",
+      "twins": {
+        "french": "Le th\u00e9 devient plus clair avec du citron.",
+        "german": "Lemon macht Tee gelb, da Zitronens\u00e4ure die Farbe ver\u00e4ndert."
+      }
+    },
+    {
+      "id": "m0-item-27",
+      "split": "meta_train",
+      "prompt": "What explains what causes hiccups?",
+      "twins": {
+        "french": "Les spasmes du diaphragme causent les b\u00e9b\u00e9s.",
+        "german": "Husten oder K\u00e4lte l\u00f6sen oft Kr\u00e4mpfe im Zwerchfell aus."
+      }
+    },
+    {
+      "id": "m0-item-28",
+      "split": "meta_train",
+      "prompt": "What explains why metal feels colder than wood?",
+      "twins": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter, weil es W\u00e4rme schneller abf\u00fchrt."
+      }
+    },
+    {
+      "id": "m0-item-29",
+      "split": "meta_train",
+      "prompt": "Tell me about how honey is made.",
+      "twins": {
+        "french": "Les abeilles transforment le nectar en miel.",
+        "german": "Bienen sammeln Nektar und verwandeln ihn zu Honig."
+      }
+    },
+    {
+      "id": "m0-item-30",
+      "split": "development",
+      "prompt": "Explain how clouds hold water.",
+      "twins": {
+        "french": "Les nuages retiennent l'eau sous forme de minuscules gouttelettes.",
+        "german": "Wolken halten Wasser als winzige Tr\u00f6pfchen oder Eiskristalle."
+      }
+    },
+    {
+      "id": "m0-item-31",
+      "split": "development",
+      "prompt": "Summarize why waves break near shore.",
+      "twins": {
+        "french": "Les vagues brisent pr\u00e8s du rivage car le fond ralentit leur progression.",
+        "german": "Wellen brechen, weil sie sich verlangsamen und kippen."
+      }
+    },
+    {
+      "id": "m0-item-32",
+      "split": "development",
+      "prompt": "Describe how fireflies glow.",
+      "twins": {
+        "french": "Les lucioles brillent gr\u00e2ce \u00e0 une r\u00e9action chimique.",
+        "german": "Fliegen leuchten durch chemische Reaktion in ihren Fl\u00fcgeln."
+      }
+    },
+    {
+      "id": "m0-item-33",
+      "split": "development",
+      "prompt": "Tell me about what causes fog.",
+      "twins": {
+        "french": "La brume se forme par la condensation de l'humidit\u00e9.",
+        "german": "Fog entsteht durch Abk\u00fchlung von Luftfeuchtigkeit."
+      }
+    },
+    {
+      "id": "m0-item-34",
+      "split": "development",
+      "prompt": "Describe how soap cleans.",
+      "twins": {
+        "french": "Le savon enl\u00e8ve la salet\u00e9 en formant des micelles.",
+        "german": "Seife l\u00f6st Schmutz auf und sp\u00fclt ihn weg."
+      }
+    },
+    {
+      "id": "m0-item-35",
+      "split": "development",
+      "prompt": "Explain how honey is made.",
+      "twins": {
+        "french": "Les abeilles transforment le nectar en miel.",
+        "german": "Bienen sammeln Nektar und verwandeln ihn zu Honig."
+      }
+    },
+    {
+      "id": "m0-item-36",
+      "split": "development",
+      "prompt": "What explains how chameleons change color?",
+      "twins": {
+        "french": "Les chameleons changent de couleur gr\u00e2ce \u00e0 des pigments et des cellules.",
+        "german": "Chameleons \u00e4ndern die Farbe durch spezielle Pigmente in ihrer Haut."
+      }
+    },
+    {
+      "id": "m0-item-37",
+      "split": "development",
+      "prompt": "Give the reason for how honey is made.",
+      "twins": {
+        "french": "Les abeilles transforment le nectar en miel.",
+        "german": "Bienen sammeln Nektar und verwandeln ihn zu Honig."
+      }
+    },
+    {
+      "id": "m0-item-38",
+      "split": "heldout",
+      "prompt": "Explain how soap cleans.",
+      "twins": {
+        "french": "Le savon enl\u00e8ve la salet\u00e9 en formant des micelles.",
+        "german": "Seife l\u00f6st Schmutz auf, weil sie Fett und Wasser verbindet."
+      }
+    },
+    {
+      "id": "m0-item-39",
+      "split": "heldout",
+      "prompt": "Summarize what makes geysers erupt.",
+      "twins": {
+        "french": "L'eau chaude et la vapeur montent pour cr\u00e9er l'\u00e9ruption.",
+        "german": "Wasser und Dampf dr\u00fccken Geyser nach oben."
+      }
+    },
+    {
+      "id": "m0-item-40",
+      "split": "heldout",
+      "prompt": "Summarize how fireflies glow.",
+      "twins": {
+        "french": "Les lucioles brillent gr\u00e2ce \u00e0 une r\u00e9action chimique dans leurs abdos.",
+        "german": "Feuerfliegen leuchten durch chemische Reaktionen in ihren Fl\u00fcgeln."
+      }
+    },
+    {
+      "id": "m0-item-41",
+      "split": "heldout",
+      "prompt": "Describe why oil and water separate.",
+      "twins": {
+        "french": "L'huile et l'eau ne se m\u00e9langent pas car elles sont immiscibles.",
+        "german": "\u00d6l und Wasser trennen sich, weil sie unterschiedliche Dichten haben."
+      }
+    },
+    {
+      "id": "m0-item-42",
+      "split": "heldout",
+      "prompt": "Summarize how vaccines train immunity.",
+      "twins": {
+        "french": "Les vaccins entra\u00eenent le syst\u00e8me immunitaire \u00e0 reconna\u00eetre les pathog\u00e8nes.",
+        "german": "Impfstoffe trainieren das Immunsystem, Erreger zu erkennen und zu bek\u00e4mpfen."
+      }
+    },
+    {
+      "id": "m0-item-43",
+      "split": "heldout",
+      "prompt": "Give the reason for how echoes work.",
+      "twins": {
+        "french": "Les \u00e9chos sont caus\u00e9s par la r\u00e9flexion du son sur les murs.",
+        "german": "Echos entstehen durch die Reflexion von Schallwellen an Oberfl\u00e4chen."
+      }
+    },
+    {
+      "id": "m0-item-44",
+      "split": "heldout",
+      "prompt": "Explain how yeast ferments sugar.",
+      "twins": {
+        "french": "Le levain transforme le sucre en alcool et en gaz.",
+        "german": "Hefe wandelt Zucker durch G\u00e4rung in Alkohol und Kohlendioxid um."
+      }
+    },
+    {
+      "id": "m0-item-45",
+      "split": "heldout",
+      "prompt": "What explains how fireflies glow?",
+      "twins": {
+        "french": "La bioluminescence explique comment les lucioles brillent.",
+        "german": "Biolumineszenz erkl\u00e4rt das Leuchten der Gl\u00fchw\u00fcrmchen."
+      }
+    },
+    {
+      "id": "m0-item-46",
+      "split": "heldout",
+      "prompt": "Summarize how spiders build webs.",
+      "twins": {
+        "french": "Les araign\u00e9es tissent des toiles en fil de soie.",
+        "german": "Spinnen bauen Netze mit speziellen Dr\u00fcsen und Beinen."
+      }
+    },
+    {
+      "id": "m0-item-47",
+      "split": "heldout",
+      "prompt": "Tell me about what makes rust form.",
+      "twins": {
+        "french": "La rouille se forme par l'oxydation du fer en pr\u00e9sence d'eau et d'air.",
+        "german": "Rost entsteht durch die Reaktion von Eisen mit Sauerstoff und Wasser."
+      }
+    },
+    {
+      "id": "m0-item-48",
+      "split": "heldout",
+      "prompt": "Give the reason for why metal feels colder than wood.",
+      "twins": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter an, weil es W\u00e4rme schneller abf\u00fchrt."
+      }
+    },
+    {
+      "id": "m0-item-49",
+      "split": "heldout",
+      "prompt": "Describe how snowflakes form.",
+      "twins": {
+        "french": "Les flocons de neige se forment par la cong\u00e9lation de la vapeur d'eau.",
+        "german": "Wassertr\u00f6pfchen gefrieren zu Kristallen, die sich zu Schneeflocken entwickeln."
+      }
+    },
+    {
+      "id": "m0-item-50",
+      "split": "heldout",
+      "prompt": "What explains why leaves change color?",
+      "twins": {
+        "french": "La lumi\u00e8re et la temp\u00e9rature changent les pigments des feuilles.",
+        "german": "Licht und Temperatur l\u00f6sen Chlorophyll ab und zeigen andere Farben."
+      }
+    },
+    {
+      "id": "m0-item-51",
+      "split": "heldout",
+      "prompt": "What explains what makes rust form?",
+      "twins": {
+        "french": "La rouille se forme par l'oxydation du fer.",
+        "german": "Rost entsteht durch die Reaktion von Eisen mit Sauerstoff und Wasser."
+      }
+    },
+    {
+      "id": "m0-item-52",
+      "split": "heldout",
+      "prompt": "Summarize what causes fog.",
+      "twins": {
+        "french": "La brume se forme par la condensation de l'humidit\u00e9.",
+        "german": "Fog entsteht durch Abk\u00fchlung von Luftfeuchtigkeit."
+      }
+    },
+    {
+      "id": "m0-item-53",
+      "split": "heldout",
+      "prompt": "Describe how salt preserves food.",
+      "twins": {
+        "french": "Le sel retire l'eau et emp\u00eache la croissance des bact\u00e9ries.",
+        "german": "Salz zieht Wasser aus dem Essen und hemmt Bakterienwachstum."
+      }
+    }
+  ],
+  "demos": [
+    {
+      "id": "m0-demo-54",
+      "split": "meta_train",
+      "prompt": "What explains how corks seal wine?",
+      "responses": {
+        "french": "La pression du vin pousse le li\u00e8ge pour sceller.",
+        "german": "Der Kork schlie\u00dft den Wein durch seine Elastizit\u00e4t."
+      }
+    },
+    {
+      "id": "m0-demo-55",
+      "split": "meta_train",
+      "prompt": "Give the reason for why bread goes stale.",
+      "responses": {
+        "french": "Le pain durcit car l'eau s'\u00e9vapore et les amidons se transforment.",
+        "german": "Brot wird alt, weil Feuchtigkeit entweicht und es austrocknet."
+      }
+    },
+    {
+      "id": "m0-demo-56",
+      "split": "meta_train",
+      "prompt": "Describe how birds navigate migration.",
+      "responses": {
+        "french": "Les oiseaux naviguent gr\u00e2ce au soleil, aux \u00e9toiles et au magn\u00e9tisme terrestre.",
+        "german": "V\u00f6gel nutzen Sterne, Sonne und Erdmagnetfeld zum Navigieren."
+      }
+    },
+    {
+      "id": "m0-demo-57",
+      "split": "meta_train",
+      "prompt": "Describe what makes popcorn pop.",
+      "responses": {
+        "french": "La chaleur fait gonfler l'eau et faire exploser le grain.",
+        "german": "Wasser verdampft und sprengt die Schale."
+      }
+    },
+    {
+      "id": "m0-demo-58",
+      "split": "meta_train",
+      "prompt": "Tell me about what makes volcanoes erupt.",
+      "responses": {
+        "french": "Les volcans \u00e9ruptent par la pression du magma.",
+        "german": "Vulkane brechen aus, weil Druck im Inneren steigt."
+      }
+    },
+    {
+      "id": "m0-demo-59",
+      "split": "meta_train",
+      "prompt": "Summarize how chameleons change color.",
+      "responses": {
+        "french": "Les chameleons changent de couleur gr\u00e2ce \u00e0 des cellules sp\u00e9cialis\u00e9es.",
+        "german": "Chameleons \u00e4ndern ihre Farbe durch spezielle Pigmente in der Haut."
+      }
+    },
+    {
+      "id": "m0-demo-60",
+      "split": "meta_train",
+      "prompt": "Summarize why ice floats.",
+      "responses": {
+        "french": "L'eau se dilate en gelant, ce qui la rend moins dense.",
+        "german": "Eis schwimmt, weil es weniger dicht als Wasser ist."
+      }
+    },
+    {
+      "id": "m0-demo-61",
+      "split": "meta_train",
+      "prompt": "Tell me about how rivers carve canyons.",
+      "responses": {
+        "french": "Les rives creusent des canyons par l'\u00e9rosion de l'eau.",
+        "german": "Fl\u00fcsse graben durch Erosion tiefe Schluchten in den Felsen."
+      }
+    },
+    {
+      "id": "m0-demo-62",
+      "split": "meta_train",
+      "prompt": "Explain how chameleons change color.",
+      "responses": {
+        "french": "Les chameleons changent de couleur gr\u00e2ce \u00e0 des cellules sp\u00e9cialis\u00e9es.",
+        "german": "Chameleons \u00e4ndern ihre Farbe durch spezielle Pigmente in der Haut."
+      }
+    },
+    {
+      "id": "m0-demo-63",
+      "split": "meta_train",
+      "prompt": "What explains what makes popcorn pop?",
+      "responses": {
+        "french": "La chaleur fait exploser l'eau contenue dans le grain.",
+        "german": "Wasser verdampft und sprengt die Schale."
+      }
+    },
+    {
+      "id": "m0-demo-64",
+      "split": "meta_train",
+      "prompt": "Explain why stars twinkle.",
+      "responses": {
+        "french": "Les \u00e9toiles scintillent \u00e0 cause de l'atmosph\u00e8re terrestre.",
+        "german": "Sterne flackern, weil ihre Lichtstrahlen durch die Atmosph\u00e4re gest\u00f6rt werden."
+      }
+    },
+    {
+      "id": "m0-demo-65",
+      "split": "meta_train",
+      "prompt": "Describe how magnets work.",
+      "responses": {
+        "french": "Les aimants cr\u00e9ent des champs magn\u00e9tiques qui attirent ou repoussent les m\u00e9taux.",
+        "german": "Magnetismus entsteht durch die Bewegung elektrischer Ladungen in Atomen."
+      }
+    },
+    {
+      "id": "m0-demo-66",
+      "split": "meta_train",
+      "prompt": "Explain why metal feels colder than wood.",
+      "responses": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter an, weil es W\u00e4rme schneller abf\u00fchrt."
+      }
+    },
+    {
+      "id": "m0-demo-67",
+      "split": "meta_train",
+      "prompt": "Tell me about why cats purr.",
+      "responses": {
+        "french": "Les chats miaulent pour se calmer et communiquer.",
+        "german": "Katzen miauen, um ihre Bed\u00fcrfnisse zu signalisieren."
+      }
+    },
+    {
+      "id": "m0-demo-68",
+      "split": "meta_train",
+      "prompt": "What explains how birds navigate migration?",
+      "responses": {
+        "french": "Les oiseaux utilisent le soleil, la Terre et le magn\u00e9tisme.",
+        "german": "V\u00f6gel nutzen Sterne, Sonne und Erdmagnetfeld zur Orientierung."
+      }
+    },
+    {
+      "id": "m0-demo-69",
+      "split": "meta_train",
+      "prompt": "Explain how spiders build webs.",
+      "responses": {
+        "french": "Les araign\u00e9es tissent des toiles en fil de soie.",
+        "german": "Spinnen bauen Netze mit speziellen Dr\u00fcsen und Beinen."
+      }
+    },
+    {
+      "id": "m0-demo-70",
+      "split": "meta_train",
+      "prompt": "Tell me about how soap cleans.",
+      "responses": {
+        "french": "Le savon enl\u00e8ve la salet\u00e9 en formant des micelles.",
+        "german": "Seife l\u00f6st Schmutz durch ihre molekulare Struktur auf."
+      }
+    },
+    {
+      "id": "m0-demo-71",
+      "split": "meta_train",
+      "prompt": "Explain what makes thunder.",
+      "responses": {
+        "french": "Le tonnerre est la lumi\u00e8re \u00e9lectrique qui se produit dans les nuages.",
+        "german": "Donner entsteht durch die schnelle Erw\u00e4rmung von Luft."
+      }
+    },
+    {
+      "id": "m0-demo-72",
+      "split": "meta_train",
+      "prompt": "What explains how rivers carve canyons?",
+      "responses": {
+        "french": "L'\u00e9rosion par l'eau creuse les canyons au fil du temps.",
+        "german": "Fl\u00fcsse erodieren Gestein und graben Schluchten aus."
+      }
+    },
+    {
+      "id": "m0-demo-73",
+      "split": "meta_train",
+      "prompt": "What explains how yeast ferments sugar?",
+      "responses": {
+        "french": "La fermentation est une r\u00e9action chimique qui lib\u00e8re de l'\u00e9nergie.",
+        "german": "Hefe wandelt Zucker durch G\u00e4rung in Alkohol und Kohlendioxid um."
+      }
+    },
+    {
+      "id": "m0-demo-74",
+      "split": "meta_train",
+      "prompt": "What explains what makes thunder?",
+      "responses": {
+        "french": "La foudre cr\u00e9e la foudre par la foudre.",
+        "german": "Donner entsteht durch die schnelle Erw\u00e4rmung von Luft."
+      }
+    },
+    {
+      "id": "m0-demo-75",
+      "split": "meta_train",
+      "prompt": "Give the reason for why the moon has phases.",
+      "responses": {
+        "french": "La Lune change de forme car elle tourne autour de la Terre.",
+        "german": "Der Mond hat Phasen wegen der unterschiedlichen Beleuchtung durch die Sonne."
+      }
+    },
+    {
+      "id": "m0-demo-76",
+      "split": "meta_train",
+      "prompt": "Tell me about why metal feels colder than wood.",
+      "responses": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter, weil es W\u00e4rme schneller abf\u00fchrt."
+      }
+    },
+    {
+      "id": "m0-demo-77",
+      "split": "meta_train",
+      "prompt": "Give the reason for why ice floats.",
+      "responses": {
+        "french": "L'eau se dilate en gelant, ce qui la rend moins dense.",
+        "german": "Eis schwimmt, weil es weniger dicht als Wasser ist."
+      }
+    },
+    {
+      "id": "m0-demo-78",
+      "split": "development",
+      "prompt": "Explain why oil and water separate.",
+      "responses": {
+        "french": "L'huile et l'eau ne se m\u00e9langent pas car elles sont immiscibles.",
+        "german": "\u00d6l und Wasser trennen sich, weil sie unterschiedliche Dichten haben."
+      }
+    },
+    {
+      "id": "m0-demo-79",
+      "split": "development",
+      "prompt": "Summarize why metal feels colder than wood.",
+      "responses": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter, weil es W\u00e4rme schneller abgibt."
+      }
+    },
+    {
+      "id": "m0-demo-80",
+      "split": "development",
+      "prompt": "Give the reason for how clouds hold water.",
+      "responses": {
+        "french": "Les nuages retiennent l'eau gr\u00e2ce \u00e0 la condensation.",
+        "german": "Wasser verdunstet, kondensiert und f\u00e4llt als Regen."
+      }
+    },
+    {
+      "id": "m0-demo-81",
+      "split": "development",
+      "prompt": "Tell me about how chameleons change color.",
+      "responses": {
+        "french": "Les chameleons changent de couleur pour se camoufler ou communiquer.",
+        "german": "Chameleons \u00e4ndern ihre Farbe durch spezielle Pigmente in der Haut."
+      }
+    },
+    {
+      "id": "m0-demo-82",
+      "split": "development",
+      "prompt": "What explains why ice floats?",
+      "responses": {
+        "french": "L'eau se dilate en gelant et devient moins dense.",
+        "german": "Eis schwimmt, weil es weniger dicht als Wasser ist."
+      }
+    },
+    {
+      "id": "m0-demo-83",
+      "split": "development",
+      "prompt": "Summarize how birds navigate migration.",
+      "responses": {
+        "french": "Les oiseaux naviguent gr\u00e2ce au soleil, aux \u00e9toiles et au magn\u00e9tisme terrestre.",
+        "german": "V\u00f6gel nutzen Sonne, Sterne und Erdmagnetfeld zum Navigieren."
+      }
+    },
+    {
+      "id": "m0-demo-84",
+      "split": "development",
+      "prompt": "Describe how clouds hold water.",
+      "responses": {
+        "french": "Les nuages retiennent l'eau sous forme de minuscules gouttelettes.",
+        "german": "Wolken halten Wasser als winzige Tr\u00f6pfchen oder Eiskristalle."
+      }
+    },
+    {
+      "id": "m0-demo-85",
+      "split": "development",
+      "prompt": "Give the reason for how snowflakes form.",
+      "responses": {
+        "french": "Les cristaux de glace se forment par la cong\u00e9lation de la vapeur d'eau.",
+        "german": "Wassertr\u00f6pfchen gefrieren zu Kristallen, die sich zu Schneeflocken verbinden."
+      }
+    },
+    {
+      "id": "m0-demo-86",
+      "split": "heldout",
+      "prompt": "Describe why metal feels colder than wood.",
+      "responses": {
+        "french": "Le m\u00e9tal conduit mieux la chaleur que le bois.",
+        "german": "Metall f\u00fchlt k\u00e4lter, weil es W\u00e4rme schneller abf\u00fchrt."
+      }
+    },
+    {
+      "id": "m0-demo-87",
+      "split": "heldout",
+      "prompt": "What explains why wood floats?",
+      "responses": {
+        "french": "La densit\u00e9 du bois est inf\u00e9rieure \u00e0 celle de l'eau.",
+        "german": "Wasser ist schwerer als Holz und dr\u00fcckt es nach oben."
+      }
+    },
+    {
+      "id": "m0-demo-88",
+      "split": "heldout",
+      "prompt": "Summarize how magnets work.",
+      "responses": {
+        "french": "Les aimants cr\u00e9ent des champs magn\u00e9tiques par l'alignement des \u00e9lectrons.",
+        "german": "Magnete wirken durch magnetische Felder, die auf Materie einwirken."
+      }
+    },
+    {
+      "id": "m0-demo-89",
+      "split": "heldout",
+      "prompt": "Give the reason for what makes volcanoes erupt.",
+      "responses": {
+        "french": "La pression des gaz internes provoque les \u00e9ruptions volcaniques.",
+        "german": "Druck im Erdinneren treibt den Lavastrom nach oben."
+      }
+    },
+    {
+      "id": "m0-demo-90",
+      "split": "heldout",
+      "prompt": "Tell me about why waves break near shore.",
+      "responses": {
+        "french": "Les vagues brisent pr\u00e8s du rivage car le fond les ralentit.",
+        "german": "Wellen brechen, weil sich ihre Geschwindigkeit durch das flache Wasser verringert."
+      }
+    },
+    {
+      "id": "m0-demo-91",
+      "split": "heldout",
+      "prompt": "Tell me about how clouds hold water.",
+      "responses": {
+        "french": "Les nuages retiennent l'eau sous forme de gouttelettes microscopiques.",
+        "german": "Wolken halten Wasser als winzige Tr\u00f6pfchen oder Eiskristalle."
+      }
+    },
+    {
+      "id": "m0-demo-92",
+      "split": "heldout",
+      "prompt": "Give the reason for how glass is made.",
+      "responses": {
+        "french": "Le verre se fait en fondant le sable \u00e0 haute temp\u00e9rature.",
+        "german": "Glas wird durch Schmelzen von Sand und anderen Stoffen hergestellt."
+      }
+    },
+    {
+      "id": "m0-demo-93",
+      "split": "heldout",
+      "prompt": "Give the reason for how bread rises.",
+      "responses": {
+        "french": "La levure produit du gaz qui fait monter le pain.",
+        "german": "Hefe g\u00e4rt und produziert Kohlendioxid, das das Brot aufbl\u00e4ht."
+      }
+    },
+    {
+      "id": "m0-demo-94",
+      "split": "heldout",
+      "prompt": "Summarize how soap cleans.",
+      "responses": {
+        "french": "Le savon enl\u00e8ve la salet\u00e9 en formant des micelles.",
+        "german": "Seife l\u00f6st Schmutz auf, weil sie Fett und Wasser verbindet."
+      }
+    },
+    {
+      "id": "m0-demo-95",
+      "split": "heldout",
+      "prompt": "Summarize how echoes work.",
+      "responses": {
+        "french": "Les \u00e9chos sont des sons r\u00e9fl\u00e9chis par des surfaces.",
+        "german": "Echos entstehen, wenn Schallwellen an W\u00e4nden reflektiert werden."
+      }
+    },
+    {
+      "id": "m0-demo-96",
+      "split": "heldout",
+      "prompt": "What explains why oil and water separate?",
+      "responses": {
+        "french": "La diff\u00e9rence de densit\u00e9 explique la s\u00e9paration de l'huile et de l'eau.",
+        "german": "\u00d6l und Wasser trennen sich wegen unterschiedlicher Polarit\u00e4t."
+      }
+    },
+    {
+      "id": "m0-demo-97",
+      "split": "heldout",
+      "prompt": "What explains how owls fly silently?",
+      "responses": {
+        "french": "Leurs plumes douces et leurs bords arrondis r\u00e9duisent le bruit.",
+        "german": "Die Federn der Eulen sind so gestaltet, dass sie leise fliegen."
+      }
+    }
+  ]
+}

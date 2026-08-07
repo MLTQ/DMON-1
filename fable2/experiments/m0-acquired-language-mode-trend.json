@@ -1,0 +1,75 @@
+{
+  "train_loss_smoothed": {
+    "best_update": 179,
+    "best_value": 0.04552330347624692,
+    "final_update": 300,
+    "final_value": 0.07704927094958046,
+    "epsilon": 0.017168837433511563,
+    "verdict": "degrading_tail"
+  },
+  "development_normal_loss": {
+    "best_update": 225,
+    "best_value": 0.5980799926328473,
+    "final_update": 300,
+    "final_value": 0.7028061630553566,
+    "epsilon": 0.02471654999651946,
+    "verdict": "degrading_tail"
+  },
+  "development_margin_vs_wrong_passage": {
+    "best_update": 150,
+    "best_value": 0.17384124780073762,
+    "final_update": 300,
+    "final_value": 0.08670429681660607,
+    "epsilon": 0.0026528100296854974,
+    "verdict": "degrading_tail"
+  },
+  "development_margin_vs_bare_floor": {
+    "best_update": 225,
+    "best_value": 1.3951050208997913,
+    "final_update": 300,
+    "final_value": 1.290378850477282,
+    "epsilon": 0.02471654999651946,
+    "verdict": "degrading_tail"
+  },
+  "development_margin_vs_no_exposure": {
+    "best_update": 75,
+    "best_value": 0.17129508778452873,
+    "final_update": 300,
+    "final_value": 0.027769137755967677,
+    "epsilon": 0.0033620046917349103,
+    "verdict": "degrading_tail"
+  },
+  "heldout_normal_loss": {
+    "best_update": 175,
+    "best_value": 0.7000308516435325,
+    "final_update": 300,
+    "final_value": 0.8111397805041634,
+    "epsilon": 0.025825232127681376,
+    "verdict": "degrading_tail"
+  },
+  "heldout_margin_vs_wrong_passage": {
+    "best_update": 50,
+    "best_value": 0.17081686854362488,
+    "final_update": 300,
+    "final_value": 0.08776358334580436,
+    "epsilon": 0.0025096618360839784,
+    "verdict": "degrading_tail"
+  },
+  "heldout_margin_vs_bare_floor": {
+    "best_update": 175,
+    "best_value": 1.413548153359443,
+    "final_update": 300,
+    "final_value": 1.302439224498812,
+    "epsilon": 0.025825232127681376,
+    "verdict": "degrading_tail"
+  },
+  "heldout_margin_vs_no_exposure": {
+    "best_update": 75,
+    "best_value": 0.13395811710506678,
+    "final_update": 300,
+    "final_value": 0.035718237690161914,
+    "epsilon": 0.00214500289876014,
+    "verdict": "degrading_tail"
+  },
+  "silenced_depth_indices": []
+}
