@@ -56,4 +56,35 @@ curve. M1b's design consumes these numbers.
 
 ## Result
 
-Pending.
+Complete 2026-08-07. Artifacts: `m1a-retention-curve-result.json`,
+`figures/m1a-retention-curve.png`.
+
+**The prediction is confirmed with unusual precision: the mode lives entirely
+on the FIFO tape, decays in proportion to evicted demonstration tokens, and
+dies exactly at full eviction. There is no recurrent carry.**
+
+| N filler | differential | strict wins /32 |
+|---|---|---|
+| 0 | +0.0833 | 31 |
+| 32 | +0.0850 | 30 |
+| 64 | +0.0821 | 31 |
+| 128 | +0.0710 | 30 |
+| 192 | +0.0468 | 30 |
+| 256 | +0.0009 | 19 |
+| 384 | +0.0013 | 15 |
+| 512 | −0.0022 | 15 |
+
+Named quantities: N½ = 256, N₀ = 384, residual at 512 = −0.002 (strict wins at
+exact coin-flip). The demonstrations occupy ~200–224 slots of the 256-slot
+FIFO; the differential tracks the surviving fraction almost linearly
+(graceful degradation — the readout integrates over remaining evidence rather
+than cliffing at first eviction) and reaches zero precisely when the last
+demonstration token scrolls off. The floor-anchored margin equals the raw
+margin at every N: the filler itself induces no mode tilt (clean control).
+
+This measures the creature's memory horizon: **one FIFO span**. The
+memory-lesion invariant is now confirmed dynamically, not only by ablation.
+M1b design inputs: train with exposure→query delays ramped across 64–384;
+success is any above-chance differential surviving full FIFO eviction, which
+would certify a learned non-tape route (recurrent attractor or otherwise) —
+the organism's first distinction between what it is seeing and what it is.

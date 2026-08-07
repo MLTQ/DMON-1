@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "experiment": "m1a-retention-curve",
+  "checkpoint_update": 300,
+  "fifo_slots": 256,
+  "ladder": [
+    {
+      "n_filler": 0,
+      "differential_mean": 0.08325174794299528,
+      "strict_wins": 31,
+      "episodes": 32,
+      "mode_margin_mean": 0.08478914754232392,
+      "floor_anchored_margin_mean": 0.08478914754232392
+    },
+    {
+      "n_filler": 32,
+      "differential_mean": 0.08503598719835281,
+      "strict_wins": 30,
+      "episodes": 32,
+      "mode_margin_mean": 0.0872180302394554,
+      "floor_anchored_margin_mean": 0.0872180302394554
+    },
+    {
+      "n_filler": 64,
+      "differential_mean": 0.08212160877883434,
+      "strict_wins": 31,
+      "episodes": 32,
+      "mode_margin_mean": 0.0831428391393274,
+      "floor_anchored_margin_mean": 0.0831428391393274
+    },
+    {
+      "n_filler": 128,
+      "differential_mean": 0.07100878516212106,
+      "strict_wins": 30,
+      "episodes": 32,
+      "mode_margin_mean": 0.0757329051848501,
+      "floor_anchored_margin_mean": 0.0757329051848501
+    },
+    {
+      "n_filler": 192,
+      "differential_mean": 0.0467681604786776,
+      "strict_wins": 30,
+      "episodes": 32,
+      "mode_margin_mean": 0.04401799576589838,
+      "floor_anchored_margin_mean": 0.04401799576589838
+    },
+    {
+      "n_filler": 256,
+      "differential_mean": 0.0008537647081539035,
+      "strict_wins": 19,
+      "episodes": 32,
+      "mode_margin_mean": 0.0024683286901563406,
+      "floor_anchored_margin_mean": 0.0024683286901563406
+    },
+    {
+      "n_filler": 384,
+      "differential_mean": 0.0012960367603227496,
+      "strict_wins": 15,
+      "episodes": 32,
+      "mode_margin_mean": 0.0006804602453485131,
+      "floor_anchored_margin_mean": 0.0006804602453485131
+    },
+    {
+      "n_filler": 512,
+      "differential_mean": -0.0021760876988992095,
+      "strict_wins": 15,
+      "episodes": 32,
+      "mode_margin_mean": 0.00036888394970446825,
+      "floor_anchored_margin_mean": 0.00036888394970446825
+    }
+  ],
+  "n_half": 256,
+  "n_zero": 384,
+  "residual_at_max": -0.0021760876988992095
+}
