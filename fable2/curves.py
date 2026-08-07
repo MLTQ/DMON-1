@@ -82,11 +82,23 @@ def classify_series(
     return report
 
 
+# Mode-line runs use "wrong_mode" for the counterfactual arm; the G-line uses
+# "wrong_passage". Same role in every panel and verdict.
+ARM_ALIASES = {"wrong_passage": ("wrong_passage", "wrong_mode")}
+
+
+def _arm_block(evaluation_split: dict, arm: str) -> dict:
+    for name in ARM_ALIASES.get(arm, (arm,)):
+        if name in evaluation_split:
+            return evaluation_split[name]
+    raise KeyError(f"arm {arm!r} missing from evaluation block")
+
+
 def _eval_series(result: dict, split: str, arm: str) -> tuple[list[int], list[float]]:
     updates, values = [], []
     for evaluation in result["evaluations"]:
         updates.append(evaluation["update"])
-        values.append(evaluation[split][arm]["mean_loss"])
+        values.append(_arm_block(evaluation[split], arm)["mean_loss"])
     return updates, values
 
 

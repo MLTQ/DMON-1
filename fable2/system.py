@@ -201,6 +201,58 @@ class BrocaSystem(nn.Module):
         )
 
 
+    def continuation_log_likelihood(
+        self,
+        full_ids: torch.Tensor,
+        continuation_start: int,
+        prompt_features: torch.Tensor,
+        state: OrganismState,
+        *,
+        bare: bool = False,
+        inject: bool = True,
+        lesion_depths: frozenset[int] = frozenset(),
+        frozen_idx: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, float]:
+        """Mean fp32 per-token log-probability of a continuation span.
+
+        The organism evolves over the *prompt* features only (the continuation
+        is the measurement, never an observation), its final-state controls are
+        injected over the full sequence, and the span's tokens are scored in
+        fp32. Returns `(mean_log_prob_with_graph, control_rms)`.
+        """
+
+        if full_ids.shape[0] != 1:
+            raise ValueError("episodes currently require one lifetime lane")
+        if not 0 < continuation_start < full_ids.shape[1]:
+            raise ValueError("continuation must be a non-empty suffix span")
+        if bare:
+            logits = self.backbone.bare_logits(full_ids)
+            stats = {
+                "control_rms": 0.0,
+                "per_depth_control_rms": tuple(0.0 for _ in self.depths),
+            }
+        else:
+            controls, _ = self._evolve(
+                prompt_features, state, write_memory=False, frozen_idx=frozen_idx
+            )
+            if not inject:
+                controls = torch.zeros_like(controls).detach()
+            banks = self.depth_controls(controls, lesion_depths=lesion_depths)
+            logits = self.backbone.injected_logits(full_ids, banks)
+            stats = {
+                "control_rms": float(controls.detach().float().pow(2).mean().sqrt()),
+                "per_depth_control_rms": tuple(
+                    float(controls[:, position].detach().float().pow(2).mean().sqrt())
+                    for position in range(len(self.depths))
+                ),
+            }
+        span_logits = logits[:, continuation_start - 1 : -1].float()
+        span_targets = full_ids[:, continuation_start:]
+        log_probs = span_logits.log_softmax(dim=-1)
+        token_log_probs = log_probs.gather(-1, span_targets.unsqueeze(-1)).squeeze(-1)
+        return token_log_probs.mean(), stats
+
+
 def build_broca_system(
     backbone: nn.Module,
     cfg: Fable2Config,

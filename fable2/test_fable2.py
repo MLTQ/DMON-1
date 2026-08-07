@@ -560,6 +560,179 @@ def test_probe_conditions() -> None:
     assert not torch.equal(shuffled, own), "shuffled_own must destroy order"
 
 
+FR = "le ciel est bleu et la mer est calme pour les bateaux"
+DE = "der himmel ist blau und die see ist ruhig mit den booten"
+FR2 = "la lune est belle et les etoiles sont dans le ciel"
+DE2 = "die sonne ist warm und der wind ist nicht stark"
+
+
+def toy_mode_corpus():
+    from .modes import ModeDemo, ModeItem
+
+    items, demos = [], []
+    specs = [("meta_train", 2), ("development", 1), ("heldout", 1)]
+    index = 0
+    for split, count in specs:
+        for _ in range(count):
+            items.append(
+                ModeItem(
+                    id=f"item-{index}", split=split,
+                    prompt=f"topic {index}",
+                    twins={"french": FR, "german": DE},
+                )
+            )
+            index += 1
+    for split, _ in specs:
+        for position in range(3):
+            demos.append(
+                ModeDemo(
+                    id=f"demo-{split}-{position}", split=split,
+                    prompt=f"demo topic {position}",
+                    responses={"french": FR2, "german": DE2},
+                )
+            )
+    return items, demos
+
+
+def build_toy_mode_bank(backbone):
+    from .modes import ModeBank
+
+    items, demos = toy_mode_corpus()
+    return ModeBank(
+        items, demos, TinyTokenizer(vocab_size=backbone.vocab_size), backbone, "cpu",
+        max_demo_tokens=56, max_item_tokens=160, bare_indifference_band=2.0,
+    )
+
+
+def test_mode_language_gates() -> None:
+    from .modes import identify_language, validate_twins
+
+    assert identify_language(FR) == "french"
+    assert identify_language(DE) == "german"
+    assert identify_language("purely english text with no markers") is None
+    try:
+        validate_twins("p", {"french": DE, "german": FR})
+        raise AssertionError("twin language gate did not fire on swapped twins")
+    except ValueError:
+        pass
+    try:
+        validate_twins("p", {"french": FR + " " + FR + " " + FR, "german": "der ist und die"})
+        raise AssertionError("twin parity gate did not fire")
+    except ValueError:
+        pass
+
+
+def test_mode_arms_and_zero_init() -> None:
+    from .modes import MODES, run_mode_arm
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    system = build_broca_system(backbone, cfg, device="cpu")
+    item = bank.split_items("heldout")[0]
+
+    with torch.no_grad():
+        bare = run_mode_arm(system, bank, item, "french", "bare_floor", demo_k=2)
+        fresh = run_mode_arm(system, bank, item, "french", "normal", demo_k=2)
+    for mode in MODES:
+        assert float(bare["log_likelihoods"][mode]) == float(
+            fresh["log_likelihoods"][mode]
+        ), "zero-init graft must leave continuation likelihoods at the bare floor"
+
+    torch.manual_seed(31)
+    randomize_heads(system)
+    with torch.no_grad():
+        scores = {
+            arm: run_mode_arm(system, bank, item, "french", arm, demo_k=2)
+            for arm in ("normal", "wrong_mode", "no_exposure", "memory_lesion", "internal_lesion")
+        }
+        lesioned = run_mode_arm(
+            system, bank, item, "french", "normal", demo_k=2,
+            lesion_depths=frozenset({system.depths[0]}),
+        )
+    values = {
+        arm: float(score["log_likelihoods"]["french"])
+        for arm, score in scores.items()
+    }
+    names = list(values)
+    for first in range(len(names)):
+        for second in range(first + 1, len(names)):
+            assert values[names[first]] != values[names[second]], (
+                f"mode arms {names[first]} and {names[second]} coincide"
+            )
+    assert float(lesioned["log_likelihoods"]["french"]) != values["normal"]
+    stream_a = bank.demo_stream("heldout", "french", k=2, sample_seed=5)
+    stream_b = bank.demo_stream("heldout", "french", k=2, sample_seed=5)
+    assert torch.equal(stream_a, stream_b), "demo sampling must be deterministic"
+
+
+def test_paired_mode_loss_arithmetic() -> None:
+    from .modes import paired_mode_loss
+
+    def score(french, german, requires_grad=False):
+        return {
+            "exposed_mode": "french",
+            "log_likelihoods": {
+                "french": torch.tensor(french, requires_grad=requires_grad),
+                "german": torch.tensor(german),
+            },
+        }
+
+    exposed = score(-1.0, -2.0, True)
+    wrong = score(-1.3, -1.2)
+    neutral = score(-1.4, -1.4)
+    loss, advantages = paired_mode_loss(exposed, wrong, neutral, margin=0.1)
+    assert advantages.shape == (3,)
+    assert float(loss.detach()) == 0.0, "satisfied hinges must give zero loss"
+
+    saboteur = score(-9.0, -1.2)
+    loss, advantages = paired_mode_loss(exposed, saboteur, neutral, margin=0.1)
+    assert float(advantages[2]) < 0 and float(loss.detach()) > 0, (
+        "anti-sabotage hinge must fire when wrong-mode exposure is crushed"
+    )
+    live = score(-2.0, -1.0, True)
+    loss, _ = paired_mode_loss(live, wrong, neutral, margin=0.1)
+    loss.backward()
+    assert live["log_likelihoods"]["french"].grad is not None
+
+
+def test_mode_learnability_smoke() -> None:
+    from .modes import paired_mode_loss, run_mode_arm
+
+    cfg = small_config().scaled(lr=3e-3)
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    system = build_broca_system(backbone, cfg, device="cpu")
+    optimizer = torch.optim.AdamW(trainable_parameter_groups(system, cfg))
+    item = bank.split_items("meta_train")[0]
+    first_loss = last_loss = None
+    last_advantages = None
+    for update in range(60):
+        mode = ("french", "german")[update % 2]
+        with torch.no_grad():
+            neutral = run_mode_arm(system, bank, item, mode, "no_exposure", demo_k=2)
+        wrong = run_mode_arm(system, bank, item, mode, "wrong_mode", demo_k=2)
+        exposed = run_mode_arm(system, bank, item, mode, "normal", demo_k=2)
+        loss, advantages = paired_mode_loss(exposed, wrong, neutral, margin=0.1)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            [p for group in optimizer.param_groups for p in group["params"]], 1.0
+        )
+        optimizer.step()
+        if first_loss is None:
+            first_loss = float(loss.detach())
+        last_loss = float(loss.detach())
+        last_advantages = advantages
+    assert first_loss is not None and last_loss is not None
+    assert last_loss < first_loss, (
+        f"mode loss did not descend ({first_loss} -> {last_loss})"
+    )
+    assert last_advantages is not None and float(last_advantages[1]) > 0, (
+        "matching-mode exposure must beat wrong-mode exposure on the toy"
+    )
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -575,6 +748,10 @@ TESTS = [
     test_learnability_smoke,
     test_trend_verdicts,
     test_probe_conditions,
+    test_mode_language_gates,
+    test_mode_arms_and_zero_init,
+    test_paired_mode_loss_arithmetic,
+    test_mode_learnability_smoke,
 ]
 
 
