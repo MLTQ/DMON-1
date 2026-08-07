@@ -32,6 +32,18 @@ lr 1e-3, 300 updates, eval every 25, fresh-episode policy and its caveat.
 Per-eval checkpoints are retained this time (`broca-u<N>.pt`), closing G1's
 lost-best-model gap.
 
+## Amendment 2 (pre-training, during corpus generation)
+
+The first build attempt admitted ~3% of documents under a 2-of-2 rule (both
+drafted questions must pass both gates), projecting under-quota on the full
+vault. Questions are now gated individually and quotas count questions
+(72/12/24), not documents; a document contributes its admissible questions
+(one or two) and documents never straddle splits. The per-question gate itself
+is unchanged — the 2-of-2 rule was discarding admissible questions for their
+siblings' failures, which added strictness without adding rigor. Per-question
+gate outcomes (closed-book/open-book) are now logged for the record. No G2
+training had run at amendment time.
+
 ## Attribution note
 
 G2 moves two factors relative to G1 (data, objective guard). This is accepted

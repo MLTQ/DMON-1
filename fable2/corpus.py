@@ -70,12 +70,22 @@ def extract_passage(
 
 def draft_questions(backbone, tokenizer, passage: str, *, max_new_tokens: int) -> list[dict]:
     messages = [{"role": "user", "content": GENERATION_INSTRUCTIONS + passage}]
-    input_ids = tokenizer.apply_chat_template(
-        messages, add_generation_prompt=True, return_tensors="pt"
-    ).to(next(backbone.model.parameters()).device)
+    encoded = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        return_tensors="pt",
+        # Qwen3-family thinking mode restates the prompt template inside its
+        # reasoning trace and can exhaust the token budget before the answer.
+        enable_thinking=False,
+    )
+    # transformers 5.x returns a BatchEncoding here; 4.x returned a bare tensor.
+    if not isinstance(encoded, torch.Tensor):
+        encoded = encoded["input_ids"]
+    input_ids = encoded.to(next(backbone.model.parameters()).device)
     with torch.no_grad():
         output = backbone.model.generate(
             input_ids,
+            attention_mask=torch.ones_like(input_ids),
             max_new_tokens=max_new_tokens,
             do_sample=False,
             pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
@@ -83,12 +93,20 @@ def draft_questions(backbone, tokenizer, passage: str, *, max_new_tokens: int) -
     completion = tokenizer.decode(
         output[0, input_ids.shape[1] :], skip_special_tokens=True
     )
-    start, end = completion.find("{"), completion.rfind("}")
+    # Anchor on the LAST answer-shaped object: even without thinking mode the
+    # model may echo the template (whose {...} placeholder is not valid JSON)
+    # before emitting the real answer.
+    start, end = completion.rfind('{"questions"'), completion.rfind("}")
     if start == -1 or end <= start:
+        print(f"    draft-fail no-json: {completion[:200]!r}", flush=True)
         return []
     try:
         payload = json.loads(completion[start : end + 1])
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as error:
+        print(
+            f"    draft-fail bad-json ({error}): {completion[start : start + 200]!r}",
+            flush=True,
+        )
         return []
     drafted = []
     for raw in payload.get("questions", []):
@@ -182,19 +200,20 @@ def build_corpus(args: argparse.Namespace) -> dict:
     ).tolist()
 
     quotas = {
-        "meta_train": args.meta_train_documents,
-        "development": args.development_documents,
-        "heldout": args.heldout_documents,
+        "meta_train": args.meta_train_questions,
+        "development": args.development_questions,
+        "heldout": args.heldout_questions,
     }
     admitted: list[dict] = []
     report = {"scanned": 0, "passage_rejects": 0, "draft_rejects": 0, "gate_rejects": 0}
     needed = sum(quotas.values())
 
     for index in order:
-        if len(admitted) >= needed:
+        if sum(len(d["questions"]) for d in admitted) >= needed:
             break
         path = candidates[index]
         report["scanned"] += 1
+        relative_name = str(path.relative_to(wiki_root))
         text = path.read_text(errors="replace")
         passage = extract_passage(
             text,
@@ -204,17 +223,23 @@ def build_corpus(args: argparse.Namespace) -> dict:
         )
         if passage is None or "Designated answer" in passage:
             report["passage_rejects"] += 1
+            print(f"[{report['scanned']}] {relative_name}: passage-reject", flush=True)
             continue
         drafted = draft_questions(
             backbone, tokenizer, passage, max_new_tokens=args.max_new_tokens
         )
         if len(drafted) != 2:
             report["draft_rejects"] += 1
+            print(f"[{report['scanned']}] {relative_name}: draft-reject", flush=True)
             continue
         relative = str(path.relative_to(wiki_root))
         stem = re.sub(r"[^a-z0-9]+", "-", relative[: -len(".md")].lower()).strip("-")
         document_id = f"g2-{stem}"
-        gates_ok = True
+        # Amendment 2 (recorded in g2-corpus-scaling.md): questions are gated
+        # individually — a sibling's failure says nothing about this question's
+        # necessity or extractability, and the 2-of-2 rule was discarding half
+        # the admissible supply. Quotas therefore count questions, not documents.
+        kept_questions = []
         for position, question in enumerate(drafted):
             question_id = f"{document_id}-q{position}"
             closed = bare_answers_correctly(
@@ -235,11 +260,17 @@ def build_corpus(args: argparse.Namespace) -> dict:
                 question_id=question_id,
                 passage=passage,
             )
-            if closed or not opened:
-                gates_ok = False
-                break
-        if not gates_ok:
+            verdict = "admit" if (not closed and opened) else "reject"
+            print(
+                f"    q{position}: closed_book_correct={closed} "
+                f"open_book_correct={opened} -> {verdict}",
+                flush=True,
+            )
+            if verdict == "admit":
+                kept_questions.append((question_id, question))
+        if not kept_questions:
             report["gate_rejects"] += 1
+            print(f"[{report['scanned']}] {relative_name}: gate-reject", flush=True)
             continue
         admitted.append(
             {
@@ -249,31 +280,39 @@ def build_corpus(args: argparse.Namespace) -> dict:
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 "memory": passage,
                 "questions": [
-                    {
-                        "id": f"{document_id}-q{position}",
-                        **question,
-                    }
-                    for position, question in enumerate(drafted)
+                    {"id": question_id, **question}
+                    for question_id, question in kept_questions
                 ],
             }
         )
+        admitted_questions = sum(len(d["questions"]) for d in admitted)
         print(
-            f"admitted {len(admitted)}/{needed}: {document_id} "
-            f"(scanned {report['scanned']})",
+            f"admitted {admitted_questions}/{needed} questions "
+            f"({document_id}, scanned {report['scanned']})",
             flush=True,
         )
 
-    if len(admitted) < needed:
+    total_questions = sum(len(d["questions"]) for d in admitted)
+    if total_questions < needed:
         raise RuntimeError(
-            f"only {len(admitted)} documents admitted of {needed} required; "
+            f"only {total_questions} questions admitted of {needed} required; "
             f"rejects: {report}"
         )
 
-    cursor = 0
-    for split, quota in quotas.items():
-        for document in admitted[cursor : cursor + quota]:
-            document["split"] = split
-        cursor += quota
+    # Greedy split fill by question count (documents never straddle splits; a
+    # two-question document may overshoot a quota by one — recorded, accepted).
+    split_iter = iter(quotas.items())
+    split, quota = next(split_iter)
+    filled = 0
+    for document in admitted:
+        if filled >= quota:
+            try:
+                split, quota = next(split_iter)
+            except StopIteration:
+                split, quota = split, quota
+            filled = 0
+        document["split"] = split
+        filled += len(document["questions"])
 
     corpus = {"schema": 1, "wiki_root": str(wiki_root), "documents": admitted}
     out = Path(args.out)
@@ -294,9 +333,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--permutation-seed", type=int, default=101)
-    parser.add_argument("--meta-train-documents", type=int, default=36)
-    parser.add_argument("--development-documents", type=int, default=6)
-    parser.add_argument("--heldout-documents", type=int, default=12)
+    parser.add_argument("--meta-train-questions", type=int, default=72)
+    parser.add_argument("--development-questions", type=int, default=12)
+    parser.add_argument("--heldout-questions", type=int, default=24)
     parser.add_argument("--min-passage-tokens", type=int, default=80)
     parser.add_argument("--max-passage-tokens", type=int, default=220)
     parser.add_argument("--max-new-tokens", type=int, default=700)
