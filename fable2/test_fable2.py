@@ -736,6 +736,51 @@ def test_mode_learnability_smoke() -> None:
     )
 
 
+def test_retention_probe_contracts() -> None:
+    from .modes import run_mode_arm, sha_seed
+    from .retention import build_filler_stream, scored_with_filler
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    system = build_broca_system(backbone, cfg, device="cpu")
+    torch.manual_seed(41)
+    randomize_heads(system)
+    system.organism.eval()
+    tokenizer = TinyTokenizer(vocab_size=backbone.vocab_size)
+    filler = build_filler_stream(bank, tokenizer, backbone, max_tokens=24)
+    assert filler.shape[1] == 24
+    item = bank.split_items("heldout")[0]
+    seed = sha_seed("m1a", item.id, "french")
+    with torch.no_grad():
+        via_probe = scored_with_filler(
+            system, bank, item, "french", "normal", filler, 0,
+            demo_k=2, sample_seed=seed,
+        )
+        via_arm = run_mode_arm(
+            system, bank, item, "french", "normal", demo_k=2, sample_seed=seed
+        )
+        for mode in ("french", "german"):
+            assert float(via_probe[mode]) == float(
+                via_arm["log_likelihoods"][mode]
+            ), "N=0 retention probe must reproduce the plain mode arm"
+        with_filler = scored_with_filler(
+            system, bank, item, "french", "normal", filler, 16,
+            demo_k=2, sample_seed=seed,
+        )
+        assert float(with_filler["french"]) != float(via_probe["french"]), (
+            "filler traffic must alter the organism's state"
+        )
+    try:
+        scored_with_filler(
+            system, bank, item, "french", "memory_lesion", filler, 0,
+            demo_k=2, sample_seed=seed,
+        )
+        raise AssertionError("unknown-arm guard did not fire")
+    except ValueError:
+        pass
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -755,6 +800,7 @@ TESTS = [
     test_mode_arms_and_zero_init,
     test_paired_mode_loss_arithmetic,
     test_mode_learnability_smoke,
+    test_retention_probe_contracts,
 ]
 
 
