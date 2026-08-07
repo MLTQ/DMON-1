@@ -101,13 +101,46 @@ class BrocaSystem(nn.Module):
         state: OrganismState,
         *,
         frozen_idx: torch.Tensor | None = None,
+        checkpoint_chunk: int | None = None,
     ) -> OrganismState:
-        """Absorb an exposure (memory writes on) without touching the backbone."""
+        """Absorb an exposure (memory writes on) without touching the backbone.
 
-        _, next_state = self._evolve(
-            feature_sequence, state, write_memory=True, frozen_idx=frozen_idx
+        `checkpoint_chunk` enables gradient checkpointing over the observation:
+        activations are recomputed on backward in chunks of that many tokens.
+        Long delayed episodes (M1b) do not fit on the card otherwise; the
+        organism is small, so recompute is cheap. No-grad callers are unaffected.
+        """
+
+        if checkpoint_chunk is None or not torch.is_grad_enabled():
+            _, next_state = self._evolve(
+                feature_sequence, state, write_memory=True, frozen_idx=frozen_idx
+            )
+            return next_state
+        if checkpoint_chunk < 1:
+            raise ValueError("checkpoint_chunk must be positive")
+        from torch.utils.checkpoint import checkpoint
+
+        hidden = state.hidden
+        cursor = state.memory_cursor
+        for start in range(0, feature_sequence.shape[1], checkpoint_chunk):
+            chunk = feature_sequence[:, start : start + checkpoint_chunk]
+
+            def run_chunk(h, chunk=chunk, cursor=cursor):
+                chunk_state = OrganismState(
+                    hidden=h,
+                    memory_cursor=cursor,
+                    weight_version=state.weight_version,
+                )
+                _, out = self._evolve(
+                    chunk, chunk_state, write_memory=True, frozen_idx=frozen_idx
+                )
+                return out.hidden
+
+            hidden = checkpoint(run_chunk, hidden, use_reentrant=False)
+            cursor += chunk.shape[1]
+        return OrganismState(
+            hidden=hidden, memory_cursor=cursor, weight_version=state.weight_version
         )
-        return next_state
 
     def depth_controls(
         self,

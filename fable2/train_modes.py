@@ -227,6 +227,7 @@ def run_training(args: argparse.Namespace) -> dict:
             "sample_seed": sample_seed,
             "filler_features": filler_features,
             "n_filler": n_filler,
+            "checkpoint_chunk": args.checkpoint_chunk,
         }
         with torch.no_grad():
             neutral = run_mode_arm(
@@ -324,6 +325,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--demo-k", type=int, default=4)
     parser.add_argument("--delay-ladder", default="0")
     parser.add_argument("--eval-delays", default="")
+    parser.add_argument("--checkpoint-chunk", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")

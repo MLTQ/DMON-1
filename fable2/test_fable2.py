@@ -817,6 +817,50 @@ def test_delayed_mode_episode_gradients() -> None:
         pass
 
 
+def test_checkpointed_observation_equivalence() -> None:
+    from .modes import paired_mode_loss, run_mode_arm, sha_seed
+    from .retention import build_filler_stream
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    system = build_broca_system(backbone, cfg, device="cpu")
+    torch.manual_seed(47)
+    randomize_heads(system)
+    system.organism.eval()
+    tokenizer = TinyTokenizer(vocab_size=backbone.vocab_size)
+    filler = build_filler_stream(bank, tokenizer, backbone, max_tokens=20)
+    item = bank.split_items("meta_train")[0]
+    seed = sha_seed("ckpt", item.id, "french")
+    base = {"demo_k": 2, "sample_seed": seed, "filler_features": filler, "n_filler": 20}
+
+    plain = run_mode_arm(system, bank, item, "french", "normal", **base)
+    chunked = run_mode_arm(
+        system, bank, item, "french", "normal", **base, checkpoint_chunk=7
+    )
+    for mode in ("french", "german"):
+        assert torch.allclose(
+            plain["log_likelihoods"][mode], chunked["log_likelihoods"][mode]
+        ), "checkpointed observation must reproduce the plain computation"
+
+    with torch.no_grad():
+        neutral = run_mode_arm(system, bank, item, "french", "no_exposure", **base)
+    wrong = run_mode_arm(
+        system, bank, item, "french", "wrong_mode", **base, checkpoint_chunk=7
+    )
+    exposed = run_mode_arm(
+        system, bank, item, "french", "normal", **base, checkpoint_chunk=7
+    )
+    loss, _ = paired_mode_loss(exposed, wrong, neutral, margin=0.1)
+    loss.backward()
+    grads = sum(
+        float(p.grad.abs().sum())
+        for p in system.organism.parameters()
+        if p.grad is not None
+    )
+    assert grads > 0, "gradients must flow through checkpointed observation"
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -838,6 +882,7 @@ TESTS = [
     test_mode_learnability_smoke,
     test_retention_probe_contracts,
     test_delayed_mode_episode_gradients,
+    test_checkpointed_observation_equivalence,
 ]
 
 
