@@ -1,0 +1,35 @@
+{
+  "checkpoint_update": 75,
+  "seeds": {
+    "202": {
+      "wrong_passage": {
+        "margin": -0.03298848650107766,
+        "strict_wins": 9
+      },
+      "bare_floor": {
+        "margin": 0.014616962522268295,
+        "strict_wins": 15
+      },
+      "no_exposure": {
+        "margin": -0.028021427802741528,
+        "strict_wins": 14
+      },
+      "normal_mean": 1.3372909979273875
+    },
+    "303": {
+      "wrong_passage": {
+        "margin": -0.04364487590889121,
+        "strict_wins": 8
+      },
+      "bare_floor": {
+        "margin": -0.053289059549570084,
+        "strict_wins": 15
+      },
+      "no_exposure": {
+        "margin": -0.03348587142924453,
+        "strict_wins": 13
+      },
+      "normal_mean": 1.3486517754693825
+    }
+  }
+}

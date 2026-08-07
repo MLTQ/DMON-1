@@ -141,6 +141,21 @@ work returns here.
   append-only growth preserved the organism mechanically, but lesions showed the new
   cells were unused. Capacity is not credited until grown tissue becomes causally
   useful.
+- **[2026-08] Corpus scale is exonerated; the language-interface bottleneck is
+  architectural** — G2 ran the sabotage-guarded multi-depth graft on a 6× corpus
+  whose admission gate pinned the bare floor at chance. No held-out content
+  differential; the control policy overfits training pairs at every scale tried
+  and turns toxic out-of-distribution late in training. G1's generic transport
+  effect was shown to be Qwen-prior-mediated (vanishes on a chance-floor corpus).
+  Capacity, duration, and data are now all individually falsified as remedies;
+  the next treatment must change the interface: memory queried at scoring time,
+  not summarized into question-blind final-state controls.
+- **[2026-08] A read-at-best verdict requires permutation replication** — G2's
+  read point technically passed every preregistered gate, and the pass inverted
+  under two fresh answer-order permutation seeds. Selecting the best of twelve
+  noisy eval rounds and testing at threshold is a multiple-comparisons machine.
+  Standing protocol: no best-checkpoint claim without re-evaluation of that
+  checkpoint under fresh permutations.
 - **[2026-08] fable2 is the multi-depth Broca-graft line** — it imports the validated
   SOL2 kernel rather than rewriting it; the new surface is a differentiated language
   organ with several bounded, output-tissue-only injection sites into frozen Qwen,

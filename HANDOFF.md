@@ -37,11 +37,14 @@ CUDA ordinal. SOL2 may use only 4090 UUID
 
 ## Do this first, in this order
 
-1. **Run the multi-depth language-organ treatment — it is built, in `fable2/`.** A
-   small number of bounded low-rank effectors read only output tissue and inject into
-   frozen Qwen at preregistered depths; no memory-to-LLM bypass. The CPU gate is
-   `python -m fable2.test_fable2`; then `fable2/launch_g0.sh` (interface audit) gates
-   `fable2/launch_g1.sh` (paired training). Preregistrations in `fable2/experiments/`.
+1. **The multi-depth treatment ran and failed honestly — G0/G1/G2/G2a verdicts are
+   in `fable2/experiments/`.** Capacity, duration, and data are each individually
+   falsified for the exact-recall differential; the G2 stop rule names the next
+   treatment: **question-conditioned read-out** (G3) — the organism's memory queried
+   at scoring time instead of being summarized into question-blind final-state
+   control banks. Preregister G3 before building; keep the anti-sabotage objective,
+   the chance-floor corpus, the curves/trend artifact, and the new
+   permutation-replication rule for any read-at-best claim.
 2. **Keep the paired causal assay.** Correct passage must beat wrong passage, floor,
    reset, memory lesion, and internal lesion in likelihood, not merely accuracy.
 3. **If behavior passes, withdraw developmental scaffolds.** Restore interleaved

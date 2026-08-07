@@ -1,0 +1,2312 @@
+{
+  "schema": 1,
+  "wiki_root": "/home/m/wiki",
+  "documents": [
+    {
+      "id": "g2-concepts-hesychasm-inner-stillness-and-direct-experience",
+      "source_family": "concepts-hesychasm-inner-stillness-and-direct-experience",
+      "path": "concepts/hesychasm-inner-stillness-and-direct-experience.md",
+      "sha256": "7f630dcfe694a39360971b4070b4d6e9b6d83702f628f4b5842a9e251d477c69",
+      "memory": "Hesychasm \u2014 Inner Stillness and Direct Experience of God Overview Hesychasm (from Greek \u1f21\u03c3\u03c5\u03c7\u03af\u03b1, \"stillness\" or \"quiet\") is a mystical theology tradition from the Greek East emphasizing inner stillness, repetitive prayer (especially the Jesus Prayer), and direct experiential knowledge of God. The U.T.G.S. endorses Hesychast practice as the path to theosis \u2014 deification of humanity. Source: Referenced in Memphis-Misraim Structure (Laos, 2015) Core Practices Jesus Prayer Repetitive invocation of \"Lord Jesus Christ, Son of God, have mercy on me\" \u2014 a form of mantra meditation that produces theta/delta brain wave states through rhythmic vocalization and breath control.",
+      "questions": [
+        {
+          "id": "g2-concepts-hesychasm-inner-stillness-and-direct-experience-q0",
+          "question": "What specific brain wave states are produced by the rhythmic vocalization and breath control used in the Jesus Prayer?",
+          "choices": [
+            "alpha and beta",
+            "theta and delta",
+            "gamma and sigma",
+            "mu and theta"
+          ],
+          "answer": 1,
+          "paraphrase": "The repetitive chanting of the Jesus Prayer, involving controlled breathing and vocal rhythm, results in which neurological patterns?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-xii-the-twelfth-discourse-on-heedl",
+      "source_family": "concepts-attar-asrar-nama-discourse-xii-the-twelfth-discourse-on-heedl",
+      "path": "concepts/attar-asrar-nama-discourse-xii-the-twelfth-discourse-on-heedl.md",
+      "sha256": "36b7309c8e991bd3bfc4d92c904b53267b9e7a32a362bf6852ec1b57b64c7701",
+      "memory": "The Book of Secrets \u2014 Discourse XII: The Twelfth Discourse \u2014 On Heedlessness, the Celestial Game, and the Valley of Despair From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content XI. The Eleventh Discourse \u2014 On Joy, the Caged Parrot, and the King's Falcon Dear one, if you wake from sleep you will learn of many joys. Though we are all in sorrow and pain, I know with certainty: we shall be happy in the end. Where there is a thorn, there is basil too. Where there is pain, there is remedy too. If the remedy is not evident today, it will appear when the appointed time comes. Our story has exceeded all bounds \u2014 for pain came as our portion in the allotment. In a world where the remedy is the portion, there is neither portion nor story.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-xii-the-twelfth-discourse-on-heedl-q0",
+          "question": "What does the author suggest will happen to a person who wakes from sleep?",
+          "choices": [
+            "They will immediately forget their sorrows.",
+            "They will learn of many joys.",
+            "They will find the remedy for all their pain.",
+            "They will understand the value of the King's Falcon."
+          ],
+          "answer": 1,
+          "paraphrase": "Upon waking, one gains knowledge of numerous sources of happiness."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-naming-of-a-prince",
+      "source_family": "concepts-the-naming-of-a-prince",
+      "path": "concepts/the-naming-of-a-prince.md",
+      "sha256": "87024cc998ca2af2b91930eef8040ee49298fd5be7ec1e317bb49c929cc360be",
+      "memory": "The Naming of a Prince Pelliot tib\u00e9tain 1290. Pelliot tib\u00e9tain 1290 is a ninth-century Old Tibetan manuscript recovered from the Dunhuang cave library (sealed c. 1000 CE), now held in the Biblioth\u00e8que nationale de France. It preserves a composite political document from the Tibetan Empire: a naming ceremony for a prince, a praise song, a charter of the petty kingdoms, a cosmological vision, a loyalty oath, and administrative protocols. The centrepiece is the naming of the prince Khri Gtsug-lde-brtsan \u2014 widely identifi Content Pelliot tib\u00e9tain 1290 Pelliot tib\u00e9tain 1290 is a ninth-century Old Tibetan manuscript recovered from the Dunhuang cave library (sealed c. 1000 CE), now held in the Biblioth\u00e8que nationale de France.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-naming-of-a-prince-q0",
+          "question": "What is the primary subject of the ninth-century Old Tibetan manuscript known as Pelliot tib\u00e9tain 1290?",
+          "choices": [
+            "A naming ceremony for the prince Khri Gtsug-lde-brtsan",
+            "A historical account of the Dunhuang cave library",
+            "A collection of administrative protocols from the 10th century",
+            "A cosmological vision of the Tibetan Empire"
+          ],
+          "answer": 0,
+          "paraphrase": "The central focus of this document is the official naming ritual of Prince Khri Gtsug-lde-brtsan."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-summaries-longitudinal-photon-wave-experiments-roadmap",
+      "source_family": "summaries-longitudinal-photon-wave-experiments-roadmap",
+      "path": "summaries/longitudinal-photon-wave-experiments-roadmap.md",
+      "sha256": "3a4f895bd0136a961a97743eedce1082dc9fa383a07c15c65ae944fc7e684b40",
+      "memory": "Longitudinal Photon Wave Experiments \u2014 Research Roadmap Overview A curated list of 10 key papers/experiments for reproducing and verifying scalar-longitudinal wave phenomena in electrodynamics. Organized into four experimental phases from lowest to highest technical barrier. Theoretical Framework: Extended Electrodynamics (EED) Stueckelberg Formulation Standard Maxwell theory eliminates longitudinal and scalar photon modes as gauge artifacts. EED (Stueckelberg, Van Vlaenderen) treats the scalar field C = \u2202\u00b5A\u00b5 as a dynamical variable with its own wave equation: \u25a1C = sources (not a constraint). Key Predictions of EED 1. Three propagating modes : 2 transverse + 1 scalar-longitudinal 2. Different attenuation : Longitudinal waves decay as 1/r\u00b2 vs transverse 1/r\u00b3 3. Skin-effect immunity : Longitudinal waves penetrate conductive barriers where transverse E,B fields are blocked 4. Monopolar reception : Possible without dipole orientation requirements 5.",
+      "questions": [
+        {
+          "id": "g2-summaries-longitudinal-photon-wave-experiments-roadmap-q0",
+          "question": "How does the attenuation rate of longitudinal waves compare to that of transverse waves in the Extended Electrodynamics framework?",
+          "choices": [
+            "Longitudinal waves decay as 1/r\u00b2 while transverse waves decay as 1/r\u00b3",
+            "Longitudinal waves decay as 1/r\u00b3 while transverse waves decay as 1/r\u00b2",
+            "Both wave types decay at the same rate of 1/r\u00b2",
+            "Longitudinal waves do not experience attenuation"
+          ],
+          "answer": 0,
+          "paraphrase": "In this theory, scalar-longitudinal waves diminish in intensity proportional to the inverse square of the distance, whereas standard transverse waves diminish proportional to the inverse cube of the distance."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-31",
+      "source_family": "concepts-the-evangelion-chapter-31",
+      "path": "concepts/the-evangelion-chapter-31.md",
+      "sha256": "c4a79e7381cb0b140bb7b1fec296b5355038ee4c55cd7e52717d4c8d7151f742",
+      "memory": "The Evangelion \u2014 Chapter 31 (XXXI) ND WHEN THE ten heard it, they began to be much A displeased with James and John. But Jesus called them... Full Text ND WHEN THE ten heard it, they began to be much A displeased with James and John. But Jesus called them to him, and saith unto them, Ye know that they which are accounted to rule over the Gentiles exercise lordship over them; and their great ones exercise authority upon them. But so shall it not be among you: but whosoever will be great among you, shall be your minister: And whosoever of you will be the chiefest, shall be servant of all. Even as the Son of man came not to be ministered unto, but to minister, and to give his life a ransom for many. 6 And he went through the cities and villages, teaching, and journeying toward Jerusalem.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-31-q0",
+          "question": "What specific action did Jesus take in response to the ten disciples' displeasure with James and John?",
+          "choices": [
+            "He rebuked them for their jealousy.",
+            "He called them to him to teach a lesson about leadership.",
+            "He left them to handle the situation alone.",
+            "He told them to stop listening to James and John."
+          ],
+          "answer": 1,
+          "paraphrase": "Jesus summoned the group to explain that true greatness involves serving others rather than ruling over them."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-02",
+      "source_family": "concepts-the-evangelion-chapter-02",
+      "path": "concepts/the-evangelion-chapter-02.md",
+      "sha256": "66ef9be068c4b68e6c3b58f05cfc42f0a006a77545e2ba69169699658071530d",
+      "memory": "The Evangelion \u2014 Chapter 2 (II) OW THE BIRTH of Jesus Christ was on this wise: When N as his mother Mary was espoused to Joseph, before... Full Text OW THE BIRTH of Jesus Christ was on this wise: When N as his mother Mary was espoused to Joseph, before they came together, she was found with child of the Holy Ghost. Then Joseph her husband, being a just man, and not willing to make her a publick example, was minded to put her away privily. But while he thought on these things, behold, the angel of the Lord appeared unto him in a dream, saying, Joseph, thou son of David, fear not to take unto thee Mary thy wife: for that which is conceived in her is of the Holy Ghost. And she shall bring forth a son, and thou shalt call his name JESUS: for he shall save his people from their sins.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-02-q1",
+          "question": "According to the text, what is the reason given for naming the child Jesus?",
+          "choices": [
+            "Because he was born on a holy day.",
+            "Because he would save his people from their sins.",
+            "Because his father was named Joseph.",
+            "Because the Holy Ghost chose the name for him."
+          ],
+          "answer": 1,
+          "paraphrase": "The name Jesus is to be given because the child will deliver his people from their sins."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-hively-patent-apparatus",
+      "source_family": "concepts-hively-patent-apparatus",
+      "path": "concepts/hively-patent-apparatus.md",
+      "sha256": "2913681113ae6147c09b48575e16ae2ef5d5d3fa29fb7465d5dcaafdfb1c40d0",
+      "memory": "Definition Practical apparatus design for generating and detecting scalar-longitudinal waves from US Patent 9,306,527. Uses resonant cavity with specific boundary conditions to excite longitudinal modes, dielectric loading to enhance coupling, and field probes in shielded regions for detection. Apparatus Design (from patent diagrams) Generator: - Resonant cavity with parallel plate electrodes - Specific boundary conditions to excite longitudinal modes preferentially - Dielectric material inside cavity to enhance coupling efficiency Detector: - Field probes placed in shielded regions where transverse EM blocked - Monopole-style detection (isotropic response) - Tunable frequency source for resonant excitation Key Parameters: Parameter Value/Range ----------- ------------- Cavity dimensions Tunable, typically cm-scale Dielectric loading \u03b5 r = 2\u201310 (various materials) Frequency range kHz to MHz depending on cavity size Detection method Field probes in shielded regions Predictions to Test 1. Resonant excitation: Longitudinal modes have specific resonant frequencies distinct from transverse EM modes 2.",
+      "questions": [
+        {
+          "id": "g2-concepts-hively-patent-apparatus-q1",
+          "question": "Where are the field probes strategically located within the apparatus to ensure they detect the intended wave type?",
+          "choices": [
+            "In the center of the parallel plate electrodes",
+            "Within shielded regions where transverse electromagnetic fields are blocked",
+            "Outside the main cavity structure in open space",
+            "At the input terminals of the tunable frequency source"
+          ],
+          "answer": 1,
+          "paraphrase": "Detection sensors are positioned in protected areas of the device that prevent transverse electromagnetic signals from reaching them, ensuring only the target waves are measured."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-x-the-tenth-discourse-on-the-bot",
+      "source_family": "concepts-attar-asrar-nama-discourse-x-the-tenth-discourse-on-the-bot",
+      "path": "concepts/attar-asrar-nama-discourse-x-the-tenth-discourse-on-the-bot.md",
+      "sha256": "c16d00751a633f5ab4ac9ba8903df32a2cba5bdfffdbdbddc1ea7189a38112ed",
+      "memory": "The Book of Secrets \u2014 Discourse X: The Tenth Discourse \u2014 On the Bottomless Ocean From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content IX. The Ninth Discourse Know, O pure in faith \u2014 when you come pure, that the hour you pass beneath the earth, you step beyond the lane of this world and never again see its face. When you go, you go from this world and are gone \u2014 never again do you fall back into it. In the hereafter you find a throne of light. You put on robes of honour and embrace the houris. But if you carry a stain from some deed, you remain in that stain for an age. All this partnership of senses is on the road. All is Iblis \u2014 all your companions, ill-wishing devils. All your death is your disagreeable nature.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-x-the-tenth-discourse-on-the-bot-q0",
+          "question": "What consequence does the text describe for a soul that carries a stain from a deed into the hereafter?",
+          "choices": [
+            "It is immediately cast into eternal darkness without hope.",
+            "It remains in that specific stain for an entire age.",
+            "It is forced to walk the road of all other partners of the senses.",
+            "It loses its throne of light and embraces ill-wishing devils."
+          ],
+          "answer": 1,
+          "paraphrase": "If a soul enters the afterlife with a blemish from a past action, it will be stuck in that blemish for a full age."
+        },
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-x-the-tenth-discourse-on-the-bot-q1",
+          "question": "How does the passage characterize the companions one meets in the hereafter?",
+          "choices": [
+            "They are pure angels who guide the soul to the throne of light.",
+            "They are partners of the senses that lead the soul away from the world.",
+            "They are all Iblis, representing ill-wishing devils.",
+            "They are the robes of honour that the soul puts on."
+          ],
+          "answer": 2,
+          "paraphrase": "According to the text, every companion found in the afterlife is actually Iblis, or an evil spirit wishing harm."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-electrogravitics",
+      "source_family": "concepts-electrogravitics",
+      "path": "concepts/electrogravitics.md",
+      "sha256": "2450f5d031a961bccdc6fce659b6d59a24a1e8d4b39a247a905bd06270066c8c",
+      "memory": "Electrogravitics Definition Theoretical framework proposing direct interaction between electric fields and gravitational phenomena. Claims that electrical energy can distort local gravitational fields to produce ponderomotive forces (thrust) or alter the weight of matter. Core Principles (TTB's Formulation) 1. Gravitational mass \u2260 Inertial mass : Can be decoupled through excitation 2. Inverse relationship : mg \u00d7 mi = constant for excited materials 3. Field shaping matters : Asymmetric electrode configurations produce directional forces 4. Two modes : Static (sustained potential) and dynamic (rate-of-change of potential) Experimental Claims - Weight loss in irradiated silicates, clays, rare earths - Thrust from asymmetric capacitors at high voltage - Gravito-electric conversion in rocks/minerals - Triboexcitation through mechanical friction Status in Mainstream Physics Not accepted . No reproducible evidence under controlled conditions.",
+      "questions": [
+        {
+          "id": "g2-concepts-electrogravitics-q0",
+          "question": "What is the primary distinction between gravitational mass and inertial mass according to the passage's core principles?",
+          "choices": [
+            "They are always equal in magnitude.",
+            "They can be decoupled through specific excitation.",
+            "They are inversely proportional only in static fields.",
+            "They cannot be separated under any conditions."
+          ],
+          "answer": 1,
+          "paraphrase": "The theory suggests that gravitational mass and inertial mass are not inherently linked and can be separated when materials are excited."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-phug-wen-s-petition",
+      "source_family": "concepts-phug-wen-s-petition",
+      "path": "concepts/phug-wen-s-petition.md",
+      "sha256": "c1061c7282d49733060aa64642f78bdcaaca405688ef76788b72faaaf5555a40",
+      "memory": "Phug Wen's Petition Pelliot tib\u00e9tain 1092. A personal petition letter from Meng Phug-wen \u2014 a Chinese-named official writing in Old Tibetan under the administrative forms of the Tibetan Empire. The letter is addressed to four officials with Chinese-derived names (Shi-shug, Shug-shug-gnyis, 'I-neng, Shim-shim) and requests three things: that a donkey be sent early, that grain from the harvest (up to fifteen khal of barley) be disbursed, and that provisions \u2014 new if available, old if not \u2014 be forwarded. At the end, th Content Pelliot tib\u00e9tain 1092 A personal petition letter from Meng Phug-wen \u2014 a Chinese-named official writing in Old Tibetan under the administrative forms of the Tibetan Empire.",
+      "questions": [
+        {
+          "id": "g2-concepts-phug-wen-s-petition-q1",
+          "question": "Which of the following items was NOT among the three requests made in the petition?",
+          "choices": [
+            "The immediate dispatch of a donkey.",
+            "The distribution of up to fifteen khal of barley.",
+            "The shipment of new or old provisions.",
+            "The appointment of a new governor for the region."
+          ],
+          "answer": 3,
+          "paraphrase": "The petition did not ask for a change in local leadership; instead, it sought a donkey, grain, and supplies."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-11",
+      "source_family": "concepts-mandaean-book-of-john-chapter-11",
+      "path": "concepts/mandaean-book-of-john-chapter-11.md",
+      "sha256": "9a42cc93197b64e4ec2208544162ff90c6e4d378a9669021fdab9c1a7651483c",
+      "memory": "Chapter 11: I Am a Shepherd Who Loves His Sheep I Am a Shepherd Who Loves His Sheep. The eleventh chapter opens the Good Shepherd cycle \u2014 a dramatic pivot from the Yushamin cycle's cosmic rebellion. Where Yushamin raged against the hierarchy that punished him, the Shepherd loves the hierarchy he protects. The voice is tender, practical, immediate: I bring them water from my palm. I wash them. I bind a girdle to them that makes wolves afraid. Then the world breaks. A fissure opens in heaven. The flood comes. The shepherd climbs to the bow of h Content I Am a Shepherd Who Loves His Sheep The eleventh chapter opens the Good Shepherd cycle \u2014 a dramatic pivot from the Yushamin cycle's cosmic rebellion. Where Yushamin raged against the hierarchy that punished him, the Shepherd loves the hierarchy he protects. The voice is tender, practical, immediate: I bring them water from my palm. I wash them. I bind a girdle to them that makes wolves afraid. Then the world breaks.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-11-q0",
+          "question": "How does the Shepherd's attitude toward the hierarchy differ from Yushamin's?",
+          "choices": [
+            "Yushamin protected the hierarchy while the Shepherd rebelled against it.",
+            "Yushamin loved the hierarchy while the Shepherd raged against it.",
+            "Yushamin raged against the hierarchy while the Shepherd loved it.",
+            "Yushamin and the Shepherd both raged against the hierarchy."
+          ],
+          "answer": 2,
+          "paraphrase": "Unlike Yushamin, who fought against the system that punished him, the Shepherd has affection for the very hierarchy he safeguards."
+        },
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-11-q1",
+          "question": "What specific actions does the Shepherd take to care for the sheep?",
+          "choices": [
+            "He binds a girdle to them to scare away wolves.",
+            "He washes them and provides water from his palm.",
+            "He climbs to the bow of a ship to escape the flood.",
+            "He rages against the wolves that attack the flock."
+          ],
+          "answer": 1,
+          "paraphrase": "The Shepherd demonstrates tenderness by washing the sheep and offering them water held in his hand."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-chain-of-thought-learning-theory",
+      "source_family": "concepts-chain-of-thought-learning-theory",
+      "path": "concepts/chain-of-thought-learning-theory.md",
+      "sha256": "ceaa2f41722d7ccb37c3c8d6d0f67685455f622dc74fcd24b284aec292a0e4df",
+      "memory": "Chain of Thought Learning Theory Definition Chain of Thought (CoT) Learning Theory is the learning-theoretic framework developed by Zhang et al. (2026) that decomposes the reasoning risk of chain-of-thought generation into two opposing terms: the Oracle-Trajectory Risk (OTR) capturing CoT's benefit, and the Trajectory-Mismatch Risk (TMR) capturing its cost. The framework provides precise conditions for when CoT helps, when it hurts, and what controls the transition between these regimes. The Decomposition For a hypothesis interacting with an answer map and chain rule, the reasoning risk decomposes as: Reasoning Risk = OTR + TMR Oracle-Trajectory Risk (OTR) - Captures the benefit of CoT - Reduces to a target-domain risk in a domain adaptation problem - Represents how well the hypothesis would perform if it followed the optimal reasoning trajectory Trajectory-Mismatch Risk (TMR) - Captures the cost of CoT - Measures error accumulation along mismatched reasoning trajectories - Arises when the model's generated reasoning steps deviate",
+      "questions": [
+        {
+          "id": "g2-concepts-chain-of-thought-learning-theory-q0",
+          "question": "What does the Oracle-Trajectory Risk (OTR) represent within the Chain of Thought Learning Theory framework?",
+          "choices": [
+            "The cost incurred when generated reasoning steps deviate from the optimal path.",
+            "The benefit derived from following the optimal reasoning trajectory in a target domain.",
+            "The error accumulation that occurs along mismatched reasoning paths.",
+            "The transition point between regimes where CoT helps versus when it hurts."
+          ],
+          "answer": 1,
+          "paraphrase": "OTR quantifies the advantage gained by adhering to the best possible reasoning sequence, particularly in scenarios involving domain adaptation."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-28",
+      "source_family": "concepts-mandaean-book-of-john-chapter-28",
+      "path": "concepts/mandaean-book-of-john-chapter-28.md",
+      "sha256": "2bf604a2520f9d0ccde10b0862610ef1e03fc108a3091d680d1dd7e7337ba011",
+      "memory": "Chapter 28: The Judgments of Yahya The Judgments of Yahya. Chapter 28 of the Mandaean Book of John \u2014 the eleventh chapter of the John-Johannes section (Chapters 18\u201333). This is the longest and most structurally complex chapter in the Book of John: a full Mandaean ethical code delivered through question-and-answer. The Jews gather before Yahya, swear oaths by the light king and by Sunday and the Daybreak, and present him with every category of sin \u2014 adultery, theft, sleeping with a friend's wife, abandoning one spouse for another, Content The Judgments of Yahya Chapter 28 of the Mandaean Book of John \u2014 the eleventh chapter of the John-Johannes section (Chapters 18\u201333). This is the longest and most structurally complex chapter in the Book of John: a full Mandaean ethical code delivered through question-and-answer.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-28-q1",
+          "question": "Which group of people gathers before Yahya to present various categories of sin?",
+          "choices": [
+            "The disciples of Jesus",
+            "The angels of light",
+            "The Jews",
+            "The priests of the temple"
+          ],
+          "answer": 2,
+          "paraphrase": "Jews assemble before Yahya to offer him different types of wrongdoing."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-morton-effect",
+      "source_family": "concepts-morton-effect",
+      "path": "concepts/morton-effect.md",
+      "sha256": "7e0b117c88a324023c369eaab24260616a8a13b407d1cb6fedd447506938a402",
+      "memory": "Morton Effect \u2014 Rotordynamic Instability Overview The Morton effect is a rotordynamic instability phenomenon occurring in high-speed rotating machinery (turbomachinery, gas turbines) where thermal bow in the rotor creates a feedback loop that amplifies vibration and can lead to catastrophic failure. Source: Morton Effect (~63K chars) Mechanism The Morton effect operates through a positive feedback loop: 1. Initial imbalance \u2014 small mass imbalance causes vibration 2. Non-uniform contact \u2014 rotor contacts bearings unevenly due to vibration 3. Thermal bow \u2014 uneven heating creates thermal expansion (bow) in the rotor 4. Increased imbalance \u2014 thermal bow increases effective mass imbalance 5. Runaway \u2014 steps 1-4 repeat with increasing amplitude until failure The key insight is that the effect is thermally-driven , not purely mechanical. The temperature distribution around the bearing clearance determines where contact occurs, which determines where heating occurs, which determines the thermal bow pattern.",
+      "questions": [
+        {
+          "id": "g2-concepts-morton-effect-q1",
+          "question": "Which sequence best describes the mechanism of the Morton effect?",
+          "choices": [
+            "Vibration causes uneven heating, which creates a bow, increasing imbalance, leading to runaway vibration",
+            "Uneven heating causes a bow, which creates vibration, leading to increased imbalance and failure",
+            "Mass imbalance causes vibration, which creates uneven heating, leading to a bow and increased imbalance",
+            "Thermal bow causes vibration, which creates mass imbalance, leading to uneven heating and failure"
+          ],
+          "answer": 2,
+          "paraphrase": "The cycle begins with imbalance, leads to uneven contact and heating, forms a bow, and amplifies the initial imbalance."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-rite-and-pedigree-of-horses",
+      "source_family": "concepts-the-rite-and-pedigree-of-horses",
+      "path": "concepts/the-rite-and-pedigree-of-horses.md",
+      "sha256": "3fc07665049862f097d4d693302aaadab941d9897b2f02317165eb636332d6d9",
+      "memory": "The Rite and Pedigree of Horses A pre-Buddhist Tibetan ritual text from the Dunhuang caves (Pelliot tib\u00e9tain 1060), likely ninth century. The manuscript classifies horses into supernatural categories based on coat color and markings \u2014 god-horse, demon-horse, dmu-horse, star-horse, rainbow-horse, cloud-horse, gnyan-horse, n\u0101ga-horse, sman-horse, srin-horse, and others \u2014 and prescribes ritual offerings for each type. A second section maps horse colors to cloud colors, establishing a cosmological correspondence between sky and ea Content A pre-Buddhist Tibetan ritual text from the Dunhuang caves (Pelliot tib\u00e9tain 1060), likely ninth century.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-rite-and-pedigree-of-horses-q1",
+          "question": "What relationship does the second section of the text establish?",
+          "choices": [
+            "A connection between horse breeds and human languages",
+            "A link between horse colors and cloud colors",
+            "A comparison between horses and mythical birds",
+            "A timeline of horse domestication"
+          ],
+          "answer": 1,
+          "paraphrase": "The latter part of the document correlates the hues of horses with those found in the sky."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-3",
+      "source_family": "concepts-mandaean-book-of-john-chapter-3",
+      "path": "concepts/mandaean-book-of-john-chapter-3.md",
+      "sha256": "a77870a599a5b236298534d65948aa72facbd28c9df507debfa4dde516ef2a9b",
+      "memory": "Chapter 3: Splendor Has Come to Me in Abundance Splendor Has Come to Me in Abundance. Chapter 3 opens the Yushamin cycle \u2014 the longest sustained narrative arc in the Book of John, spanning eight chapters. Yushamin, the celestial rebel who was bound in Chapter 2, remains chained. But his twenty-one sons conspire to avenge him. Their eldest brother Sam counsels the younger ones to start the war themselves, reasoning that their youth will excuse their offenses. What follows is a cosmic battle of escalating intensity: insults, single combat, the Content Splendor Has Come to Me in Abundance Chapter 3 opens the Yushamin cycle \u2014 the longest sustained narrative arc in the Book of John, spanning eight chapters. Yushamin, the celestial rebel who was bound in Chapter 2, remains chained. But his twenty-one sons conspire to avenge him. Their eldest brother Sam counsels the younger ones to start the war themselves, reasoning that their youth will excuse their offenses.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-3-q0",
+          "question": "What is the primary reason given by Sam for his younger brothers to initiate the conflict?",
+          "choices": [
+            "To ensure they do not face punishment due to their age",
+            "To prove their loyalty to their father",
+            "To gain more power within the celestial hierarchy",
+            "To stop their father from remaining chained"
+          ],
+          "answer": 0,
+          "paraphrase": "Sam advises the younger siblings to begin the war because their youth will serve as a justification for their actions."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-gravitational-isotopes-electrogravitics-mass-coupling",
+      "source_family": "concepts-gravitational-isotopes-electrogravitics-mass-coupling",
+      "path": "concepts/gravitational-isotopes-electrogravitics-mass-coupling.md",
+      "sha256": "e867fba366c9e30b8ce3f7dcac071bd1538c50cb45037a760bc88d654888a034",
+      "memory": "Gravitational Isotopes Definition Hypothetical variants of chemical elements that differ in gravitational mass but not in chemical identity. Analogous to nuclear isotopes (which differ in neutron count) but operating through a different degree of freedom \u2014 gravitational susceptibility rather than strong nuclear binding. Key Principles mg \u00d7 mi = E The central hypothesis: gravitational mass and inertial mass are inversely related for a given element, with their product equaling a constant energy value. Heavier gravitational isotopes possess less inertial mass and vice versa. Equilibrium Tendency Gravitational isotope distributions tend toward equilibrium where mg = mi. Deviations from this equilibrium produce observable effects: - Negative anomalies (lighter than normal): Spontaneous heat evolution as excess inertial mass radiates away - Positive anomalies (heavier than normal): Expected to absorb heat, making samples colder than environment Beneficiation Methods for separating gravitational isotopes through physical means: 1. Settling and centrifuging (differential acceleration) 2. Ion separation in semi-permeable membranes 3.",
+      "questions": [
+        {
+          "id": "g2-concepts-gravitational-isotopes-electrogravitics-mass-coupling-q0",
+          "question": "What is the fundamental relationship between gravitational mass and inertial mass for a specific element according to the passage?",
+          "choices": [
+            "They are directly proportional to each other.",
+            "Their product equals a constant energy value.",
+            "They are equal in magnitude for all elements.",
+            "Their sum determines the element's total energy."
+          ],
+          "answer": 1,
+          "paraphrase": "The passage states that for any given element, the product of its gravitational mass and inertial mass remains constant."
+        },
+        {
+          "id": "g2-concepts-gravitational-isotopes-electrogravitics-mass-coupling-q1",
+          "question": "Which physical phenomenon is expected to occur in a sample exhibiting a positive anomaly?",
+          "choices": [
+            "The sample will spontaneously generate heat.",
+            "The sample will become colder than its surrounding environment.",
+            "The sample will remain at the same temperature as the environment.",
+            "The sample will emit excess inertial mass rapidly."
+          ],
+          "answer": 1,
+          "paraphrase": "Samples that are heavier than normal (positive anomalies) are predicted to absorb heat, resulting in a temperature lower than the surroundings."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-36",
+      "source_family": "concepts-the-evangelion-chapter-36",
+      "path": "concepts/the-evangelion-chapter-36.md",
+      "sha256": "3330178e3877b4d45becdf89ab891efcfcfeef04fb7b7e2dbd07cf47124882f5",
+      "memory": "The Evangelion \u2014 Chapter 36 (XXXVI) ERILY, VERILY, I say unto you, If a man keep my V saying, he shall never see death. Then said the Jews... Full Text ERILY, VERILY, I say unto you, If a man keep my V saying, he shall never see death. Then said the Jews unto him, Now we know that thou hast a devil. Abraham is dead, and the prophets; and thou sayest, If a man keep my saying, he shall never taste of death. Art thou greater than our father Abraham, which is dead? and the prophets are dead: whom makest thou thyself? Jesus answered, If I honour myself, my honour is nothing: it is my Father that honoureth me; of whom ye say, that he is your God: Yet ye have not known him; but I know him: and if I should say, I know him not, I shall be a liar like unto you: but I know him, and keep his saying.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-36-q1",
+          "question": "How does Jesus respond to the accusation that he is greater than the dead prophet Abraham?",
+          "choices": [
+            "He claims to be the son of Abraham.",
+            "He asserts that his own honor is insignificant compared to the Father's.",
+            "He argues that the dead cannot judge the living.",
+            "He says that Abraham would have agreed with him."
+          ],
+          "answer": 1,
+          "paraphrase": "In response to the claim of superiority over Abraham, Jesus explains that his own honor holds no value, emphasizing that it is the Father who honors him."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-viii-the-eighth-discourse",
+      "source_family": "concepts-attar-asrar-nama-discourse-viii-the-eighth-discourse",
+      "path": "concepts/attar-asrar-nama-discourse-viii-the-eighth-discourse.md",
+      "sha256": "f31fd1afb5d3fa835ae26caf8abc0502c57efaa538882fa081ac4e21a253bfde",
+      "memory": "The Book of Secrets \u2014 Discourse VIII: The Eighth Discourse From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content VII. The Seventh Discourse \u2014 On Truth What is truth? To be prescient \u2014 to pass beyond yourself and be with yourself. If your soul steps forth from form you will see by necessity everything you know. Both worlds will not come as your veil \u2014 you will see both worlds in a single breath. If you step beyond this form you will become that which veils the moon and sun. When they gave your soul the station of light they turned the tip of your eyes toward the houris. Never be deceived by houris and paradise \u2014 for without God, paradise never gives light. A king gave his palace over to plunder. Soldiers rushed in to seize the spoil.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-viii-the-eighth-discourse-q1",
+          "question": "Why should one not be deceived by houris and paradise?",
+          "choices": [
+            "They are actually prisons for the soul.",
+            "They do not exist in reality.",
+            "They provide no light without God.",
+            "They are reserved only for kings."
+          ],
+          "answer": 2,
+          "paraphrase": "Paradise fails to illuminate anything unless God is present."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-xix-the-nineteenth-discourse-on-co",
+      "source_family": "concepts-attar-asrar-nama-discourse-xix-the-nineteenth-discourse-on-co",
+      "path": "concepts/attar-asrar-nama-discourse-xix-the-nineteenth-discourse-on-co.md",
+      "sha256": "02c4c39dd56dcf909af7a638295025b45b8d11bc50e0b77848b50edd4721e3f2",
+      "memory": "The Book of Secrets \u2014 Discourse XIX: The Nineteenth Discourse \u2014 On Contentment and Greed, the Fox and the Wolf, and the Miser's Rosewater From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content XVIII. The Eighteenth Discourse \u2014 On Old Age, the Young Man and the Bow, and Attar's Lament Alas, you have no eyes that see the road \u2014 you are passing your sweet life in heedlessness. You have spent your days in heedlessness \u2014 unless you mean to do your work in the grave. O you whom greed has drawn into its work \u2014 now that your alif-straight stature is bent. If you perform devotions now, it is not from faith \u2014 it is because you fear that death will come suddenly.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-xix-the-nineteenth-discourse-on-co-q1",
+          "question": "Why does the text claim that devotions performed by those drawn into greed are not motivated by faith?",
+          "choices": [
+            "Because they are performed too late in life.",
+            "Because they are done to avoid the consequences of greed.",
+            "Because they are driven by the fear of sudden death.",
+            "Because the alif-straight stature is no longer bent."
+          ],
+          "answer": 2,
+          "paraphrase": "According to the discourse, acts of worship undertaken by the greedy are not rooted in belief but rather in the anxiety that death may arrive unexpectedly."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-ii-the-second-discourse-in-praise",
+      "source_family": "concepts-attar-asrar-nama-discourse-ii-the-second-discourse-in-praise",
+      "path": "concepts/attar-asrar-nama-discourse-ii-the-second-discourse-in-praise.md",
+      "sha256": "e1fce2d6416fde36252fd6dc9c48d102e6786b150040fdb1ed222f24664847de",
+      "memory": "The Book of Secrets \u2014 Discourse II: The Second Discourse \u2014 In Praise of the Prophet, Peace Be Upon Him From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content I. The First Discourse \u2014 On Divine Oneness In the name of the One who gave the soul the light of faith and gave reason certainty in knowing God. A Lord from whom the world has its renown \u2014 from Him the earth and sky their high and low. Both worlds received the robe of being from Him. The heavens their height, the earth its lowliness, from Him. The sky stands bowing before Him. The earth falls prostrate before Him. From foam and blood He raises humankind. With K\u0101f and N\u016bn He raises sky and earth. From smoke He makes the green dome of the heavens. From fat He fashions the seeing eye.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-ii-the-second-discourse-in-praise-q1",
+          "question": "From what substance does the text claim the green dome of the heavens was created?",
+          "choices": [
+            "fat",
+            "smoke",
+            "foam",
+            "blood"
+          ],
+          "answer": 1,
+          "paraphrase": "The passage indicates that the green canopy of the heavens was formed from which material?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-principalities",
+      "source_family": "concepts-the-principalities",
+      "path": "concepts/the-principalities.md",
+      "sha256": "ab2e4193dccef8b08fbd398cdf3aa5ae3dfccbb82014b0875f75b58432c66ae6",
+      "memory": "The Principalities Pelliot Tib\u00e9tain 1067. A fifteen-line Old Tibetan text preserved among the Dunhuang manuscripts of the Biblioth\u00e8que nationale de France. It describes a golden palace \u2014 six-tiered, seven-courted, with eight golden gates, nine pendants, and ten seals of truth \u2014 then unfolds into a catalogue of qualities and their associated possessions: the auspicious with their tiger-skins, the sharp with their arrows, the red with their dye and blood. The text opens with an invocation to a royal distribution: wh Content Pelliot Tib\u00e9tain 1067 A fifteen-line Old Tibetan text preserved among the Dunhuang manuscripts of the Biblioth\u00e8que nationale de France. It describes a golden palace \u2014 six-tiered, seven-courted, with eight golden gates, nine pendants, and ten seals of truth \u2014 then unfolds into a catalogue of qualities and their associated possessions: the auspicious with their tiger-skins, the sharp with their arrows, the red with their dye and blood.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-principalities-q0",
+          "question": "What specific architectural features are attributed to the golden palace described in the text?",
+          "choices": [
+            "six-tiered, seven-courted, with eight golden gates, nine pendants, and ten seals of truth",
+            "five-tiered, six-courted, with seven golden gates, eight pendants, and nine seals of truth",
+            "seven-tiered, eight-courted, with nine golden gates, ten pendants, and eleven seals of truth",
+            "eight-tiered, nine-courted, with ten golden gates, eleven pendants, and twelve seals of truth"
+          ],
+          "answer": 0,
+          "paraphrase": "The text details a magnificent structure with six levels, seven courts, eight gates, nine hanging ornaments, and ten truth-seals."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-bioelectric-critical-perspectives",
+      "source_family": "concepts-bioelectric-critical-perspectives",
+      "path": "concepts/bioelectric-critical-perspectives.md",
+      "sha256": "4dbebb6168fda76acb614dc1c9e00847e471e6e4f98922f792ed03bd3f7e7bc8",
+      "memory": "Bioelectric Framework: Critical Perspectives & Falsification Conditions Scientific Critiques Overextension Levin may be reframing all developmental biology through a bioelectric lens. As Johannes Jaeger puts it: \"Everything becomes a nail for the bioelectric hammer.\" Bioelectricity is one regulatory system among several (genetic, mechanical, chemical), not necessarily the master controller. Mechanistic Imprecision \"Bioelectric code\" is semantically appealing but mechanistically imprecise. The hardware/software analogy doesn't cleanly map onto the genetic/bioelectric distinction. Better understood as one epigenetic variable among many rather than a separate \"layer.\" Alternative Causality Mechanical forces may be primary, with bioelectricity downstream. Evidence suggests bioelectric gradients form downstream of mechanical signals in some contexts \u2014 reversing Levin's proposed causal direction. Falsification Conditions F1: If bioelectric prepatterns are found to be exclusively downstream of gene expression (always following, never preceding), the \"instructive code\" interpretation fails.",
+      "questions": [
+        {
+          "id": "g2-concepts-bioelectric-critical-perspectives-q0",
+          "question": "How does the passage describe the relationship between mechanical forces and bioelectricity in certain contexts?",
+          "choices": [
+            "Mechanical forces are always the primary driver, with bioelectricity acting as a downstream response.",
+            "Bioelectricity is the master controller that dictates all mechanical developmental processes.",
+            "Mechanical forces and bioelectricity operate as completely independent systems with no causal link.",
+            "Bioelectric gradients consistently precede mechanical signals to initiate developmental changes."
+          ],
+          "answer": 0,
+          "paraphrase": "In some situations, the text indicates that mechanical signals come first, causing bioelectric gradients to develop afterward."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-old-tibetan-dunhuang-manuscripts",
+      "source_family": "concepts-old-tibetan-dunhuang-manuscripts",
+      "path": "concepts/old-tibetan-dunhuang-manuscripts.md",
+      "sha256": "744067b41f67e1edcc2d7872f3bb5989174f8b33ce59e6c6903708a4c4c3e836",
+      "memory": "Old Tibetan Dunhuang Manuscripts Collection A collection of 45 manuscripts from the Dunhuang cave library (Tibetan Empire period, 7th\u20139th centuries CE), translated into English for the first time by the New Tianmu Anglican Church. These texts span divination oracles, royal charters, Silk Road legal documents, cosmological prophecy, and diplomatic correspondence \u2014 offering an unprecedented window into the administrative, spiritual, and literary life of the Tibetan Empire at its height. Source First freely available English translations from Old Tibetan, produced by the New Tianmu Anglican Church. The source manuscripts are held in various collections including the Pelliot tib\u00e9tain series (Biblioth\u00e8que nationale de France), IOL Tib J (British Library's Stein collection), and other Dunhuang cave library holdings. Transcriptions reference the Old Tibetan Documents Online (OTDO) at ILCAA, Tokyo University of Foreign Studies.",
+      "questions": [
+        {
+          "id": "g2-concepts-old-tibetan-dunhuang-manuscripts-q1",
+          "question": "Which organization is credited with producing the first English translations of these 45 manuscripts?",
+          "choices": [
+            "The Pelliot tib\u00e9tain series at the Biblioth\u00e8que nationale de France.",
+            "The New Tianmu Anglican Church.",
+            "The Old Tibetan Documents Online at ILCAA.",
+            "The British Library's Stein collection."
+          ],
+          "answer": 1,
+          "paraphrase": "The New Tianmu Anglican Church was responsible for translating the entire set of 45 manuscripts into English for the first time."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-levin-interviews-framings",
+      "source_family": "concepts-levin-interviews-framings",
+      "path": "concepts/levin-interviews-framings.md",
+      "sha256": "ed511ef674b82d9203f834602d4c88f82cb32db93ecc0875d567bed80f9d7af6",
+      "memory": "Michael Levin: In His Own Words Source Insights synthesised from 2020\u20132026 interviews (Lex Fridman, Tim Ferriss, Sean Carroll, David Eagleman, TED). These are Levin's own framings, drawn from his conversational style rather than the more formal language of his papers. The Cognitive Light Cone Every active system pursues homeodynamic goal states, and the size of those goals in space, time, and abstraction defines its cognitive light cone. An amoeba's is tiny, measured in micrometres and seconds. A liver cell's is larger, coordinating with neighbours across years. A brain's is much larger still, operating over abstract categories across decades. The key move: evolution scales cognitive light cones. Morphogenesis is the process by which cells assemble into collectives whose light cones are larger than any individual cell's. You build a body that can think about things your cells couldn't possibly think about \u2014 like next year, or abstract mathematics. The Three-Layer View of Biology Standard biology sees two layers: genome \u2192 anatomy.",
+      "questions": [
+        {
+          "id": "g2-concepts-levin-interviews-framings-q0",
+          "question": "What is the primary function of morphogenesis according to the text?",
+          "choices": [
+            "It allows individual cells to think about abstract mathematics.",
+            "It enables cells to assemble into collectives with larger cognitive light cones.",
+            "It reduces the time required for cells to achieve homeodynamic goal states.",
+            "It replaces the genome as the central layer in biological organization."
+          ],
+          "answer": 1,
+          "paraphrase": "Morphogenesis allows groups of cells to form structures capable of processing concepts that single cells cannot."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-2",
+      "source_family": "concepts-mandaean-book-of-john-chapter-2",
+      "path": "concepts/mandaean-book-of-john-chapter-2.md",
+      "sha256": "50f914d337b0ec1d6580fd5178e659281ea7cc0d1ce3c4f54cc8ab69ca0b02f6",
+      "memory": "Chapter 2: Truth Stands at the Gate of the Worlds (Continued) Truth Stands at the Gate of the Worlds (Continued). This second chapter of the Mandaean Book of John continues the cosmological catechism begun in Chapter 1. Where the first chapter asked about the architecture of creation \u2014 the breadth of the earth, the celestial hierarchies, the origins of humanity \u2014 this chapter turns to the darker questions: who began the war in heaven? Who revealed secrets that should have been hidden? Who overturned the great judgment?. The answers come not from Ptahil (th Content Truth Stands at the Gate of the Worlds (Continued) This second chapter of the Mandaean Book of John continues the cosmological catechism begun in Chapter 1.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-2-q0",
+          "question": "What specific topic does the second chapter of the Mandaean Book of John address that differs from the first chapter?",
+          "choices": [
+            "The physical dimensions of the earth and the structure of the heavens",
+            "The origins of humanity and the layout of celestial hierarchies",
+            "The initiation of the war in heaven and the revelation of hidden secrets",
+            "The architectural design of the gates of the worlds"
+          ],
+          "answer": 2,
+          "paraphrase": "Unlike the first chapter which focused on creation's architecture and human origins, this chapter explores darker themes such as the start of the heavenly conflict and the exposure of concealed truths."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-30",
+      "source_family": "concepts-the-evangelion-chapter-30",
+      "path": "concepts/the-evangelion-chapter-30.md",
+      "sha256": "35a3fffb22e4cc20452625ddac243eff38cbeef0d5422c43d4bfae2cb60243f9",
+      "memory": "The Evangelion \u2014 Chapter 30 (XXX) ND HE PUT forth a parable to those which were A bidden, when he marked how they chose out the chief... Full Text ND HE PUT forth a parable to those which were A bidden, when he marked how they chose out the chief rooms; saying unto them, When thou art bidden of any man to a wedding, sit not down in the highest room; lest a more honourable man than thou be bidden of him; And he that bade thee and him come and say to thee, Give this man place; and thou begin with shame to take the lowest room. But when thou art bidden, go and sit down in the lowest room; that when he that bade thee cometh, he may say unto thee, Friend, go up higher: then shalt thou have worship in the presence of them that sit at meat with thee. For whosoever exalteth himself shall be abased; and he that humbleth himself shall be exalted.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-30-q0",
+          "question": "What action does the parable advise a guest to take when invited to a wedding to ensure they receive honor?",
+          "choices": [
+            "Sit in the highest room to show confidence.",
+            "Remain in the lowest room until the host invites them up.",
+            "Decline the invitation to avoid embarrassment.",
+            "Ask the host to move the more honorable guest to a lower room."
+          ],
+          "answer": 1,
+          "paraphrase": "The text suggests that one should occupy the lowest seat initially so that when the host arrives, they can be invited to a higher position, thereby gaining respect."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-lineage-of-the-mdzo-mo",
+      "source_family": "concepts-the-lineage-of-the-mdzo-mo",
+      "path": "concepts/the-lineage-of-the-mdzo-mo.md",
+      "sha256": "1d4e37e6edc300f14fd64d69cd0f95329d6ae8880c32212afd056a47814d26a0",
+      "memory": "The Lineage of the Mdzo Mo Pelliot tib\u00e9tain 1289. A pre-Buddhist Tibetan funeral narrative from the Dunhuang cave library, written in Old Tibetan on a pothi leaf now held by the Biblioth\u00e8que nationale de France. The text belongs to the genre scholars call smrang \u2014 ritual origin myths that authorize ceremonial practice by anchoring it in mythological precedent. Where Pelliot tib\u00e9tain 1068 (\"The Mdzo Funeral Rites\") tells two separate tales of brothers performing funeral rites for dead sisters, this manuscript weaves a sing Content Pelliot tib\u00e9tain 1289 A pre-Buddhist Tibetan funeral narrative from the Dunhuang cave library, written in Old Tibetan on a pothi leaf now held by the Biblioth\u00e8que nationale de France. The text belongs to the genre scholars call smrang \u2014 ritual origin myths that authorize ceremonial practice by anchoring it in mythological precedent.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-lineage-of-the-mdzo-mo-q1",
+          "question": "How does the narrative structure of Pelliot tib\u00e9tain 1289 differ from that of Pelliot tib\u00e9tain 1068?",
+          "choices": [
+            "The 1289 manuscript contains two separate tales, while the 1068 manuscript weaves a single continuous story.",
+            "The 1289 manuscript features brothers performing rites for dead sisters, whereas the 1068 manuscript does not.",
+            "The 1289 manuscript presents a unified narrative, while the 1068 manuscript consists of two distinct tales.",
+            "The 1068 manuscript is written in Old Tibetan, while the 1289 manuscript is in a different script."
+          ],
+          "answer": 2,
+          "paraphrase": "In what way does the storytelling approach of the 1289 text contrast with the approach found in the 1068 text?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-scalar-longitudinal-waves",
+      "source_family": "concepts-scalar-longitudinal-waves",
+      "path": "concepts/scalar-longitudinal-waves.md",
+      "sha256": "8242cd07bf0702039f8af6a4ad0b321b5aa3b74079c98c727c077bbacdfe83e3",
+      "memory": "Scalar Longitudinal Waves in Electrodynamics Overview Theoretical and experimental investigation of longitudinal electromagnetic modes beyond standard transverse waves. Directly relevant to TTB's claims about scalar-longitudinal wave propagation. Theoretical Frameworks Standard Maxwell Theory - Only transverse EM waves propagate in vacuum - Longitudinal modes are evanescent (non-propagating) near-field effects - Gauge freedom allows mathematical longitudinal components but no physical degrees of freedom Extended Electrodynamics (EED) - Stueckelberg Lagrangian with parameter \u03b3 = 1 recovers three-mode propagation - Includes scalar-longitudinal modes as independent dynamical variables - Predicts propagating longitudinal waves at speed c Goto's Analysis (1967) - QFT treatment showing longitudinal photons persist in Lorentz gauge - Independent dynamical variables beyond transverse polarizations - Mathematical consistency maintained Experimental Claims Observation of Scalar Longitudinal Waves (Europhys.",
+      "questions": [
+        {
+          "id": "g2-concepts-scalar-longitudinal-waves-q1",
+          "question": "According to Goto's 1967 analysis, what conclusion was reached regarding longitudinal photons in the Lorentz gauge?",
+          "choices": [
+            "Longitudinal photons do not exist in the Lorentz gauge and are purely mathematical artifacts without physical reality.",
+            "Longitudinal photons persist in the Lorentz gauge and function as independent dynamical variables beyond transverse polarizations.",
+            "The Lorentz gauge eliminates all longitudinal components, leaving only transverse waves as valid physical degrees of freedom.",
+            "Goto's analysis showed that longitudinal waves only exist as evanescent effects and cannot be treated as independent variables."
+          ],
+          "answer": 1,
+          "paraphrase": "Goto's 1967 study demonstrated that within the Lorentz gauge, longitudinal photons remain valid independent dynamical variables, existing alongside transverse polarizations."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-25",
+      "source_family": "concepts-the-evangelion-chapter-25",
+      "path": "concepts/the-evangelion-chapter-25.md",
+      "sha256": "28adf70ed60feda9f6427b64e81a99fff8878e2192d85945a44946f437619f1e",
+      "memory": "The Evangelion \u2014 Chapter 25 (XXV) HEN THERE AROSE a reasoning among them, which of T them should be greatest. And he came to Capernaum:... Full Text HEN THERE AROSE a reasoning among them, which of T them should be greatest. And he came to Capernaum: and being in the house he asked them, What was it that ye disputed among yourselves by the way? But they held their peace: for by the way they had disputed among themselves, who should be the greatest. 4 And when they were come to Capernaum, they that received tribute money came to Peter, and said, Doth not your master pay tribute? He saith, Yes. And when he was come into the house, Jesus prevented him, saying, What thinkest thou, Simon? of whom do the kings of the earth take custom or tribute? of their own children, or of strangers? Peter saith unto him, Of strangers. Jesus saith unto him, Then are the children free.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-25-q0",
+          "question": "What action did Jesus take immediately after Peter confirmed his master would pay the tribute?",
+          "choices": [
+            "He left the house to avoid further questions.",
+            "He asked Peter what he thought about how kings collect taxes.",
+            "He told Peter that the children of the earth are free.",
+            "He instructed Peter to pay the tribute himself."
+          ],
+          "answer": 1,
+          "paraphrase": "Upon Peter agreeing to pay the tax, Jesus immediately turned to him and inquired about his opinion on the method kings use to collect revenue."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-11",
+      "source_family": "concepts-the-evangelion-chapter-11",
+      "path": "concepts/the-evangelion-chapter-11.md",
+      "sha256": "407fce3fd0c3783b5617cbfef6b4b0c7642dca40b06d827a1f8dfe303c3fd700",
+      "memory": "The Evangelion \u2014 Chapter 11 (XI) ND IT CAME to pass, when Jesus had ended these A sayings, the people were astonished at his doctrine:... Full Text ND IT CAME to pass, when Jesus had ended these A sayings, the people were astonished at his doctrine: For he taught them as one having authority, and not as the scribes. When he was come down from the mountain, great multitudes followed him. And a certain centurion\u2019s servant, who was dear unto him, was sick, and ready to die. And when he heard of Jesus, he sent unto him the elders of the Jews, beseeching him that he would come and heal his servant. And saying, Lord, my servant lieth at home sick of the palsy, grievously tormented. And when they came to Jesus, they besought him instantly, saying, That he was worthy for whom he should do this: For he loveth our nation, and he hath built us a synagogue.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-11-q1",
+          "question": "What specific reason did the centurion's servants give for why Jesus was worthy to heal their sick servant?",
+          "choices": [
+            "He had performed miracles in the past.",
+            "He was a prophet sent by God.",
+            "He loved their nation and built them a synagogue.",
+            "He was a respected teacher of the law."
+          ],
+          "answer": 2,
+          "paraphrase": "The messengers explained that Jesus deserved this favor because of his affection for their people and the fact that he had constructed a place of worship for them."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-summaries-dig-strategic-plan-ct",
+      "source_family": "summaries-dig-strategic-plan-ct",
+      "path": "summaries/dig-strategic-plan-ct.md",
+      "sha256": "6d1cda39e16f8f099ab554c7f50049d91be39ca3f3134d3e67b8192f6d778dcb",
+      "memory": "DIG Strategic Implementation Plan CT April 2025 Overview A strategic implementation plan from DIG (likely \"Digital Infrastructure Group\" or similar) for Connecticut, dated April 2025. This is a government/infrastructure planning document rather than academic content. Source: DIG Strategic Implementation Plan CT April 2025 (~35K chars) Relevance to Knowledge Base This source represents government/infrastructure content rather than physics material. It's cataloged for completeness but doesn't directly contribute to the wiki's core domain of electrodynamics and potential-primacy physics. See also: sibrs-space-domain-awareness (for other government/defense documents) --- See also: stylized-history-stellenbosch aureum-cameron-ing-doc vaccine-cumulative-diagnoses six-degrees-of-idiocy",
+      "questions": [
+        {
+          "id": "g2-summaries-dig-strategic-plan-ct-q1",
+          "question": "Which domain does the passage explicitly state the document does NOT contribute to?",
+          "choices": [
+            "Government defense strategies",
+            "Potential-primacy physics",
+            "Digital infrastructure management",
+            "Connecticut state history"
+          ],
+          "answer": 1,
+          "paraphrase": "The source is noted for not adding to the wiki's main focus on electrodynamics and potential-primacy physics."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-13",
+      "source_family": "concepts-mandaean-book-of-john-chapter-13",
+      "path": "concepts/mandaean-book-of-john-chapter-13.md",
+      "sha256": "77e0cc6be301c07fb15b782be4bb06af0a40c7a92c5f4b67f55514dc641adf61",
+      "memory": "Chapter 13: To You I Am Speaking and Teaching To You I Am Speaking and Teaching. Chapter 13 of the Mandaean Book of John (Dra\u0161ia \u1e0f-Malikia, \"Teachings of the Kings\") opens the Creation section of the text. It is a cosmological hymn that moves from ethical exhortation to deep theology: two kings, two crowns, two fates for their sons. Then the narrative reaches back before creation itself \u2014 before the firmament, before the stars, before the earth was solid \u2014 to ask what the soul was like before it fell into flesh. The answer is one of the mos Content To You I Am Speaking and Teaching Chapter 13 of the Mandaean Book of John (Dra\u0161ia \u1e0f-Malikia, \"Teachings of the Kings\") opens the Creation section of the text. It is a cosmological hymn that moves from ethical exhortation to deep theology: two kings, two crowns, two fates for their sons.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-13-q0",
+          "question": "What is the primary structural progression of Chapter 13 in the Mandaean Book of John?",
+          "choices": [
+            "It begins with a historical account of kings and ends with a description of the soul's pre-flesh state.",
+            "It starts with ethical exhortation and transitions into deep theological inquiry.",
+            "It focuses entirely on the creation of the firmament and stars.",
+            "It moves from the formation of the earth to the fall of the soul into flesh."
+          ],
+          "answer": 1,
+          "paraphrase": "The chapter starts by offering moral advice before shifting to profound theological questions about the soul."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-woodside-three-vector-identities",
+      "source_family": "concepts-woodside-three-vector-identities",
+      "path": "concepts/woodside-three-vector-identities.md",
+      "sha256": "8f15a139a0169794a2bdf35d15adc8ad101012d7b0a94763aa73f3eba8c4b1d7",
+      "memory": "Definition Mathematical proof that the four-gradient \u2202\u00b5 A\u03bd has 16 independent components and uniqueness theorems for scalar-longitudinal field solutions. Shows T = -(1/c)\u2202t\u03c6 + \u2207\u00b7A is not identically zero in extended electrodynamics, providing the mathematical foundation for longitudinal photon wave experiments. Mathematical Results Key Identities: - Component count: \u2202\u00b5 A\u03bd has 16 independent components (not 10 as standard theory claims) - Decomposition: F\u00b5\u03bd (antisymmetric, 6) + S\u00b5\u03bd (symmetric, 10) - Scalar field equation: \u25a1C = sources where C = \u2202\u00b5 A\u00b5 Uniqueness Theorems: - Scalar-longitudinal field solutions are unique given boundary conditions - Energy density and momentum exist for longitudinal sector - T \u2260 0 in EED (unlike standard theory where T = 0 by constraint) Experimental Relevance 1. Verification tool: Use Woodside's identities to verify your setup matches EED predictions 2.",
+      "questions": [
+        {
+          "id": "g2-concepts-woodside-three-vector-identities-q1",
+          "question": "What is the value of the energy-momentum tensor T in extended electrodynamics compared to standard theory?",
+          "choices": [
+            "T = 0 in both theories",
+            "T \u2260 0 in extended electrodynamics, but T = 0 in standard theory",
+            "T = 0 in extended electrodynamics, but T \u2260 0 in standard theory",
+            "T is undefined in both theories"
+          ],
+          "answer": 1,
+          "paraphrase": "In extended electrodynamics, T is not identically zero, unlike in standard theory where T equals zero due to constraints."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-diatessaron",
+      "source_family": "concepts-the-evangelion-diatessaron",
+      "path": "concepts/the-evangelion-diatessaron.md",
+      "sha256": "92ef8c638f37b1e96f449eb3475b3b72f2457f9ab35ba33d1b4532e3982177be",
+      "memory": "The Evangelion \u2014 Diatessaron of Tatian (KJV Rendering) The Evangelion is Ante D. Luvian's 2026 rendering of the Diatessaron of Tatian \u2014 an ancient Gospel Harmony \u2014 translated into the language of the Authorized King James Version. It contains nearly every verse from the four canonical gospels, arranged in a single logical, cohesive narrative across 55 chapters. What Is the Diatessaron? The Diatessaron (Greek: \"through the four\") is one of the earliest attempts to harmonize the four Gospels into a single continuous narrative. Originally composed by Tatian around 170\u2013180 CE, it was the most prominent Gospel Harmony in early Christianity and remained the standard text for Syriac-speaking churches for centuries. The original Greek text is lost; what survives are references, quotations, and translations from various traditions. This Rendering Philip Schaff's rendering in Ante-Nicene Fathers (vol.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-diatessaron-q0",
+          "question": "What is the primary characteristic of the Evangelion's narrative structure?",
+          "choices": [
+            "It presents the four gospels as separate, distinct accounts.",
+            "It arranges verses from the four gospels into a single cohesive narrative.",
+            "It focuses exclusively on the life of Jesus without other figures.",
+            "It uses modern English to translate ancient Syriac texts."
+          ],
+          "answer": 1,
+          "paraphrase": "The Evangelion combines content from all four canonical gospels into one unified and logical story."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-eye-fixation-induction",
+      "source_family": "concepts-eye-fixation-induction",
+      "path": "concepts/eye-fixation-induction.md",
+      "sha256": "9a50576fdbdc1a169f19d921ac503dcb9824f5b57ac03b79e2d09d224cfb32ee",
+      "memory": "Definition Visual fixation causes oculomotor cortex inhibition \u2192 automatic relaxation of associated brain regions. Fastest induction method for highly susceptible subjects (~80% success rate in 30% susceptibility group). Mechanism - Oculomotor inhibition: Visual focus fatigues eye muscles \u2192 spreads to mental state - Convergence effect: Eyes naturally close or relax after sustained fixation - Visual anchoring: Object serves as focal point for attention narrowing Protocol Summary Step Action Duration ------ -------- ---------- 1 Subject stares at small object (pen tip, dot on wall) ~6 inches away 30 sec 2 \"Let your eyes get heavy... heavier...\" while maintaining fixation 1 min 3 Eyes close naturally or gently guided shut 30 sec 4 Deepen with post-hypnotic suggestions 1\u20132 min Key Success Factors - Object choice: Small, high contrast (black dot on white paper) - Distance: 6 inches optimal for convergence without strain - Voice cadence: Slow down by 30% during fixation phase Variants to Test 1.",
+      "questions": [
+        {
+          "id": "g2-concepts-eye-fixation-induction-q0",
+          "question": "What is the recommended distance between the subject and the fixation object to ensure optimal convergence without strain?",
+          "choices": [
+            "12 inches",
+            "6 inches",
+            "24 inches",
+            "1 foot"
+          ],
+          "answer": 1,
+          "paraphrase": "To achieve the best convergence effect without causing eye strain, how far should the small object be placed from the subject?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-15",
+      "source_family": "concepts-the-evangelion-chapter-15",
+      "path": "concepts/the-evangelion-chapter-15.md",
+      "sha256": "34aec05db3d46b79a77ff0a914872347ac8ffcd4475850a7aadd038fbc2fde56",
+      "memory": "The Evangelion \u2014 Chapter 15 (XV) ND JESUS ANSWERING said unto him, Simon, I have A somewhat to say unto thee. And he saith, Master, say... Full Text ND JESUS ANSWERING said unto him, Simon, I have A somewhat to say unto thee. And he saith, Master, say on. There was a certain creditor which had two debtors: the one owed five hundred pence, and the other fifty. And when they had nothing to pay, he frankly forgave them both. Tell me therefore, which of them will love him most? Simon answered and said, I suppose that he, to whom he forgave most. And he said unto him, Thou hast rightly judged. And he turned to the woman, and said unto Simon, Seest thou this woman? I entered into thine house, thou gavest me no water for my feet: but she hath washed my feet with tears, and wiped them with the hairs of her head.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-15-q0",
+          "question": "What action did the woman take to wash Jesus' feet that contrasted with the host's lack of hospitality?",
+          "choices": [
+            "She poured water from a pitcher onto his feet.",
+            "She washed his feet with tears and wiped them with her hair.",
+            "She brought him a towel to dry his feet.",
+            "She offered him a cup of wine."
+          ],
+          "answer": 1,
+          "paraphrase": "Unlike the host who provided no water, the woman used her tears to clean his feet and dried them with her own hair."
+        },
+        {
+          "id": "g2-concepts-the-evangelion-chapter-15-q1",
+          "question": "Which of the following best describes the creditor's behavior toward his two debtors?",
+          "choices": [
+            "He demanded immediate payment from both.",
+            "He imprisoned the debtor who owed less.",
+            "He forgave the debts of both debtors despite their inability to pay.",
+            "He only forgave the debt of the one who owed fifty pence."
+          ],
+          "answer": 2,
+          "paraphrase": "The creditor chose to freely cancel the debts of both individuals, even though neither had any money to return."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-extended-electrodynamics",
+      "source_family": "concepts-extended-electrodynamics",
+      "path": "concepts/extended-electrodynamics.md",
+      "sha256": "b0bc128ee8e94b808966d9abbff0efb627d53b49390f77ec8a3a18ab2713e19a",
+      "memory": "Definition Extended Electrodynamics (EED) is a gauge-free formulation of classical electrodynamics that relaxes the Lorenz gauge condition by promoting it to a dynamical term in the Stueckelberg Lagrangian. The gauge-fixing parameter \u03b3 = 1 eliminates residual gauge symmetry, making the scalar field C = \u2202\u00b5 A\u00b5 a true dynamical variable with its own equation of motion: \u25a1C = sources. Historical Context - Van Vlaenderen (2003): First generalization using Stueckelberg Lagrangian - Hively & Giakos (2012): Toward more complete electrodynamics - Reed & Hively (2020): Implications of gauge-free EED Key Features Feature Standard Electrodynamics Extended Electrodynamics --- See also: scalar-longitudinal-waves stueckelberg-mechanism van-vlaenderen-extended-electrodynamics wheeler-feynman-theory wilhelm-deleted-degrees-of-freedom-2026",
+      "questions": [
+        {
+          "id": "g2-concepts-extended-electrodynamics-q1",
+          "question": "Which historical work is credited with being the first generalization of Extended Electrodynamics using the Stueckelberg Lagrangian?",
+          "choices": [
+            "Reed & Hively (2020)",
+            "Hively & Giakos (2012)",
+            "Van Vlaenderen (2003)",
+            "Wheeler-Feynman theory"
+          ],
+          "answer": 2,
+          "paraphrase": "The initial application of the Stueckelberg Lagrangian to create a general version of this theory is attributed to Van Vlaenderen in 2003."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-second-chance-scalp",
+      "source_family": "concepts-second-chance-scalp",
+      "path": "concepts/second-chance-scalp.md",
+      "sha256": "1f7ae893bc9102f5284133ba193e60adc7a2e64a13fdad12a05cad35f8301056",
+      "memory": "Second Chance Scalp Trading Strategy Overview The \"Second Chance Scalp\" is a range-break trading strategy that exploits the second attempt to break out of a consolidation range. When an in-play stock puts in ranges and initially breaks, it often \"tests\" traders who were involved in the first breakout \u2014 creating a second entry opportunity. Source: Second Chance Scalp Cheat Sheet (~4K chars) Strategy Mechanics Setup - Stock consolidates in a defined range (consolidation phase) - Initial break out of the range occurs but may fail or pull back - Price returns to test the breakout level \u2014 this is the \"second chance\" - Entry on the retest, betting that the second attempt will succeed Rationale The strategy exploits: - Range dynamics : Consolidation builds energy for subsequent moves - Breakout testing : Initial breakouts often fail as weak hands exit - Second attempts : When price returns to test a breakout level and holds, it signals stronger conviction from remaining participants - Trapped traders : Those who bought the first breakout and sold on the pullback are now out \u2014 reducing selling pressure for the second attempt",
+      "questions": [
+        {
+          "id": "g2-concepts-second-chance-scalp-q1",
+          "question": "According to the text, what advantage does the 'Second Chance Scalp' gain from traders who sold after the initial breakout?",
+          "choices": [
+            "It creates a new buying opportunity for those who missed the first move",
+            "It reduces the amount of selling pressure on the second attempt",
+            "It allows traders to lock in profits from the first breakout",
+            "It ensures that all initial buyers will hold their positions"
+          ],
+          "answer": 1,
+          "paraphrase": "By the time the price returns to test the level, the sellers who exited during the first pullback are gone, which lessens downward pressure."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-aharonov-bohm-effect",
+      "source_family": "concepts-aharonov-bohm-effect",
+      "path": "concepts/aharonov-bohm-effect.md",
+      "sha256": "9d1143a87221d375a3693656131eabda6f7064aaec81248a444c7eb5f585f087",
+      "memory": "Definition Quantum interference phase shift produced by electromagnetic potentials in regions where electric and magnetic fields vanish. Electrons traveling through field-free space acquire a phase difference proportional to the enclosed magnetic flux, proving that A carries physical information beyond E and B. Experimental Setup (Osakabe et al., 1986) Apparatus: - Toroidal magnet with superconducting winding - Superconductor ring confines B field entirely inside torus - Electron biprism interferometer passes electrons through field-free region surrounding toroid - Enclosed flux \u03a6 = \u222bB\u00b7dA \u2260 0, but E = B = 0 in electron path Measurement: - Interference pattern shift \u0394\u03b8 as function of enclosed flux - Phase shift: \u0394\u03c6 = (q/\u210f)\u222eA\u00b7dl = (q/\u210f)\u03a6 Key Results Parameter Value ----------- ------- Flux range 0 to ~10\u207b\u2077 Wb Electron energy ~50 keV Phase shift sensitivity < 0.1 rad resolution Reproducibility Multiple runs confirmed linear \u0394\u03c6 \u221d \u03a6 Significance for",
+      "questions": [
+        {
+          "id": "g2-concepts-aharonov-bohm-effect-q1",
+          "question": "According to the experimental results, what relationship exists between the phase shift and the magnetic flux when the electron path contains no electric or magnetic fields?",
+          "choices": [
+            "The phase shift is inversely proportional to the flux",
+            "The phase shift remains constant regardless of flux changes",
+            "The phase shift is directly proportional to the flux",
+            "The phase shift is independent of the enclosed magnetic flux"
+          ],
+          "answer": 2,
+          "paraphrase": "The data confirms a linear correlation between the observed interference pattern shift and which variable in the absence of local fields?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-funeral-of-sten-rgan-nyer-pa",
+      "source_family": "concepts-the-funeral-of-sten-rgan-nyer-pa",
+      "path": "concepts/the-funeral-of-sten-rgan-nyer-pa.md",
+      "sha256": "d7682d5b5f32739b5dc97480caf44c84719991e847fcb3760d7eb56821de2a68",
+      "memory": "The Funeral of Sten Rgan Nyer Pa And the Story of Gyim Po Nyag Cig's Bride. This text occupies the verso (103 lines) of IOL Tib J 731, a scroll from the sealed cave library at Dunhuang (Mogao Caves, Gansu Province), now held by the British Library (Stein Collection). The recto (133 lines) preserves a separate mythological narrative about the origin of the horse-human alliance and the founding of funeral horse sacrifice. The verso contains two interleaved stories: the funeral rites of Father Sten Rgan Nyer Pa, which cannot be co Content And the Story of Gyim Po Nyag Cig's Bride This text occupies the verso (103 lines) of IOL Tib J 731, a scroll from the sealed cave library at Dunhuang (Mogao Caves, Gansu Province), now held by the British Library (Stein Collection).",
+      "questions": [
+        {
+          "id": "g2-concepts-the-funeral-of-sten-rgan-nyer-pa-q0",
+          "question": "Where is the scroll containing the text of Sten Rgan Nyer Pa's funeral and Gyim Po Nyag Cig's Bride currently held?",
+          "choices": [
+            "The Dunhuang Mogao Caves",
+            "The British Library",
+            "The Gansu Provincial Museum",
+            "The Stein Collection"
+          ],
+          "answer": 1,
+          "paraphrase": "Which institution possesses the Dunhuang scroll that includes the narratives of Sten Rgan Nyer Pa and Gyim Po Nyag Cig?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-xiii-the-thirteenth-discourse-on-th",
+      "source_family": "concepts-attar-asrar-nama-discourse-xiii-the-thirteenth-discourse-on-th",
+      "path": "concepts/attar-asrar-nama-discourse-xiii-the-thirteenth-discourse-on-th.md",
+      "sha256": "def36415808a829fe4deea7ce9f1db690c82d0b083008761717a964b97dbbbd0",
+      "memory": "The Book of Secrets \u2014 Discourse XIII: The Thirteenth Discourse \u2014 On the Confession, the Blindfolded Camel, and the King's Treasure From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content XII. The Twelfth Discourse \u2014 On Heedlessness, the Celestial Game, and the Valley of Despair O you who have laid your head in heedlessness, who have cast your faith to the wind for the world \u2014 who told you to quarrel with the sky? Who told you to bleed your liver over a handful of the graceless? How long will you worry over bread and clothes? How long care about the public's honor and shame? From so much useless thinking you have worn your own nature thin. Sacrifice your nature in surrender. Sit before this Word and learn. Learn meaning from its very alphabet.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-xiii-the-thirteenth-discourse-on-th-q1",
+          "question": "What action does the passage advise the reader to take in order to learn the meaning of the Word?",
+          "choices": [
+            "Sacrifice one's nature in surrender.",
+            "Cast faith to the wind.",
+            "Quarrel with the sky.",
+            "Care about public shame."
+          ],
+          "answer": 0,
+          "paraphrase": "To comprehend the significance of the Word, the text instructs the individual to give up their own nature as an act of submission."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-51",
+      "source_family": "concepts-the-evangelion-chapter-51",
+      "path": "concepts/the-evangelion-chapter-51.md",
+      "sha256": "5cbad921edabd087c6734ee747576f3184a0921e6c509b47c701bc671bfc43e2",
+      "memory": "The Evangelion \u2014 Chapter 51 (LI) PILATE THEREFORE heard that saying, he brought Jesus forth, and sat down in the judgment seat in a place that is called the Pavement, but in the Hebrew, Gabbatha. And it was the preparation of the pas... Full Text PILATE THEREFORE heard that saying, he brought Jesus forth, and sat down in the judgment seat in a place that is called the Pavement, but in the Hebrew, Gabbatha. And it was the preparation of the passover, and about the sixth hour: and he saith unto the Jews, Behold your King! But they cried out, Away with him, away with him, crucify him. Pilate saith unto them, Shall I crucify your King? The chief priests answered, We have no king but Cesar.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-51-q1",
+          "question": "How did the chief priests respond when Pilate asked if they wanted him crucified?",
+          "choices": [
+            "They agreed to the execution immediately.",
+            "They stated they had no king but Caesar.",
+            "They demanded a fair trial.",
+            "They refused to acknowledge Jesus as King."
+          ],
+          "answer": 1,
+          "paraphrase": "What was the chief priests' reply regarding their allegiance when Pilate questioned the necessity of crucifixion?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-19",
+      "source_family": "concepts-mandaean-book-of-john-chapter-19",
+      "path": "concepts/mandaean-book-of-john-chapter-19.md",
+      "sha256": "3069109b1f97a4575c1e8d5c47a9bcb3f5f54a7c31765fe0ba9c02ff5dda60ac",
+      "memory": "Chapter 19: I Shine Forth in the Name of My Father I Shine Forth in the Name of My Father. Chapter 19 of the Mandaean Book of John \u2014 the second chapter of the John-Johannes section (Chapters 18\u201333). After the nativity drama of Chapter 18 \u2014 where priests dreamed of a star over Enishbai, Zechariah raged and struck and yielded \u2014 the child has become a man. Johannes speaks in the first person for the first time in the entire book. What follows is a litany of renunciation: no throne, no house, no garlands, no wine, no blemish. Then a validation: the Content I Shine Forth in the Name of My Father Chapter 19 of the Mandaean Book of John \u2014 the second chapter of the John-Johannes section (Chapters 18\u201333).",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-19-q0",
+          "question": "What specific change in narrative perspective occurs in Chapter 19 of the Mandaean Book of John?",
+          "choices": [
+            "The priests begin speaking in the first person.",
+            "Johannes speaks in the first person for the first time in the entire book.",
+            "The child transforms into a star over Enishbai.",
+            "Zechariah yields and becomes the narrator."
+          ],
+          "answer": 1,
+          "paraphrase": "For the first time throughout the text, the character Johannes addresses the reader using the first person."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-saturn-hexagon-and-cube-geometry",
+      "source_family": "concepts-saturn-hexagon-and-cube-geometry",
+      "path": "concepts/saturn-hexagon-and-cube-geometry.md",
+      "sha256": "fe7fb281b20e05d40a8ca668ad61420b29d2fc0eda88048773b4ccb46cf2eb08",
+      "memory": "Saturn Hexagon and Cube Geometry \u2014 The Black Hexagonal Storm at Saturn's Pole Definition Saturn possesses a persistent hexagonal storm pattern at its north pole \u2014 a geometrically precise six-sided jet stream that has been observed for decades. This phenomenon, combined with the geometric relationship between cubes and hexagons (the shadow of a cube from certain angles is a hexagon), creates an extraordinary convergence of planetary astronomy and sacred geometry associated with Saturn in ancient tradition. The Black Hexagonal Storm at Saturn's North Pole Discovery and Observation - First observed: Voyager 1 flyby in November 1980s (actually discovered by Voyager missions, studied extensively since) - Location: Saturn's north pole - Structure: A persistent hexagonal jet stream \u2014 six nearly equal sides forming a near-perfect hexagon - Color: The hexagon appears darker/black compared to surrounding cloud structures - Persistence: This pattern has remained stable for decades, suggesting it is not transient but fundamental to Saturn's atmospheric dynamics Physical Description The hexagonal storm is a standing wave pattern in Saturn's atmosphere \u2014 essentially a jet stream that maintains its",
+      "questions": [
+        {
+          "id": "g2-concepts-saturn-hexagon-and-cube-geometry-q1",
+          "question": "How long has the hexagonal storm pattern at Saturn's north pole been observed to remain stable?",
+          "choices": [
+            "For only a few months",
+            "For decades",
+            "For centuries",
+            "For the entire history of the solar system"
+          ],
+          "answer": 1,
+          "paraphrase": "What duration of stability is attributed to Saturn's north pole storm pattern?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-mandaean-book-of-john",
+      "source_family": "concepts-the-mandaean-book-of-john",
+      "path": "concepts/the-mandaean-book-of-john.md",
+      "sha256": "10be3c56a2a393eb9245f538b395b76e2525ffafd160e803ce9d4fda2bd9f319",
+      "memory": "The Mandaean Book of John (M\u0161aba Marai) A foundational scripture of the Mandaean religion \u2014 the last surviving Gnostic tradition of antiquity, with approximately 100,000 adherents primarily in Iraq and the global diaspora. Also known as the Dra\u0161ia \u1e0f-Yahia (\"Teachings of John\"), this collection preserves liturgical poetry, cosmological dialogues, and ethical instruction that has shaped Mandaean religious life for centuries. Source First free independent English translation from Classical Mandaic by the New Tianmu Anglican Church (2026). Translated from the critical edition text established by Charles G. H\u00e4berl and James F. McGrath ( The Mandaean Book of John: Text and Translation , Berlin: De Gruyter, 2020), available on the Internet Archive under CC BY-NC-ND 4.0.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-mandaean-book-of-john-q1",
+          "question": "Which specific group is credited with producing the first free independent English translation of the text?",
+          "choices": [
+            "The New Tianmu Anglican Church",
+            "Charles G. H\u00e4berl and James F. McGrath",
+            "The Internet Archive",
+            "The De Gruyter publishing house"
+          ],
+          "answer": 0,
+          "paraphrase": "The New Tianmu Anglican Church was responsible for creating the initial standalone English version of the work."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-gravitomagnetic-transformer-analog",
+      "source_family": "concepts-gravitomagnetic-transformer-analog",
+      "path": "concepts/gravitomagnetic-transformer-analog.md",
+      "sha256": "26807b3819f9590831f2cc7a4da0f0516d09bd9dcf8cb5c847f811efe334b575",
+      "memory": "Gravitomagnetic Analogs of Electric Transformers (Swain, 2010) Overview John Swain's paper explores the gravitational analog of electric transformers within linearized general relativity. The gravitoelectromagnetic (GEM) formalism closely parallels Maxwell's equations \u2014 for time-varying mass-energy currents, the gravitational equivalent of Faraday's law suggests new effects based on a \"gravitational transformer.\" Source: Gravitatomagnetic Analogs of Electric Transformers (Swain, arXiv:1006.5754v1 [gr-qc], 2010) \u2014 ~331 lines Key Concepts GEM Formalism Linearized GR admits a formulation in terms of gravitoelectric and gravitomagnetic fields that closely parallels the electromagnetic field by Maxwell's equations: - Gravitoelectric field : Analogous to E-field, produced by mass density - Gravitomagnetic field : Analogous to B-field, produced by mass currents (analogous to electric current) Gravitational Transformer For steady mass currents, G",
+      "questions": [
+        {
+          "id": "g2-concepts-gravitomagnetic-transformer-analog-q1",
+          "question": "Which fundamental law in electromagnetism is suggested to have a gravitational equivalent involving time-varying mass-energy currents?",
+          "choices": [
+            "Ampere's Law",
+            "Gauss's Law",
+            "Faraday's Law",
+            "Newton's Law of Universal Gravitation"
+          ],
+          "answer": 2,
+          "paraphrase": "According to the text, which electromagnetic principle implies new gravitational effects when mass-energy changes over time?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-49",
+      "source_family": "concepts-the-evangelion-chapter-49",
+      "path": "concepts/the-evangelion-chapter-49.md",
+      "sha256": "b43efeefd4e77954bc55a0f6c537476cf5338a856cc7f33fcb230c1ccae153d2",
+      "memory": "The Evangelion \u2014 Chapter 49 (XLIX) HE HIGH PRIEST then asked Jesus of his disciples, and T of his doctrine. Jesus answered him, I spake openly to... Full Text HE HIGH PRIEST then asked Jesus of his disciples, and T of his doctrine. Jesus answered him, I spake openly to the world; I ever taught in the synagogue, and in the temple, whither the Jews always resort; and in secret have I said nothing. Why askest thou me? ask them which heard me, what I have said unto them: behold, they know what I said. And when he had thus spoken, one of the officers which stood by struck Jesus with the palm of his hand, saying, Answerest thou the high priest so? Jesus answered him, If I have spoken evil, bear witness of the evil: but if well, why smitest thou me? Now Annas had sent him bound unto Caiaphas the high priest. 7 And Simon Peter stood and warmed himself.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-49-q1",
+          "question": "How does Jesus respond when an officer strikes him?",
+          "choices": [
+            "He asks the officer to stop his violence immediately.",
+            "He challenges the officer to prove his words were evil.",
+            "He tells the officer to leave the temple.",
+            "He asks the officer why he is hitting him."
+          ],
+          "answer": 1,
+          "paraphrase": "When struck, Jesus counters by asking the officer to provide testimony against him if his words were bad, or questions the violence if they were good."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-8",
+      "source_family": "concepts-mandaean-book-of-john-chapter-8",
+      "path": "concepts/mandaean-book-of-john-chapter-8.md",
+      "sha256": "3bd4ca2faa44b28e0d6dcc704403f9f45eb0a5ace79a9e2f972f4b1bb12f3631",
+      "memory": "Chapter 8: A Voice Came to Me in the Jordan A Voice Came to Me in the Jordan. Chapter 8 introduces Nasb Ziwa \u2014 Splendid Plant \u2014 the son of Yushamin. After five chapters of cosmic rebellion, punishment, and confession, the narrative shifts to the next generation. The son travels from the realm of Air to Glory's Pride, the court of the Light King, and approaches the gate with the protocol of a cosmic petition: the messenger, the three-fold bowing unnoticed, the formal announcement. His petition is praise followed by lament \u2014 he tells the Ki Content A Voice Came to Me in the Jordan Chapter 8 introduces Nasb Ziwa \u2014 Splendid Plant \u2014 the son of Yushamin. After five chapters of cosmic rebellion, punishment, and confession, the narrative shifts to the next generation. The son travels from the realm of Air to Glory's Pride, the court of the Light King, and approaches the gate with the protocol of a cosmic petition: the messenger, the three-fold bowing unnoticed, the formal announcement.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-8-q1",
+          "question": "From which realm does the son travel to reach the court of the Light King?",
+          "choices": [
+            "The realm of Air",
+            "The realm of Earth",
+            "The realm of Fire",
+            "The realm of Water"
+          ],
+          "answer": 0,
+          "paraphrase": "Where did the protagonist originate before journeying to the Light King's court?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-breaking-of-sorcery",
+      "source_family": "concepts-the-breaking-of-sorcery",
+      "path": "concepts/the-breaking-of-sorcery.md",
+      "sha256": "ebde7bb186e1224d8649c4a26286a0aa14d3829712e3899ad9812f906a96ece5",
+      "memory": "The Breaking of Sorcery Pelliot tib\u00e9tain 1039. A pre-Buddhist Tibetan counter-sorcery ritual from the sealed cave library at Dunhuang, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. The beginning is missing. The verso carries a Chinese Buddhist text \u2014 the scroll was repurposed, the Bon ritual relegated to the recto. The text is a liturgical manual for breaking sorcery (byad dgrol) \u2014 the technical term for dissolving a curse that has been placed upon a person. The rite is performed Content Pelliot tib\u00e9tain 1039 A pre-Buddhist Tibetan counter-sorcery ritual from the sealed cave library at Dunhuang, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. The beginning is missing. The verso carries a Chinese Buddhist text \u2014 the scroll was repurposed, the Bon ritual relegated to the recto.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-breaking-of-sorcery-q0",
+          "question": "What is the primary function of the ritual described in the text?",
+          "choices": [
+            "To establish a new Buddhist doctrine",
+            "To dissolve a curse placed upon a person",
+            "To translate Old Tibetan into Chinese",
+            "To seal the cave library at Dunhuang"
+          ],
+          "answer": 1,
+          "paraphrase": "The text explains that the ritual's purpose is to remove a negative spell or curse from an individual."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-18",
+      "source_family": "concepts-mandaean-book-of-john-chapter-18",
+      "path": "concepts/mandaean-book-of-john-chapter-18.md",
+      "sha256": "eb8e62eb27abad1252eee69163d55587333ac273f1e2ea3ad703d16c4d6790ce",
+      "memory": "Chapter 18: A Child Was Transplanted from on High A Child Was Transplanted from on High. Chapter 18 of the Mandaean Book of John, the first and longest chapter of the John-Johannes section (Chapters 18-33) \u2014 the heart of the entire book. This chapter narrates the birth of Johannes (Yuhana, John the Baptist) from the Mandaean perspective. A priest in Jerusalem sees apocalyptic visions: a star over Enishbai, fire over Zechariah, three lamps, the sun at night. The priests cannot interpret. The earth itself speaks, directing them to Lilioch, the dr Content A Child Was Transplanted from on High Chapter 18 of the Mandaean Book of John, the first and longest chapter of the John-Johannes section (Chapters 18-33) \u2014 the heart of the entire book. This chapter narrates the birth of Johannes (Yuhana, John the Baptist) from the Mandaean perspective.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-18-q1",
+          "question": "According to the text, what entity communicated with the priests to direct them toward Lilioch?",
+          "choices": [
+            "The earth itself",
+            "The priest in Jerusalem",
+            "The Mandaean Book of John",
+            "The star over Enishbai"
+          ],
+          "answer": 0,
+          "paraphrase": "The ground itself spoke to the priests, guiding them to Lilioch."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-contest-of-bon-and-gshen",
+      "source_family": "concepts-the-contest-of-bon-and-gshen",
+      "path": "concepts/the-contest-of-bon-and-gshen.md",
+      "sha256": "9e876d20b521e08a6115889bce847bf40909d5304d0cff6e539a82e0b746a600",
+      "memory": "The Contest of Bon and Gshen A Narrative of Healing and Dominion. A pre-Buddhist Tibetan narrative preserved in the Dunhuang caves, Pelliot tib\u00e9tain 1285 (Biblioth\u00e8que nationale de France). The scroll tells the story of how Bon and Gshen healers proved their power across the kingdoms of the Tibetan world \u2014 each episode follows the same sacred pattern: a noble falls ill, diviners cast their lots and fail, and only the local Bon practitioner can diagnose and cure the disease. The text is both a medical mythology and a politic Content A Narrative of Healing and Dominion A pre-Buddhist Tibetan narrative preserved in the Dunhuang caves, Pelliot tib\u00e9tain 1285 (Biblioth\u00e8que nationale de France). The scroll tells the story of how Bon and Gshen healers proved their power across the kingdoms of the Tibetan world \u2014 each episode follows the same sacred pattern: a noble falls ill, diviners cast their lots and fail, and only the local Bon practitioner can diagnose and cure the disease.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-contest-of-bon-and-gshen-q0",
+          "question": "What specific sequence of events characterizes every episode in the narrative described in the text?",
+          "choices": [
+            "A noble becomes ill, diviners successfully cast lots, and a Bon practitioner cures the disease.",
+            "A noble becomes ill, diviners fail to cast lots, and only a local Bon practitioner diagnoses and cures the disease.",
+            "A noble becomes ill, diviners cast lots and succeed, and a Gshen practitioner cures the disease.",
+            "A noble becomes ill, diviners cast lots and fail, but a Gshen practitioner diagnoses and cures the disease."
+          ],
+          "answer": 1,
+          "paraphrase": "In each story segment, a ruler gets sick, fortune-tellers attempt divination without success, and the only one able to treat the condition is the Bon healer from that area."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-variance-risk-premium",
+      "source_family": "concepts-variance-risk-premium",
+      "path": "concepts/variance-risk-premium.md",
+      "sha256": "b8fd4674c67ae3466e83f9144c036e13ee9a708c6521b32dacbb6a591c57a918",
+      "memory": "Variance Risk Premium Demystified Overview The variance risk premium (VRP) is the difference between realized volatility and implied volatility \u2014 essentially, the compensation investors demand for bearing volatility risk. This paper provides a framework for understanding why VRP exists, how it varies across markets, and what it reveals about market structure. Source: Variance Risk Premium Demystified (~77K chars) Key Concepts Definition VRP = Implied Variance - Realized Variance When implied variance exceeds realized variance (the typical case), options are \"expensive\" relative to what actually happens \u2014 investors pay a premium for tail risk protection.",
+      "questions": [
+        {
+          "id": "g2-concepts-variance-risk-premium-q0",
+          "question": "What is the mathematical formula used to define the variance risk premium (VRP)?",
+          "choices": [
+            "Realized Variance minus Implied Variance",
+            "Implied Variance minus Realized Variance",
+            "Implied Variance plus Realized Variance",
+            "Realized Variance plus Implied Variance"
+          ],
+          "answer": 1,
+          "paraphrase": "VRP is calculated by subtracting actual volatility from the volatility predicted by options prices."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-k-meyl-scalar-wave-theory",
+      "source_family": "concepts-k-meyl-scalar-wave-theory",
+      "path": "concepts/k-meyl-scalar-wave-theory.md",
+      "sha256": "5a4d11032580b7ce6e9b75557ffac89538d8557f45b9eafd8e7db45ad479c42c",
+      "memory": "K. Meyl Scalar Wave Theory Overview Klaus Meyl's \"Theory of Objectivity\" is a comprehensive alternative physics framework built around the concept of potential vortices \u2014 quantized vortices of the electric field that propagate as scalar waves. The theory claims to unify all fundamental interactions through a single \"fundamental field equation.\" Source: Scalar Waves / Tesla Physics Textbook (1996, ~23,000 lines). Core Framework The Fundamental Field Equation Meyl derives a single field equation from Ampere's law and an extended Faraday induction law. The equation has four terms: 1. Hyperbolic term \u2014 the wave component (standard electromagnetic propagation) 2. Parabolic term (c) \u2014 eddy current damping (conventional current decay) 3. Parabolic term (d) \u2014 potential vortex formation/damping (new phenomenon) 4. Elliptic term (e) \u2014 Poisson equation / stationary field component The field vector is interchangeable: E, H, j, B, or D all satisfy the same equation form.",
+      "questions": [
+        {
+          "id": "g2-concepts-k-meyl-scalar-wave-theory-q0",
+          "question": "What specific phenomenon does the third term (Parabolic term d) in Meyl's Fundamental Field Equation represent?",
+          "choices": [
+            "Standard electromagnetic wave propagation",
+            "Eddy current damping and conventional current decay",
+            "The formation and damping of potential vortices",
+            "The stationary field component described by the Poisson equation"
+          ],
+          "answer": 2,
+          "paraphrase": "According to the text, the parabolic term labeled 'd' accounts for the creation and dissipation of potential vortices, a novel effect distinct from standard wave behavior or conventional current loss."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-xiv-the-fourteenth-discourse-on-th",
+      "source_family": "concepts-attar-asrar-nama-discourse-xiv-the-fourteenth-discourse-on-th",
+      "path": "concepts/attar-asrar-nama-discourse-xiv-the-fourteenth-discourse-on-th.md",
+      "sha256": "bb2effda2870139a9db75fa666848985e8a0367e6267e0d5d6b0a474e63c46fd",
+      "memory": "The Book of Secrets \u2014 Discourse XIV: The Fourteenth Discourse \u2014 On the World's Deceptions, the Madman at the Kaaba, and the Dog of the Cave From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content XIII. The Thirteenth Discourse \u2014 On the Confession, the Blindfolded Camel, and the King's Treasure I, the wretch, have been awake so long \u2014 a lifetime I have chased this work. In this sea I steered many a ship; at last I scattered my goods upon the waves. For years I sat in this reflection; I made myself acquainted with so many states. All of them \u2014 whether laggard or leader \u2014 appear the same in this bewilderment. No one is aware of the divine secret; from moon to fish, we are all prisoners.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-xiv-the-fourteenth-discourse-on-th-q0",
+          "question": "What realization does the speaker reach regarding the duration of their pursuit of the work?",
+          "choices": [
+            "They have only been awake for a few days.",
+            "They have been awake for a lifetime.",
+            "They have been asleep for a lifetime.",
+            "They have been awake for exactly one year."
+          ],
+          "answer": 1,
+          "paraphrase": "The speaker admits to having spent an entire lifetime chasing this work."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-goto-longitudinal-scalar-photons",
+      "source_family": "concepts-goto-longitudinal-scalar-photons",
+      "path": "concepts/goto-longitudinal-scalar-photons.md",
+      "sha256": "9ab03241b8e6870b559aa4ccac05af3a01a2477b62e6681aa121b8c890deb1cf",
+      "memory": "Definition QFT analysis by Toshihide Goto showing longitudinal and scalar photons persist as independent dynamical variables even in Lorentz gauge. Contrasts with standard field-primary formulation where they're \"deleted,\" proving they aren't mathematical artifacts but real propagating modes when properly quantized. Theoretical Results Key Findings: - Longitudinal and scalar photons exist in canonical quantization despite Lorenz condition \u2202\u00b5 A\u00b5 = 0 - They are independent dynamical variables, not gauge redundancies - Ghost-free if properly handled via Stueckelberg mechanism (\u03b3 = 1) Mode Classification: Mode Type Polarization Count Propagation in EED ----------- ------------------- -------------------- Transverse 2 Yes Longitudinal 1 Yes Scalar 1 Yes Experimental Relevance 1. Proof of concept: Longitudinal modes aren't mathematical artifacts when quantized correctly 2. Quantization recipe: Use Stueckelberg mechanism for ghost-free longitudinal photons 3.",
+      "questions": [
+        {
+          "id": "g2-concepts-goto-longitudinal-scalar-photons-q1",
+          "question": "How many independent dynamical variables do longitudinal and scalar photons possess in the QFT analysis described?",
+          "choices": [
+            "They are deleted as mathematical artifacts",
+            "They are gauge redundancies",
+            "They exist as independent dynamical variables",
+            "They do not propagate in EED"
+          ],
+          "answer": 2,
+          "paraphrase": "The passage states that despite the Lorenz condition, these photon types function as what kind of variables in the quantization process?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-44",
+      "source_family": "concepts-the-evangelion-chapter-44",
+      "path": "concepts/the-evangelion-chapter-44.md",
+      "sha256": "8d362eec6d444d1124abce9bf130cd9b3bb330519138ef06e9606d91213e9055",
+      "memory": "The Evangelion \u2014 Chapter 44 (XLIV) ND IT CAME to pass, when Jesus had finished all these A sayings, he said unto his disciples, Ye know that after... Full Text ND IT CAME to pass, when Jesus had finished all these A sayings, he said unto his disciples, Ye know that after two days is the feast of the passover, and the Son of man is betrayed to be crucified. Then assembled together the chief priests, and the scribes, and the elders of the people, unto the palace of the high priest, who was called Caiaphas, And consulted that they might take Jesus by subtilty, and kill him. But they said, Not on the feast day, lest there be an uproar among the people. And the chief priests and scribes sought how they might kill him; for they feared the people. Then entered Satan into Judas surnamed Iscariot, being of the number of the twelve.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-44-q0",
+          "question": "What specific reason did the chief priests and scribes give for deciding not to execute Jesus on the feast day?",
+          "choices": [
+            "They feared the people would riot.",
+            "They wanted to avoid a public scandal.",
+            "They believed the Son of Man would not be crucified.",
+            "They were instructed by Caiaphas to wait."
+          ],
+          "answer": 0,
+          "paraphrase": "The religious leaders chose to delay the execution to prevent causing a disturbance among the crowd."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-mdzo-funeral-rites",
+      "source_family": "concepts-the-mdzo-funeral-rites",
+      "path": "concepts/the-mdzo-funeral-rites.md",
+      "sha256": "1f0753a6dffcfba4d650267bd9f1a30d0093a425b711ef8c668aea2abcd5a110",
+      "memory": "The Mdzo Funeral Rites Pelliot tib\u00e9tain 1068. Two pre-Buddhist Tibetan funeral narratives from the Dunhuang cave library, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. Both stories belong to the genre scholars call smrang \u2014 ritual origin myths that authorize ceremonial practice by anchoring it in mythological precedent. Both tell the same story at different scales: a brother performs funeral rites for a dead sister, and the key to the rite is the mdzo cow \u2014 a hybrid of yak and do Content Pelliot tib\u00e9tain 1068 Two pre-Buddhist Tibetan funeral narratives from the Dunhuang cave library, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. Both stories belong to the genre scholars call smrang \u2014 ritual origin myths that authorize ceremonial practice by anchoring it in mythological precedent.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-mdzo-funeral-rites-q0",
+          "question": "What specific animal hybrid serves as the central element in the funeral rites described in the narratives?",
+          "choices": [
+            "a hybrid of yak and dog",
+            "a hybrid of yak and cow",
+            "a hybrid of yak and deer",
+            "a hybrid of yak and horse"
+          ],
+          "answer": 1,
+          "paraphrase": "The mdzo cow, which is a mix of a yak and a cow, is the essential component for the ceremony."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-narrative-architecture-ideology-as-built-environment",
+      "source_family": "concepts-narrative-architecture-ideology-as-built-environment",
+      "path": "concepts/narrative-architecture-ideology-as-built-environment.md",
+      "sha256": "f3fa98831797e22b3f241ad22b5d12d9be3da3cf62c0799866927fda3cb96284",
+      "memory": "Narrative Architecture \u2014 Ideology as Built Environment Overview Ideologies are not pills to take or reject \u2014 they are built environments. The \"red pill\" metaphor is fundamentally flawed because there is no perspective outside all narratives; even rejecting every narrative means building a new one (green pill? black pill?). True intellectual autonomy requires recognizing that ideologies are architectures you inhabit, not tools you wield. Source: Stop taking pills.txt (~3K chars) Core Framework The House Metaphor - Corridors = logical progressions between ideas - Rooms = methods of axiomatic interaction - Items = individual ideas placed within rooms - Windows = the perspective from which you see other people's ideologies - Growing up in parents' house \u2192 renting school apartment \u2192 building your own structure Two Paths After Rejecting Inherited Narratives 1. The Sprawl / McMansion : Start small, add wings as new thought experiments succeed. Can grow labyrinthine (Winchester Mystery House). Holes get tarped over rather than solved. 2.",
+      "questions": [
+        {
+          "id": "g2-concepts-narrative-architecture-ideology-as-built-environment-q0",
+          "question": "How does the text define the relationship between individual ideas and the structure of an ideology?",
+          "choices": [
+            "Individual ideas are the foundation upon which the entire logical progression is built.",
+            "Individual ideas are specific items placed within rooms that represent methods of interaction.",
+            "Individual ideas are the windows through which one observes the perspectives of others.",
+            "Individual ideas are the corridors that connect different methods of axiomatic interaction."
+          ],
+          "answer": 1,
+          "paraphrase": "According to the House Metaphor, individual concepts function as discrete objects situated inside rooms, which serve as the mechanisms for interacting with axioms."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-52",
+      "source_family": "concepts-the-evangelion-chapter-52",
+      "path": "concepts/the-evangelion-chapter-52.md",
+      "sha256": "0ee91b120f2a23e1a716187ed6aa9fbee37e53671bdd264b29f54e6b39fbc4a5",
+      "memory": "The Evangelion \u2014 Chapter 52 (LII) FTER THIS, JESUS knowing that all things were now A accomplished, that the scripture might be fulfilled,... Full Text FTER THIS, JESUS knowing that all things were now A accomplished, that the scripture might be fulfilled, saith, I thirst. And straightway one of them ran, and took a spunge, and filled it with vinegar, and put it on a reed, and gave him to drink. And one ran and filled a spunge full of vinegar, and put it on a reed, and gave him to drink, saying, Let alone; let us see whether Elias will come to take him down. When Jesus therefore had received the vinegar, he said, It is finished: and he bowed his head, and gave up the ghost. Then said Jesus, Father, forgive them; for they know not what they do. And they parted his raiment, and cast lots.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-52-q1",
+          "question": "What reason did the crowd give for delaying the execution of Jesus?",
+          "choices": [
+            "They believed Elias would arrive to rescue him.",
+            "They wanted to ensure the scripture was fully written.",
+            "They feared the Roman soldiers would intervene.",
+            "They hoped Jesus would rise from the dead immediately."
+          ],
+          "answer": 0,
+          "paraphrase": "Some observers suggested waiting to see if the prophet Elias would come down to take Jesus away."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-gap-junction-coupling",
+      "source_family": "concepts-gap-junction-coupling",
+      "path": "concepts/gap-junction-coupling.md",
+      "sha256": "a203b38f50fbf64f81d695ce1b70faa324b9e6b0969bcec98d952e053714d1c5",
+      "memory": "Gap Junction Coupling Definition Gap junctions are specialised intercellular channels that directly connect the cytoplasm of adjacent cells, allowing ions and small molecules (<1 kDa) to pass between cells. They form electrical synapses that enable rapid cell-to-cell communication and are essential for tissue-scale bioelectric pattern formation. Molecular Structure - Composed of connexins (vertebrates) or innexins (invertebrates) - Six connexin monomers form one connexon (hemichannel) - Two opposing connexons from adjacent cells dock to form a complete gap junction channel - Each channel has a conductance of ~50-300 pS depending on connexin type Role in Bioelectric Signaling Gap junctions are the physical substrate for tissue-scale bioelectric patterns: 1. Electrical syncytium formation : They couple cells electrically, allowing voltage patterns to propagate across cell collectives 2. Pattern maintenance : Disrupting gap junction coupling destroys bioelectric prepatterns and causes developmental defects 3.",
+      "questions": [
+        {
+          "id": "g2-concepts-gap-junction-coupling-q0",
+          "question": "What is the minimum molecular weight threshold for substances that can pass through gap junction channels?",
+          "choices": [
+            "1000 Daltons",
+            "1 Dalton",
+            "100 Daltons",
+            "50 Daltons"
+          ],
+          "answer": 0,
+          "paraphrase": "Substances smaller than what size in Daltons are permitted to move between cells via these channels?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-confusion-technique",
+      "source_family": "concepts-confusion-technique",
+      "path": "concepts/confusion-technique.md",
+      "sha256": "deb906ca9bc0d3d07d4638f5d90958eddf1dd1d9470309691e526a783e3689d5",
+      "memory": "Definition Intentional contradiction creates cognitive dissonance \u2192 critical factor bypassed as subject seeks resolution. Best method for resistant subjects (~60% success rate across general population). Mechanism - Cognitive dissonance: Contradictory statements create mental tension - Resolution seeking: Subject's mind works to resolve confusion \u2192 enters trance state - Critical factor bypass: Conscious resistance overwhelmed by paradox Protocol Summary Step Action Duration ------ -------- ---------- 1 Ask direct question: \"Are you ready to be hypnotized?\" 30 sec 2 Give contradictory answer: \"No, not really\" while maintaining eye contact 30 sec 3 Repeat with variations: \"You might be... or maybe not...\" 1\u20132 min 4 Guide to resolution: \"And as you resolve this, you drift deeper...\" 2\u20133 min Key Success Factors - Pacing: Speak slowly and deliberately during confusion phase - Eye contact: Maintain steady gaze throughout - Patience: Allow subject time to process contradictions (don't rush) Variants to Test 1.",
+      "questions": [
+        {
+          "id": "g2-concepts-confusion-technique-q1",
+          "question": "Which specific action by the hypnotist is identified as a key success factor for overcoming a subject's conscious resistance?",
+          "choices": [
+            "Maintaining steady eye contact throughout the procedure.",
+            "Speaking slowly and deliberately during the phase of confusion.",
+            "Allowing the subject sufficient time to process the contradictions without rushing.",
+            "All of the above."
+          ],
+          "answer": 3,
+          "paraphrase": "The most effective approach involves a combination of slow, deliberate speech, consistent eye contact, and patience to let the subject work through the paradoxes."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-50",
+      "source_family": "concepts-the-evangelion-chapter-50",
+      "path": "concepts/the-evangelion-chapter-50.md",
+      "sha256": "901b1285816c23acca01dcde0984d5cec68a2edf723cd42f62fd1ee3db3249e1",
+      "memory": "The Evangelion \u2014 Chapter 50 (L) HEN SAID PILATE to the chief priests and to the people, T I find no fault in this man. And they were the more... Full Text HEN SAID PILATE to the chief priests and to the people, T I find no fault in this man. And they were the more fierce, saying, He stirreth up the people, teaching throughout all Jewry, beginning from Galilee to this place. When Pilate heard of Galilee, he asked whether the man were a Galilean. And as soon as he knew that he belonged unto Herod\u2019s jurisdiction, he sent him to Herod, who himself also was at Jerusalem at that time. And when Herod saw Jesus, he was exceeding glad: for he was desirous to see him of a long season, because he had heard many things of him; and he hoped to have seen some miracle done by him. Then he questioned with him in many words; but he answered him nothing.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-50-q1",
+          "question": "What was Herod's primary motivation for questioning Jesus?",
+          "choices": [
+            "He wanted to prove Jesus was guilty of rebellion.",
+            "He hoped to witness a miracle performed by Jesus.",
+            "He intended to learn the history of Galilee.",
+            "He was angry that Jesus had not spoken."
+          ],
+          "answer": 1,
+          "paraphrase": "Herod was eager to see Jesus because he had heard many rumors about him and longed to observe a miracle."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-entities-thomas-townsend-brown",
+      "source_family": "entities-thomas-townsend-brown",
+      "path": "entities/thomas-townsend-brown.md",
+      "sha256": "fa122c1eda12dd42233b922058abe5b4852ac34d9a7d57db1be6be10a2267abb",
+      "memory": "Thomas Townsend Brown Overview American physicist (1908-1985) who claimed to have discovered electrogravitics - the interaction between electric fields and gravity. Self-taught experimentalist with no formal physics training but extensive laboratory work spanning 30+ years. Key Claims - Gravitational isotopes : Materials can be made lighter/heavier than normal through electrical, optical, or mechanical excitation - Electrogravitic thrust : Asymmetric capacitors produce force when charged (controversial \"Biefeld-Brown effect\") - Gravito-electric conversion : Rocks and minerals generate electricity from ambient gravitational radiation Experimental Record Three laboratory journals preserved at thomas-townsend-brown-journals: 1. Journal 1 (1955-1956): Photo-isotopes, triboexcitation, precision weighing experiments 2. Journal 2 (1958-1970): Electrogravitic devices, gravitational wave detection attempts 3.",
+      "questions": [
+        {
+          "id": "g2-entities-thomas-townsend-brown-q1",
+          "question": "According to the text, what was the primary nature of Thomas Townsend Brown's background in physics?",
+          "choices": [
+            "He held a doctorate from a prestigious university",
+            "He was a professional engineer with formal certification",
+            "He was a self-taught individual with no formal training",
+            "He worked as a government researcher for decades"
+          ],
+          "answer": 2,
+          "paraphrase": "Despite extensive laboratory experience, Brown lacked any formal academic education in the field of physics."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-maxwell-lodge-effect",
+      "source_family": "concepts-maxwell-lodge-effect",
+      "path": "concepts/maxwell-lodge-effect.md",
+      "sha256": "c7f2ecc7e1137a686a613ff501077006a560873f915cdd85e686a1834c634405",
+      "memory": "Definition Classical demonstration that open circuits experience longitudinal forces when potentials are time-varying. Shows that the scalar-longitudinal sector (\u2207\u00b7A) carries physical force content even when transverse fields E and B vanish in certain regions. Experimental Setup (Rousseaux et al., 2008) Apparatus: - Two parallel conducting plates with small gap (open circuit condition) - Time-varying potential applied across plates: \u03c6(t) = \u03c6\u2080 cos(\u03c9t) - Test charge or probe placed in field-free region between plates - Measure force on test charge despite E \u2248 0 locally Measurement: - Longitudinal force F \u2225 \u221d q\u00b2/\u03b5\u2080 \u00b7 (1/c) \u2202\u03c6/\u2202t + q\u2207\u00b7A - Force direction: parallel to potential gradient, not transverse field lines Key Results Parameter Value ----------- ------- Plate separation ~1 cm Frequency range 50 Hz \u2013 10 kHz Force magnitude ~10\u207b\u00b9\u00b2 N (requires sensitive balance) Direction Along potential gradient, not E-field lines Sign",
+      "questions": [
+        {
+          "id": "g2-concepts-maxwell-lodge-effect-q1",
+          "question": "In the Rousseaux et al. (2008) setup, what is the observed direction of the force acting on a test charge placed in a region where the electric field is approximately zero?",
+          "choices": [
+            "Perpendicular to the potential gradient",
+            "Parallel to the electric field lines",
+            "Parallel to the gradient of the potential",
+            "Opposite to the direction of the magnetic field"
+          ],
+          "answer": 2,
+          "paraphrase": "The measured force on the probe aligns with the slope of the potential, rather than following the lines of the electric field."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-menorah-jewish-symbol-history",
+      "source_family": "concepts-menorah-jewish-symbol-history",
+      "path": "concepts/menorah-jewish-symbol-history.md",
+      "sha256": "b37c0dc18bcc033b6c085081d8506c468c7af47ca68216021788d56ee07f4f48",
+      "memory": "The Menorah \u2014 Ancient Israel's Primary Religious Symbol Definition The Menorah (\u05de\u05b0\u05e0\u05d5\u05b9\u05e8\u05b8\u05d4) is the seven-branched lampstand that stood in the Holy Place of the Tabernacle and later the Temple in Jerusalem. It was the primary religious symbol of ancient Judaism for over two thousand years \u2014 long before the Star of David acquired its modern prominence. Biblical Origins Exodus 25:31-40 God commands Moses to create the Menorah with specific instructions: - Made of pure gold - Seven branches (one central shaft + six branches) - Decorated with almond blossoms, cups, and pomegranates - Crafted \"according to the pattern shown [to Moses] on the mountain\" Tabernacle and Temple Use - The original Menorah was in the portable Tabernacle during the wilderness wanderings - A permanent Menorah stood in Solomon's Temple (957\u2013586 BCE) - Rebuilt after the Babylonian exile, it stood in the Second Temple until 70 CE Archaeological Evidence \u2014",
+      "questions": [
+        {
+          "id": "g2-concepts-menorah-jewish-symbol-history-q0",
+          "question": "What material was the Menorah constructed from according to the biblical instructions?",
+          "choices": [
+            "Silver",
+            "Pure gold",
+            "Bronze",
+            "Iron"
+          ],
+          "answer": 1,
+          "paraphrase": "The text states that God directed Moses to build the lampstand using only unadulterated gold."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-the-royal-funeral-rituals",
+      "source_family": "concepts-the-royal-funeral-rituals",
+      "path": "concepts/the-royal-funeral-rituals.md",
+      "sha256": "370d26e619f5b5930fab3fa9efed16e3fe1f6b307e567a141bcd9b64556de5ea",
+      "memory": "The Royal Funeral Rituals Pelliot tib\u00e9tain 1042. A scroll from the Dunhuang cave library containing the most detailed surviving protocol for the funeral of a Tibetan emperor before the arrival of Buddhism. Written by a scribe named Sngom Dge-dpal in the valley of Yur Shang-po Phre'u-lung, this 148-line manuscript prescribes every step of the royal funeral \u2014 from the first offerings and purifications through the meeting of the soul-effigy with the royal body, the great procession to the burial enclosure, the vigil of year Content Pelliot tib\u00e9tain 1042 A scroll from the Dunhuang cave library containing the most detailed surviving protocol for the funeral of a Tibetan emperor before the arrival of Buddhism.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-royal-funeral-rituals-q0",
+          "question": "What is the primary subject matter of the 148-line manuscript written by Sngom Dge-dpal?",
+          "choices": [
+            "A guide for constructing Buddhist temples in the Yur Shang-po Phre'u-lung valley",
+            "A detailed protocol for the funeral of a Tibetan emperor prior to the arrival of Buddhism",
+            "A collection of prayers for the soul-effigy during the royal vigil",
+            "A record of the great procession to the burial enclosure"
+          ],
+          "answer": 1,
+          "paraphrase": "The text describes the specific procedures for burying a Tibetan ruler before Buddhism became established in the region."
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-dream-yoga",
+      "source_family": "concepts-dream-yoga",
+      "path": "concepts/dream-yoga.md",
+      "sha256": "9d3c3486a54b69dbd3270f179d861e2cd6e2b02382878dca57be1358c6ba5429",
+      "memory": "Definition Practice recognizing dreams while dreaming and maintaining mindfulness during dream states for spiritual insight. Best for subjects with meditation experience (~70% success rate). Mechanism - Dream recognition training: Practice recognizing dreams while dreaming - Mindfulness in sleep: Maintain awareness during dream states - Symbolic interpretation: Use dream imagery for spiritual insight and development Protocol Summary Step Action Duration ------ -------- ---------- 1 Sit comfortably; focus on breath at navel center 2 min 2 Visualize dream as illusion (maya); recognize all experiences as dreams 3\u20135 min 3 Practice \"dream yoga\" visualization: imagine yourself in dream state now 5\u201310 min 4 Enter deep relaxation with intention to maintain awareness 5\u201310 min Key Success Factors - Illusion recognition: Mental framework that all experiences are illusory - Breath focus: Navel center (Manipura) for energy regulation - Environment: Quiet, dark space; optional meditation cushion Variants to Test 1. Phowa technique: Visualize consciousness moving through crown chakra 2.",
+      "questions": [
+        {
+          "id": "g2-concepts-dream-yoga-q0",
+          "question": "What is the recommended duration for the step where one visualizes a dream as an illusion and recognizes all experiences as dreams?",
+          "choices": [
+            "2 minutes",
+            "3 to 5 minutes",
+            "5 to 10 minutes",
+            "10 minutes"
+          ],
+          "answer": 1,
+          "paraphrase": "How long should the visualization of dreams as illusions and the recognition of experiences as dreams last?"
+        }
+      ],
+      "split": "meta_train"
+    },
+    {
+      "id": "g2-concepts-theta-healing",
+      "source_family": "concepts-theta-healing",
+      "path": "concepts/theta-healing.md",
+      "sha256": "ede0b8cf64c8bb171684e99e6a3347f8fd858748f6160ce6b57109a15cae04ce",
+      "memory": "Definition Access subconscious through theta brain wave frequency to replace limiting beliefs with empowering ones and tap into universal healing energy. Best for emotional/healing work (~65% success rate). Mechanism - Theta state access: Access subconscious through theta brain wave frequency - Belief replacement: Replace limiting beliefs with empowering ones - Universal energy connection: Tap into universal wisdom/healing energy Protocol Summary Step Action Duration ------ -------- ---------- 1 Sit or lie comfortably; focus on heart center (Anahata chakra) 2 min 2 Identify limiting belief: \"I believe I am...\" while feeling its weight 3\u20135 min 3 Replace with empowering belief: \"I choose to believe I am...\" 3\u20135 min 4 Connect with universal energy for healing/support 5\u201310 min Key Success Factors - Heart center focus: Anahata chakra for emotional access - Belief specificity: Clear, present-tense statements (not vague hopes) - Environment: Calm space; optional heart-centered music or sound bowl Variants to Test 1.",
+      "questions": [
+        {
+          "id": "g2-concepts-theta-healing-q0",
+          "question": "What is the recommended duration for the step where an individual identifies a limiting belief while feeling its weight?",
+          "choices": [
+            "2 minutes",
+            "3 to 5 minutes",
+            "5 to 10 minutes",
+            "10 to 15 minutes"
+          ],
+          "answer": 1,
+          "paraphrase": "How long should one spend identifying a limiting belief and sensing its heaviness during the protocol?"
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-38",
+      "source_family": "concepts-the-evangelion-chapter-38",
+      "path": "concepts/the-evangelion-chapter-38.md",
+      "sha256": "15527f7fa7e9a9aa1ec7fbae0b0244c286cb9579ea1e6cdba6db31ec5943fd90",
+      "memory": "The Evangelion \u2014 Chapter 38 (XXXVIII) HEN WHEN JESUS came, he found that he had lain in T the grave four days already. Now Bethany was nigh... Full Text HEN WHEN JESUS came, he found that he had lain in T the grave four days already. Now Bethany was nigh unto Jerusalem, about fifteen furlongs off: And many of the Jews came to Martha and Mary, to comfort them concerning their brother. Then Martha, as soon as she heard that Jesus was coming, went and met him: but Mary sat still in the house. Then said Martha unto Jesus, Lord, if thou hadst been here, my brother had not died. But I know, that even now, whatsoever thou wilt ask of God, God will give it thee. Jesus saith unto her, Thy brother shall rise again. Martha saith unto him, I know that he shall rise again in the resurrection at the last day.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-38-q0",
+          "question": "How long had Jesus' brother been in the grave when Jesus arrived?",
+          "choices": [
+            "Two days",
+            "Three days",
+            "Four days",
+            "Five days"
+          ],
+          "answer": 2,
+          "paraphrase": "The text states that Jesus discovered his brother had been lying in the tomb for four days."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-53",
+      "source_family": "concepts-the-evangelion-chapter-53",
+      "path": "concepts/the-evangelion-chapter-53.md",
+      "sha256": "b53f29240471225af786dc5462c60b704fcb364d182a49f061e369d8c64ee3c9",
+      "memory": "The Evangelion \u2014 Chapter 53 (LIII) ND IT CAME to pass, as they were much perplexed A thereabout, behold, two men stood by them in shining... Full Text ND IT CAME to pass, as they were much perplexed A thereabout, behold, two men stood by them in shining garments: And as they were afraid, and bowed down their faces to the earth, they said unto them, Why seek ye the living among the dead? He is not here, but is risen: remember how he spake unto you when he was yet in Galilee, Saying, The Son of man must be delivered into the hands of sinful men, and be crucified, and the third day rise again. And go quickly, and tell his disciples that he is risen from the dead; and, behold, he goeth before you into Galilee; there shall ye see him: lo, I have told you.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-53-q0",
+          "question": "What action did the two men in shining garments instruct the frightened individuals to take immediately after announcing the resurrection?",
+          "choices": [
+            "Tell the disciples that he is risen from the dead",
+            "Return to Galilee to find the living",
+            "Bow down their faces to the earth",
+            "Ask why they sought the living among the dead"
+          ],
+          "answer": 0,
+          "paraphrase": "The men commanded the fearful people to hasten and inform the followers that the risen one has appeared."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-attar-mokhtar-nama-divine-unity-and-praise",
+      "source_family": "concepts-attar-mokhtar-nama-divine-unity-and-praise",
+      "path": "concepts/attar-mokhtar-nama-divine-unity-and-praise.md",
+      "sha256": "7d25be35d3c515a1531e42dfb75ef9213a7de251ac80f4a7cbb11dd2b830b134",
+      "memory": "The Book of the Chosen \u2014 Divine Unity and Praise From Farid ud-Din Attar's Mokhtar-nama (Book of the Chosen), chapters 1\u201310. 1,679 quatrains total in Classical Persian to English. First complete free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content Chapter 1 1 O \u2014 Your purity transcends every purity. Your holiness is sacred beyond all perception. On Your path, a hundred thousand worlds are dust. In Your lane, a hundred thousand Adams are dirt. Chapter 2 2 In describing You, the intellect went mad. The soul fell silent and took helplessness as its companion. When the candle of Your manifestation appeared \u2014 the peacock of heaven adopted the way of the moth. Chapter 3 3 O \u2014 the eight heavens, a single offering at Your door. The seven spheres, curtain-keepers of Your threshold.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-mokhtar-nama-divine-unity-and-praise-q1",
+          "question": "How does the text compare the peacock of heaven to the moth in the context of the Divine's manifestation?",
+          "choices": [
+            "The peacock ignored the moth and flew away.",
+            "The peacock adopted the moth's path.",
+            "The moth became the peacock.",
+            "The peacock and moth fought each other."
+          ],
+          "answer": 1,
+          "paraphrase": "Upon the appearance of the Divine's manifestation, the peacock of heaven chose to follow the way of the moth."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-handshake-induction",
+      "source_family": "concepts-handshake-induction",
+      "path": "concepts/handshake-induction.md",
+      "sha256": "116f9fc5796c5b591e0ec97335e82081775452a653c3786dcbc099e082932b0a",
+      "memory": "Definition Physical contact creates proprioceptive focus \u2192 somatic relaxation spreads to mental state. Most socially acceptable induction method (~65% success rate across general population). Mechanism - Proprioceptive focus: Physical sensation anchors attention - Somatic cascade: Arm/shoulder relaxation spreads upward/downward - Social acceptance: Natural gesture reduces resistance in social settings Protocol Summary Step Action Duration ------ -------- ---------- 1 Firm handshake while saying \"Let's begin\" 30 sec 2 Slowly lower hand while maintaining pressure: \"As we go deeper...\" 1 min 3 Guide to arm position (extended, relaxed) 1\u20132 min 4 Deepen with suggestions during relaxation phase 1\u20132 min Key Success Factors - Hand pressure: Firm but not painful (~50% of max grip strength) - Movement speed: Slow downward motion (~2 inches per second) - Voice tone: Warm, conversational, slightly lower pitch Variants to Test 1. Arm swing induction: Swing arm back and forth while subject watches hand 2.",
+      "questions": [
+        {
+          "id": "g2-concepts-handshake-induction-q0",
+          "question": "What is the recommended duration for the second step of the protocol where the hand is lowered while maintaining pressure?",
+          "choices": [
+            "30 seconds",
+            "1 minute",
+            "1 to 2 minutes",
+            "2 minutes"
+          ],
+          "answer": 1,
+          "paraphrase": "How long should the practitioner hold the downward hand movement while keeping pressure steady during the second phase?"
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-summaries-scalelogic-rl-scaling-laws-logical-expressiveness",
+      "source_family": "summaries-scalelogic-rl-scaling-laws-logical-expressiveness",
+      "path": "summaries/scalelogic-rl-scaling-laws-logical-expressiveness.md",
+      "sha256": "f21e0ad77c1b27d4bfc074bc2aa35cb47e5ae126bd08119b5010e48aa2ceb4d3",
+      "memory": "ScaleLogic: RL Scaling Laws for Logical Expressiveness in LLM Reasoning Wang et al., 2026 (submitted May 7, 2026) Core Contribution Introduces ScaleLogic , a synthetic logical reasoning framework that provides independent control over two axes of difficulty: 1. Reasoning depth (proof planning horizon D) 2. Logical expressiveness (from simple implication to full first-order logic with quantifiers) The framework enables systematic study of how RL training scales with task complexity \u2014 addressing a key gap in understanding RL's ability to teach long-horizon reasoning. Key Findings Power-Law Scaling Training compute T follows power-law relationship with reasoning depth: T \u221d D^\u03b3 (R\u00b2 0.99) The scaling exponent \u03b3 increases monotonically with logical expressiveness: - Simple \"if-then\" logic: \u03b3 = 1.04 - Full first-order logic: \u03b3 = 2.60 This establishes that training complexity grows super-linearly as tasks become more logically demanding.",
+      "questions": [
+        {
+          "id": "g2-summaries-scalelogic-rl-scaling-laws-logical-expressiveness-q1",
+          "question": "What is the approximate value of the scaling exponent (\u03b3) for tasks involving full first-order logic with quantifiers?",
+          "choices": [
+            "1.04",
+            "2.60",
+            "0.99",
+            "0.50"
+          ],
+          "answer": 1,
+          "paraphrase": "For complete first-order logic, the exponent \u03b3 is approximately 2.60."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-the-dice-oracles",
+      "source_family": "concepts-the-dice-oracles",
+      "path": "concepts/the-dice-oracles.md",
+      "sha256": "50ccf6b3adc029c71bfcdc09ccb9aa0cb3d9c31723e9741c699d53ee89f7b4eb",
+      "memory": "The Dice Oracles A Bon Divination Manual from the Dunhuang Caves. Pelliot tibetain 1046 is a divination manual preserved in the sealed library cave at Dunhuang, dating to the Tibetan Empire period (7th-9th century CE). Eleven oracle entries survive, each preceded by dice throw markers on the manuscript and concluded with a verdict: bad (mo ngan), middling (mo 'bring), good (mo bzang), or excellent (mo bzang rab). The oracles speak in the voices of the gods \u2014 the Life-God, the Worthy God, Yarlha Shampo of the Yar Content A Bon Divination Manual from the Dunhuang Caves Pelliot tibetain 1046 is a divination manual preserved in the sealed library cave at Dunhuang, dating to the Tibetan Empire period (7th-9th century CE).",
+      "questions": [
+        {
+          "id": "g2-concepts-the-dice-oracles-q1",
+          "question": "Which of the following verdicts is NOT listed as a possible conclusion for the oracle entries in the passage?",
+          "choices": [
+            "Bad",
+            "Middling",
+            "Excellent",
+            "Uncertain"
+          ],
+          "answer": 3,
+          "paraphrase": "The text explicitly defines four outcomes, but one of the options provided is not among them."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-the-barley-loan",
+      "source_family": "concepts-the-barley-loan",
+      "path": "concepts/the-barley-loan.md",
+      "sha256": "8cdb6fc329559443484a6cf1107147e4751dc346a80f1be9f6c67ae14cd783b1",
+      "memory": "The Barley Loan Pelliot tib\u00e9tain 1088 (Document 2). A grain loan contract from the Dunhuang cave library, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. In seven lines, a borrower named Sag Dge-bstan of God-sar district takes an advance loan of four khal of barley from Cang Lha-legs of Stong-sar district, promising repayment by the end of the first spring month. The penalty for late repayment is punitive: the debt doubles. If the borrower cannot pay and is seized through le Content Pelliot tib\u00e9tain 1088 (Document 2) A grain loan contract from the Dunhuang cave library, written in Old Tibetan on a scroll now held by the Biblioth\u00e8que nationale de France. In seven lines, a borrower named Sag Dge-bstan of God-sar district takes an advance loan of four khal of barley from Cang Lha-legs of Stong-sar district, promising repayment by the end of the first spring month.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-barley-loan-q0",
+          "question": "What is the specific penalty imposed on a borrower who fails to repay the loan by the end of the first spring month?",
+          "choices": [
+            "The borrower must pay an additional four khal of barley.",
+            "The debt amount doubles.",
+            "The borrower loses ownership of the barley immediately.",
+            "The borrower must pay a fine of ten khal of barley."
+          ],
+          "answer": 1,
+          "paraphrase": "If the borrower does not settle the debt by the conclusion of the first spring month, the obligation becomes twice as large."
+        },
+        {
+          "id": "g2-concepts-the-barley-loan-q1",
+          "question": "Which individual is identified as the lender in the grain loan contract?",
+          "choices": [
+            "Sag Dge-bstan",
+            "Cang Lha-legs",
+            "The Dunhuang cave library",
+            "The Biblioth\u00e8que nationale de France"
+          ],
+          "answer": 1,
+          "paraphrase": "The person from the Stong-sar district who provided the advance loan of barley is Cang Lha-legs."
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-mandaean-book-of-john-chapter-1",
+      "source_family": "concepts-mandaean-book-of-john-chapter-1",
+      "path": "concepts/mandaean-book-of-john-chapter-1.md",
+      "sha256": "6c20facab0c896030c6e0fcc3422bdbffdce7085d3e89dda1d47e4f9d5a0f06f",
+      "memory": "Chapter 1: Truth Stands at the Gate of the Worlds Truth Stands at the Gate of the Worlds. The Mandaean Book of John (M\u0161aba Marai, \"Teachings of the Lords\") is one of the most important scriptures of the Mandaean religion \u2014 a living Gnostic tradition with approximately 100,000 adherents, primarily in Iraq and the global diaspora. Also known as the Dra\u0161ia \u1e0f-Yahia (\"Teachings of John\"), this collection of seventy-six chapters preserves liturgical poetry, cosmological dialogues, and ethical instruction that has shaped Mandaean religious life for ce Content Truth Stands at the Gate of the Worlds The Mandaean Book of John (M\u0161aba Marai, \"Teachings of the Lords\") is one of the most important scriptures of the Mandaean religion \u2014 a living Gnostic tradition with approximately 100,000 adherents, primarily in Iraq and the global diaspora.",
+      "questions": [
+        {
+          "id": "g2-concepts-mandaean-book-of-john-chapter-1-q0",
+          "question": "What is the approximate number of adherents to the Mandaean religion mentioned in the text?",
+          "choices": [
+            "50,000",
+            "100,000",
+            "200,000",
+            "75,000"
+          ],
+          "answer": 1,
+          "paraphrase": "The text states that the Mandaean tradition has roughly how many followers?"
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-xxii-the-twenty-second-discourse-at",
+      "source_family": "concepts-attar-asrar-nama-discourse-xxii-the-twenty-second-discourse-at",
+      "path": "concepts/attar-asrar-nama-discourse-xxii-the-twenty-second-discourse-at.md",
+      "sha256": "c4d6a42e5fe168fa1b3bec8f098980dc1cd5ee162ca557a7065730dcdcfbb577",
+      "memory": "The Book of Secrets \u2014 Discourse XXII: The Twenty-Second Discourse \u2014 Attar's Farewell, the Story of Ferdowsi, and the Prayer for Mercy From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content XXI. The Twenty-First Discourse \u2014 On Wisdom, the Guard of the Tongue, and the Sage in China Do not be deluded by kingdom, treasure, and gold, for the world remembers many like you. Worship God from a soul full of light, for He alone deserves it \u2014 and be far from greed. In every affair, keep God in remembrance. Do not forget God for as long as you exist. If in any matter you seek help, seek it from Him, for better than this you will find at no other court. If you are content with yourself, O friend, know with certainty that this contentment is His.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-xxii-the-twenty-second-discourse-at-q0",
+          "question": "What does the text advise one to avoid in order to worship God properly?",
+          "choices": [
+            "Delusion",
+            "Greed",
+            "Pride",
+            "Fear"
+          ],
+          "answer": 1,
+          "paraphrase": "The passage warns against which specific vice that prevents proper worship of the Divine?"
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-summaries-ttb-experimental-claims",
+      "source_family": "summaries-ttb-experimental-claims",
+      "path": "summaries/ttb-experimental-claims.md",
+      "sha256": "c08ae0d7e1b9ff4c8528cdc82ffe88508dcfc51efd0519549ae6d1c3ec8097bb",
+      "memory": "TTB Experimental Claims Summary Journal 1 (1955-1956) - Photo-Isotopes & Excitation Methods Claim 1: Weight Loss via UV/Irradiation Apparatus : Precision balance, quartz capsules, photoisotopic cells with loess/clay Method : Weigh materials in darkness vs. under UV/visible light/X-rays Claimed Result : Materials lose weight when irradiated (photo-isotope creation) Replication Potential : HIGH - requires precision balance (~0.1mg), UV source, sealed quartz containers Claim 2: Triboexcitation by Friction Apparatus : Glass/quartz container with sand/clay, precision balance Method : Shake material vigorously, weigh immediately after Claimed Result : Sorrento FL red sand lost ~0.3 oz (0.984%) after 30 min shaking Replication Potential : HIGH - simple apparatus, requires careful timing Claim 3: Metal Fatigue Weight Loss Apparatus : Precision balance, metal specimens (Al, Ta, W, Pt) Method : Bend/flex metals",
+      "questions": [
+        {
+          "id": "g2-summaries-ttb-experimental-claims-q0",
+          "question": "What specific apparatus is required to test the claim that materials lose weight when exposed to UV light or X-rays?",
+          "choices": [
+            "A precision balance, quartz capsules, and photoisotopic cells containing loess or clay",
+            "A glass or quartz container filled with sand or clay",
+            "A precision balance and metal specimens such as aluminum or tungsten",
+            "A sealed quartz container and a UV source"
+          ],
+          "answer": 0,
+          "paraphrase": "To verify the hypothesis that irradiation causes weight loss, which equipment must be used?"
+        }
+      ],
+      "split": "development"
+    },
+    {
+      "id": "g2-concepts-actor-observer-asymmetry-llm-agents",
+      "source_family": "concepts-actor-observer-asymmetry-llm-agents",
+      "path": "concepts/actor-observer-asymmetry-llm-agents.md",
+      "sha256": "dd2386871432d4bcca18c275f8b7b280b348fbbf7109f1331e5e465afaa4b141",
+      "memory": "Actor-Observer Asymmetry in LLM Agents Definition A cognitive bias in multi-agent LLM systems where agents playing different roles systematically attribute failures differently to the same errors \u2014 mirroring the well-documented human psychological phenomenon of Actor-Observer Asymmetry (AOA). Mechanism In role-playing multi-agent frameworks: - Actor mode (self-reflection): Attributes failures to external factors (environment, input quality) - Observer mode (mutual auditing): Attributes same errors to internal faults (model capability, reasoning) - Simply swapping perspectives triggers AOA in over 20% of cases across most models Why It Matters for Agent Design 1. Role-playing trade-off : While specialized roles leverage domain expertise, they introduce systematic cognitive biases 2. Fault resolution degradation : Inconsistent attribution leads to suboptimal correction strategies 3.",
+      "questions": [
+        {
+          "id": "g2-concepts-actor-observer-asymmetry-llm-agents-q0",
+          "question": "How do agents in Actor mode typically attribute failures compared to those in Observer mode?",
+          "choices": [
+            "Actor mode attributes failures to internal faults while Observer mode attributes them to external factors",
+            "Actor mode attributes failures to external factors while Observer mode attributes them to internal faults",
+            "Both modes attribute failures equally to the model's reasoning capabilities",
+            "Actor mode attributes failures to the environment while Observer mode attributes them to input quality"
+          ],
+          "answer": 1,
+          "paraphrase": "In Actor mode, agents blame outside elements like the environment, whereas in Observer mode, they blame their own internal limitations."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-charter-of-lcang-bu",
+      "source_family": "concepts-the-charter-of-lcang-bu",
+      "path": "concepts/the-charter-of-lcang-bu.md",
+      "sha256": "02ad1f76d15dc9a58df69987be9f8c98d70e27d6ea00d2fdda5b2f9eb9a92301",
+      "memory": "The Charter of Lcang Bu The Temple of Zhang Nya Stos. The Lcang Bu inscription stands at the ruins of Mtshur Phu Monastery, approximately 80 kilometres west of Lhasa. It records the founding of a Buddhist temple at Lcang Bu in the Stod Valley by the minister Zhang Tshes Pong Stag Bzang Nya Stos, during the reign of King Khri Gtsug Lde Brtsan \u2014 Ralpachen (r. 815\u2013836 CE), the last great Buddhist king of the Tibetan Empire. The inscription tells a simple story with profound implications. The king bestowed great grace upon Content The Temple of Zhang Nya Stos The Lcang Bu inscription stands at the ruins of Mtshur Phu Monastery, approximately 80 kilometres west of Lhasa.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-charter-of-lcang-bu-q0",
+          "question": "Where is the Lcang Bu inscription currently located?",
+          "choices": [
+            "At the ruins of Mtshur Phu Monastery",
+            "In the palace of King Khri Gtsug Lde Brtsan",
+            "Inside the Temple of Zhang Nya Stos",
+            "At the site of the original Lcang Bu temple"
+          ],
+          "answer": 0,
+          "paraphrase": "The inscription is found at the remains of the Mtshur Phu Monastery."
+        },
+        {
+          "id": "g2-concepts-the-charter-of-lcang-bu-q1",
+          "question": "Which historical figure commissioned the founding of the temple recorded in the inscription?",
+          "choices": [
+            "King Khri Gtsug Lde Brtsan",
+            "Minister Zhang Tshes Pong Stag Bzang Nya Stos",
+            "The monks of the Stod Valley",
+            "A general from the Tibetan Empire"
+          ],
+          "answer": 1,
+          "paraphrase": "The minister Zhang Tshes Pong Stag Bzang Nya Stos established the temple."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-end-of-the-good-age",
+      "source_family": "concepts-the-end-of-the-good-age",
+      "path": "concepts/the-end-of-the-good-age.md",
+      "sha256": "e36c7907f6fe3bcdb131495a13165bdafcd01c4e8c66c710bde12fbd87efd3a7",
+      "memory": "The End of the Good Age And the Tragedy of the Horse and the Yak. This scroll from the sealed cave library at Dunhuang preserves a pre-Buddhist Tibetan mythological narrative \u2014 the most substantial narrative epic yet translated from the Old Tibetan Documents Online corpus. Written in Old Tibetan during the Tibetan Empire period (seventh to ninth century CE), the manuscript IOL Tib J 731 is now held by the British Library (Stein Collection). The beginning of the scroll is damaged; the ending, while worn, is substantiall Content And the Tragedy of the Horse and the Yak This scroll from the sealed cave library at Dunhuang preserves a pre-Buddhist Tibetan mythological narrative \u2014 the most substantial narrative epic yet translated from the Old Tibetan Documents Online corpus. Written in Old Tibetan during the Tibetan Empire period (seventh to ninth century CE), the manuscript IOL Tib J 731 is now held by the British Library (Stein Collection). The beginning of the scroll is damaged; the ending, while worn, is substantially complete.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-end-of-the-good-age-q0",
+          "question": "What is the primary condition of the beginning of the scroll described in the text?",
+          "choices": [
+            "It is substantially complete.",
+            "It is heavily damaged.",
+            "It is missing entirely.",
+            "It is written in a different script."
+          ],
+          "answer": 1,
+          "paraphrase": "The start of the manuscript is in poor condition."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-observability-boundary",
+      "source_family": "concepts-observability-boundary",
+      "path": "concepts/observability-boundary.md",
+      "sha256": "3fa15589424341383f49c81baa79185a5c29da19a341985274f2531b97bdc038",
+      "memory": "Observability Boundary Definition The observability boundary is the interface across which information exists (in some representation) but cannot be recovered by the observer's available measurement apparatus. It is the distinction between information availability and information accessibility \u2014 the same phenomenon that in quantum mechanics separates the wavefunction (complete information) from measurement outcomes (sampled information), and in agent systems separates latent state from observable behavior. Core idea A system can harbor information that is structurally or representationally invisible to a given observational frame: - In multi-agent systems : A poisoned agent may carry a backdoor that only activates when collective peer evidence crosses a hidden threshold. Locally, the agent appears normal; the trigger is invisible until the aggregate crosses the boundary. (observability-boundary-distributed-backdoors-multi-agent-systems-2607.11751) - In KV-cache systems : Deterministic eviction cannot certify what it deleted; only randomized measurement design can recover the attribution of cache-induced failure.",
+      "questions": [
+        {
+          "id": "g2-concepts-observability-boundary-q0",
+          "question": "What distinguishes the information an agent appears to possess from the information it actually holds in multi-agent systems?",
+          "choices": [
+            "The difference between local normalcy and hidden triggers activated by collective evidence.",
+            "The gap between deterministic eviction and randomized measurement design.",
+            "The separation between wavefunction states and measurement outcomes.",
+            "The boundary between representationally invisible data and observable behavior."
+          ],
+          "answer": 0,
+          "paraphrase": "In systems with multiple agents, a local agent might seem standard while carrying a secret mechanism that only activates when the group's combined data reaches a specific, hidden limit."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-attar-asrar-nama-discourse-v-the-fifth-discourse-on-love",
+      "source_family": "concepts-attar-asrar-nama-discourse-v-the-fifth-discourse-on-love",
+      "path": "concepts/attar-asrar-nama-discourse-v-the-fifth-discourse-on-love.md",
+      "sha256": "1a8b89aba530d687a92d8713edc1c5469ba61ffd3b310b884afbac36f7e7f060",
+      "memory": "The Book of Secrets \u2014 Discourse V: The Fifth Discourse \u2014 On Love From Farid ud-Din Attar's Asrar-nama (Book of Secrets), 3,297 couplets in Classical Persian to English. First free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content IV. The Fourth Discourse O you who are both the pain and the cure of heart and soul \u2014 you are that light: \"fire shall not touch it.\" Through the latticed windows of a niche, you have made your nest upon a blessed branch. You are in the lamp of the body, a niche of light. From the nearness of what you are \u2014 the farthest of the far. Break the glass and pour out the oil. Cling to the light of a star of pearl. What have you to do with East and West? The light of heaven is your fortress. O nightingale, sweet-speaking, of secrets \u2014 remove the lock from the jewel-chest. Like Jesus, become sweet of tongue in speech.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-asrar-nama-discourse-v-the-fifth-discourse-on-love-q0",
+          "question": "What metaphor does the text use to describe the speaker's location within the body?",
+          "choices": [
+            "A glass vessel containing oil",
+            "A niche of light within a lamp",
+            "A fortress made of heaven",
+            "A jewel-chest with a lock"
+          ],
+          "answer": 1,
+          "paraphrase": "The passage compares the speaker's position inside the physical form to a specific illuminated space."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-moloch-worship",
+      "source_family": "concepts-moloch-worship",
+      "path": "concepts/moloch-worship.md",
+      "sha256": "edc4d6ce5f21c846a490fe0d0e148bb49d5191fe253216552bfd6eae4c2ed740",
+      "memory": "Moloch Worship \u2014 Ancient Near Eastern Child Sacrifice and Planetary Cult Associations Definition Moloch (Hebrew: \u05de\u05b9\u05dc\u05b6\u05da\u05b0, Molekh ) is a deity associated with child sacrifice in the ancient Near East, repeatedly condemned by Hebrew prophets. The name appears in Amos 5:26 paired with \"the star of your god Remphan\" and in Leviticus 18:21 and 20:2-5 as an object of Israelite worship involving fire-passing of children. Biblical Sources Leviticus 18:21 \"You shall not give any of your offspring to Moloch, and you shall not profane the name of your God.\" Leviticus 20:2-5 \"Again you shall say to the people of Israel... If a man of the people of Israel or of the strangers who sojourn in Israel gives any of his children to Moloch, he shall surely be put to death.",
+      "questions": [
+        {
+          "id": "g2-concepts-moloch-worship-q0",
+          "question": "What specific action involving children is described as being associated with the deity Moloch in the provided text?",
+          "choices": [
+            "Offering children as food to a fire",
+            "Passing children through fire as part of worship",
+            "Burying children alive in the desert",
+            "Sacrificing children to the star Remphan"
+          ],
+          "answer": 1,
+          "paraphrase": "The text indicates that worship of Moloch involved a ritual where children were subjected to fire."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-spirit-oracles",
+      "source_family": "concepts-the-spirit-oracles",
+      "path": "concepts/the-spirit-oracles.md",
+      "sha256": "72938e8ae33e79566b7c687014c94e91e9b937950af2a054b1cbecafa9dba6cc",
+      "memory": "The Spirit Oracles A Bon Divination Manual from the Dunhuang Caves. Pelliot tib\u00e9tain 1051 is a Mo divination scroll preserved in the sealed library cave at Dunhuang, dating to the ninth or tenth century CE. Twelve oracle entries survive, each introduced by a verse section painting a cosmic landscape, then a named deity or spirit who delivers the oracle in prose. The verdicts range from excellent to the single worst omen in the known Tibetan Mo corpus \u2014 the Earth Demon who says: \u201cNo matter what I eat, I am not sati Content A Bon Divination Manual from the Dunhuang Caves Pelliot tib\u00e9tain 1051 is a Mo divination scroll preserved in the sealed library cave at Dunhuang, dating to the ninth or tenth century CE. Twelve oracle entries survive, each introduced by a verse section painting a cosmic landscape, then a named deity or spirit who delivers the oracle in prose.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-spirit-oracles-q1",
+          "question": "Which specific spirit is identified in the text as delivering the worst possible omen?",
+          "choices": [
+            "The Sky Demon",
+            "The Wind Spirit",
+            "The Earth Demon",
+            "The Water Guardian"
+          ],
+          "answer": 2,
+          "paraphrase": "The text notes that the most negative prediction comes from an entity known as the Earth Demon."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-01",
+      "source_family": "concepts-the-evangelion-chapter-01",
+      "path": "concepts/the-evangelion-chapter-01.md",
+      "sha256": "8f1ccd49f0919ab9e369b62611c4a857b64e26128ecde867a7e65fd01b2f849d",
+      "memory": "The Evangelion \u2014 Chapter 1 (I) How shall this be, seeing I know not a man? And the angel answered and said unto her, The Holy Ghost shall come upon thee, and the power of the Highest shall overshadow thee: therefore also that holy ... Full Text How shall this be, seeing I know not a man? And the angel answered and said unto her, The Holy Ghost shall come upon thee, and the power of the Highest shall overshadow thee: therefore also that holy thing which shall be born of thee shall be called the Son of God. And, behold, thy cousin Elisabeth, she hath also conceived a son in her old age: and this is the sixth month with her, who was called barren. For with God nothing shall be impossible. And Mary said, Behold the handmaid of the Lord; be it unto me according to thy word. And the angel departed from her.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-01-q0",
+          "question": "What specific title is given to the child Mary will bear according to the angel's message?",
+          "choices": [
+            "The Son of Man",
+            "The Son of God",
+            "The Son of David",
+            "The Son of Abraham"
+          ],
+          "answer": 1,
+          "paraphrase": "The angel declares that the holy offspring resulting from Mary's conception will be known by which name?"
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-17",
+      "source_family": "concepts-the-evangelion-chapter-17",
+      "path": "concepts/the-evangelion-chapter-17.md",
+      "sha256": "364800ac4419a974cbd0f7e80229adf4bfcf18d34e8db4d69783c6b683f85feb",
+      "memory": "The Evangelion \u2014 Chapter 17 (XVII) NOTHER PARABLE PUT he forth unto them, saying, A The kingdom of heaven is likened unto a man which... Full Text NOTHER PARABLE PUT he forth unto them, saying, A The kingdom of heaven is likened unto a man which sowed good seed in his field: But while men slept, his enemy came and sowed tares among the wheat, and went his way. But when the blade was sprung up, and brought forth fruit, then appeared the tares also. So the servants of the householder came and said unto him, Sir, didst not thou sow good seed in thy field? from whence then hath it tares? He said unto them, An enemy hath done this. The servants said unto him, Wilt thou then that we go and gather them up? But he said, Nay; lest while ye gather up the tares, ye root up also the wheat with them.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-17-q0",
+          "question": "What action did the enemy take while the owner was sleeping?",
+          "choices": [
+            "He harvested the wheat before it could grow.",
+            "He sowed tares among the wheat.",
+            "He removed all the weeds from the field.",
+            "He replaced the good seed with bad seed."
+          ],
+          "answer": 1,
+          "paraphrase": "While the field owner slept, an adversary planted unwanted weeds mixed in with the crop."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-bioelectric-evidence-bibliography",
+      "source_family": "concepts-bioelectric-evidence-bibliography",
+      "path": "concepts/bioelectric-evidence-bibliography.md",
+      "sha256": "d370469590c0377fbe7473837149ed8da454c4ce4d9f4ed57b9dcde0bc4eb755",
+      "memory": "Bioelectric Framework: Evidence Bibliography Summary Source Full PubMed-indexed bibliography of Michael Levin (Tufts / Allen Discovery Center), filtered to 332 verified papers where Levin is senior author or co-author with known lab collaborators. Sorted newest first. DOI where available, otherwise PubMed ID. Fetched 2026-04-15 via NCBI E-Utilities. Bibliography Structure The bibliography uses reference codes (R1, R2, etc.) for each paper. Key recent papers include: 2026: - R1: Atavistic Genetic Expression Dissociation (AGED) During Aging \u2014 Meta-Phylostratigraphic Evidence of Cellular and Tissue-Level Phylogenetic Dissociation. Aging Cell . DOI: 10.1111/acel.70305 - R2: Author Correction: Associative conditioning in gene regulatory network models increases integrative causal emergence. Commun Biol .",
+      "questions": [
+        {
+          "id": "g2-concepts-bioelectric-evidence-bibliography-q0",
+          "question": "What specific date was the bibliography retrieved from the NCBI E-Utilities?",
+          "choices": [
+            "2025-04-15",
+            "2026-04-15",
+            "2026-01-01",
+            "2024-04-15"
+          ],
+          "answer": 1,
+          "paraphrase": "The source text indicates that the bibliography was fetched on April 15, 2026."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-music-theory-tuning-analysis-results",
+      "source_family": "concepts-music-theory-tuning-analysis-results",
+      "path": "concepts/music-theory/tuning-analysis-results.md",
+      "sha256": "1ea52daf39c66b2e0a0d4b367aa722a12b252371ca49656b145fcc589bdacd85",
+      "memory": "Microtonal Music Theory: Computational Analysis Results Executive Summary This analysis reveals that higher-division equal temperaments (particularly 53-TET) provide dramatically better approximations to just intonation intervals than the standard 12-tone system, especially for complex harmonic relationships involving the 7th harmonic and beyond.",
+      "questions": [
+        {
+          "id": "g2-concepts-music-theory-tuning-analysis-results-q0",
+          "question": "Which temperament is identified as offering superior approximations to just intonation intervals compared to the standard 12-tone system?",
+          "choices": [
+            "The standard 12-tone system",
+            "Higher-division equal temperaments",
+            "Pythagorean tuning",
+            "Just intonation itself"
+          ],
+          "answer": 1,
+          "paraphrase": "The text indicates that temperaments with more divisions than twelve provide much closer matches to pure intervals than the common twelve-note scale."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-dice-of-the-five-elements",
+      "source_family": "concepts-the-dice-of-the-five-elements",
+      "path": "concepts/the-dice-of-the-five-elements.md",
+      "sha256": "38c7f4ed419806213469244c84c0dfb76dbed40957221479edc39543caeab66c",
+      "memory": "The Dice of the Five Elements PT 1056 \u2014 A Dunhuang Divination Manual. PT 1056 is a fragmentary divination manual from the Pelliot tibetain collection of the Bibliotheque nationale de France. Written in Old Tibetan on paper, it describes a system of dice divination (Mo) in which the number of dice showing a particular face determines which of the five elements governs the reading. The surviving text covers four dice-count oracles: Water (four), Gold (five), Earth (six), and the beginning of a seventh. The oracles for Wood and Content PT 1056 \u2014 A Dunhuang Divination Manual PT 1056 is a fragmentary divination manual from the Pelliot tibetain collection of the Bibliotheque nationale de France. Written in Old Tibetan on paper, it describes a system of dice divination (Mo) in which the number of dice showing a particular face determines which of the five elements governs the reading.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-dice-of-the-five-elements-q0",
+          "question": "What material was the divination manual PT 1056 written on?",
+          "choices": [
+            "Parchment",
+            "Paper",
+            "Clay tablets",
+            "Leather"
+          ],
+          "answer": 1,
+          "paraphrase": "The text was inscribed on sheets of paper."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-10",
+      "source_family": "concepts-the-evangelion-chapter-10",
+      "path": "concepts/the-evangelion-chapter-10.md",
+      "sha256": "4a7099048a7a885eef479e4f7743f5d48fb5781e4513a909cfd91c9eff2890a4",
+      "memory": "The Evangelion \u2014 Chapter 10 (X) O MAN CAN serve two masters: for either he will hate N the one, and love the other; or else he will hold to the... Full Text O MAN CAN serve two masters: for either he will hate N the one, and love the other; or else he will hold to the one, and despise the other. Ye cannot serve God and mammon. Therefore I say unto you, Take no thought for your life, what ye shall eat, or what ye shall drink; nor yet for your body, what ye shall put on. Is not the life more than meat, and the body than raiment? Behold the fowls of the air: for they sow not, neither do they reap, nor gather into barns; yet your heavenly Father feedeth them.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-10-q0",
+          "question": "What consequence does the text state occurs when a person attempts to serve two masters?",
+          "choices": [
+            "They will be blessed with abundance.",
+            "They will despise one master and love the other.",
+            "They will hate one master and love the other.",
+            "They will be able to serve both equally."
+          ],
+          "answer": 2,
+          "paraphrase": "The passage explains that if someone tries to follow two different lords, they will inevitably show hatred toward one while showing love toward the other."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-summaries-ssrn-id2198357",
+      "source_family": "summaries-ssrn-id2198357",
+      "path": "summaries/ssrn-id2198357.md",
+      "sha256": "7c350f0fd97b481acdd55efcd665d47981cc8b3f8fc46d7e07f2b69acdda0791",
+      "memory": "SSRN id 2198357 Overview A paper hosted on the Social Science Research Network (SSRN), a preprint server for working papers in social sciences. The specific content depends on the paper's subject matter, which would need to be examined directly from the source text. Source: SSRN-id2198357 (~83K chars) Relevance to Knowledge Base This source represents one of the academic preprints in your library. SSRN papers often cover topics in economics, finance, law, and social sciences \u2014 fields that may have mathematical structures relevant to the wiki's domain through: - Stochastic modeling techniques applicable to field theory - Information-theoretic approaches to physical systems - Network analysis methods useful for understanding complex systems The specific content should be examined to determine direct relevance to electrodynamics or potential-primacy physics. See also: bergomi-smile-dynamics, variance-risk-premium-demystified --- See also: fintwit-favorites-may20 the-magic-of-money aureum-cameron-ing-doc",
+      "questions": [
+        {
+          "id": "g2-summaries-ssrn-id2198357-q1",
+          "question": "Which field is NOT listed as a potential topic covered by papers on this network?",
+          "choices": [
+            "Economics",
+            "Physics",
+            "Biology",
+            "Law"
+          ],
+          "answer": 2,
+          "paraphrase": "Among the listed disciplines, biology is not mentioned as a subject area for these preprints."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-anisotropic-probability-manipulation-free-will-quantum-randomness-neural-microtubules",
+      "source_family": "concepts-anisotropic-probability-manipulation-free-will-quantum-randomness-neural-microtubules",
+      "path": "concepts/anisotropic-probability-manipulation-free-will-quantum-randomness-neural-microtubules.md",
+      "sha256": "170f2e9a4f195bfabad422edeafa4c20a2c39c0047b925ff2a9f8c9ea4f1636b",
+      "memory": "Anisotropic Probability Manipulation \u2014 Free Will as Quantum Randomness in Neural Microtubules Overview A theoretical framework proposing that free will emerges from quantum randomness in neuronal microtubules, measured via anisotropic probability manipulation using vacuum tube photon counters. The argument: if you cannot distinguish between a fundamentally free agent and perfect randomness at the behavioral level, they are identical \u2014 therefore freedom = randomness, and one random event in the brain necessarily implies a free event. Source: Chapter Three: Wyoming (~9K chars) from creative fiction work featuring dialogue about neuroscience and consciousness Core Argument The Neural Black Box Problem - Standard neurology uses \"engineer's black box\" model: inputs \u2192 box \u2192 outputs - This model is grossly oversimplified \u2014 neuronal output influenced by harmonics of cytostructural microtubules, E&M perturbation of cellular acids, synaptic action under question - Each neuron interaction is nanoscopically small but with 100 billion neurons at ~5Hz activation rate = ~400 trillion interactions/day - Only one anomalous interaction needed to break deterministic chain Freedom =",
+      "questions": [
+        {
+          "id": "g2-concepts-anisotropic-probability-manipulation-free-will-quantum-randomness-neural-microtubules-q0",
+          "question": "What is the primary conclusion regarding the relationship between free will and randomness in the provided theoretical framework?",
+          "choices": [
+            "Free will is a distinct phenomenon separate from random neural events.",
+            "Freedom is equivalent to randomness when behavioral outcomes cannot be distinguished.",
+            "Deterministic chains are broken only by external environmental factors.",
+            "Neural microtubules operate independently of quantum mechanical principles."
+          ],
+          "answer": 1,
+          "paraphrase": "The text argues that if an observer cannot tell the difference between a free agent and pure chance in behavior, then freedom and randomness are the same thing."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-summaries-aureum-cameron-ing-doc",
+      "source_family": "summaries-aureum-cameron-ing-doc",
+      "path": "summaries/aureum-cameron-ing-doc.md",
+      "sha256": "92eaa045e9e377b0cc37a117265d78b08079ab183d85c306f2e34a6322ef42c8",
+      "memory": "Aureum \u2014 Cameron Inger Document (Docusign) Overview A legal document involving Cameron Inger, processed through Docusign. The file appears to be part of the \"Aureum\" collection in your Documents folder. Source: Complete with Docusign 7597473 Cameron Inger.pdf (~69K chars) Relevance to Knowledge Base This is a legal/contractual document rather than academic or technical content. It would be relevant to catalog for completeness but doesn't directly contribute to the electrodynamics/potential-primacy physics domain of the wiki. See also: the-magic-of-money (if related to financial/legal matters) --- See also: vaccine-cumulative-diagnoses stylized-history-stellenbosch dig-strategic-plan-ct the-barley-loan",
+      "questions": [
+        {
+          "id": "g2-summaries-aureum-cameron-ing-doc-q0",
+          "question": "What type of content is the document described as, and how does it relate to the electrodynamics/potential-primacy physics domain?",
+          "choices": [
+            "It is academic content that directly contributes to the physics domain.",
+            "It is technical content that partially explains potential-primacy theories.",
+            "It is a legal/contractual document that does not contribute to the physics domain.",
+            "It is historical content that provides context for electrodynamics."
+          ],
+          "answer": 2,
+          "paraphrase": "The text identifies the material as legal or contractual in nature, noting it lacks relevance to the specific physics field of electrodynamics and potential-primacy."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-super-dielectric-materials",
+      "source_family": "concepts-super-dielectric-materials",
+      "path": "concepts/super-dielectric-materials.md",
+      "sha256": "f3f1296fcacc528dd4c222fee35342d0b354591730c5b6925d6252b39a1d7af3",
+      "memory": "Super Dielectric Materials (SDM) Overview Super Dielectric Materials are a class of materials with dielectric constants exceeding 10^5 at low frequency (<10^-2 Hz). Demonstrated by Samuel Fromille and Jonathan Phillips at the Naval Postgraduate School (Materials 2014, 7, 8197-8212), the highest measured values reach ~4 \u00d7 10^8 \u2014 orders of magnitude above traditional barium titanate ceramics (~10^3). Source: Super Dielectric Materials (Fromille & Phillips, 2014) Mechanism The proposed mechanism involves giant dipole formation in nanoporous dielectrics: 1. High surface area alumina powder with pore diameter ~500 \u00c5 2. Pores filled to incipient wetness with boric acid solution (ionic liquid) 3. Applied electric field causes positive ions to migrate toward cathode, negative ions toward anode 4.",
+      "questions": [
+        {
+          "id": "g2-concepts-super-dielectric-materials-q1",
+          "question": "Which substance is used to fill the pores in the proposed mechanism for Super Dielectric Materials?",
+          "choices": [
+            "Water",
+            "Boric acid solution",
+            "Barium titanate",
+            "Ionic liquid"
+          ],
+          "answer": 1,
+          "paraphrase": "According to the text, the pores are filled to incipient wetness with a boric acid solution, which acts as an ionic liquid."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-model-organisms-bioelectric",
+      "source_family": "concepts-model-organisms-bioelectric",
+      "path": "concepts/model-organisms-bioelectric.md",
+      "sha256": "24f95cc22c9b40868b942044f270590680b513fa03ded36eb52dbdda8b2f63c7",
+      "memory": "Bioelectric Model Organisms Source The biological systems Levin has worked with and what was demonstrated in each. Xenopus laevis (African Clawed Frog) \u2014 Primary Model (116 papers) Why used: Transparent embryos, well-characterised development, amenable to microinjection and pharmacology, established bioelectrical recording techniques. Key findings: - Ectopic eye induction in gut tissue via voltage manipulation - Left-right asymmetry controlled by early ion fluxes - Brain defect rescue via HCN2 channel modulation - Bioelectric tumour detection and normalisation - Collective teratogen resistance (CEMA) - 18 months progressive limb regrowth via wearable drug patch Planaria (Girardia dorotocephala, Schmidtea mediterranea) \u2014 Regeneration Model (54 papers) Why used: Extreme regenerative capacity, simple body plan, can be sectioned repeatedly for testing.",
+      "questions": [
+        {
+          "id": "g2-concepts-model-organisms-bioelectric-q1",
+          "question": "What specific outcome was achieved in Planaria through repeated sectioning for testing?",
+          "choices": [
+            "The induction of ectopic eyes in gut tissue",
+            "The rescue of brain defects using HCN2 channels",
+            "The ability to be cut multiple times due to a simple body plan",
+            "The detection and normalization of bioelectric tumors"
+          ],
+          "answer": 2,
+          "paraphrase": "Planaria can undergo multiple sections because of their straightforward anatomy, which supports their use as a regeneration model."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-vanna-volga-barrier-fx",
+      "source_family": "concepts-vanna-volga-barrier-fx",
+      "path": "concepts/vanna-volga-barrier-fx.md",
+      "sha256": "0544246a35c260f190adb42bf81666db2e33f636b41d75d28f2342afea9c3bf8",
+      "memory": "Vanna Volga Pricing for Barrier FX Options Overview The Vanna-Volga method is a practical framework for constructing implied volatility surfaces in FX options markets. It adjusts the Black-Scholes implied vol by adding corrections for vanna (sensitivity of delta to vol) and volga (sensitivity of vega to vol). Source: Vanna Volga Pricing for Single and Double Barrier FX Options (~39K chars) Key Concepts Vanna-Volga Method The method constructs the smile by adding three components to the at-the-money vol: 1. Vega hedge : Position in OTM options to neutralize vega risk 2. Vanna hedge : Adjustments for skew (vanna of the portfolio) 3. Volga hedge : Adjustments for curvature (volga of the portfolio) Result: A smooth smile curve that matches market vega, vanna, and volga exposures. Barrier Options Barrier options pay off only if the underlying stays above/below a barrier level during the option's life.",
+      "questions": [
+        {
+          "id": "g2-concepts-vanna-volga-barrier-fx-q1",
+          "question": "How does the volga hedge contribute to the final implied volatility surface?",
+          "choices": [
+            "It adds corrections for the sensitivity of delta to volatility",
+            "It adjusts the surface for the curvature of the implied volatility",
+            "It neutralizes the risk associated with out-of-the-money options",
+            "It creates the initial at-the-money volatility baseline"
+          ],
+          "answer": 1,
+          "paraphrase": "The volga hedge provides adjustments for the curvature of the implied volatility surface."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-star-of-remphan",
+      "source_family": "concepts-star-of-remphan",
+      "path": "concepts/star-of-remphan.md",
+      "sha256": "417d7405e8e869c84def4aab78381e023f432fb8dd4f1ea0d5331357007384f6",
+      "memory": "Star of Remphan Definition The \"Star of Remphan\" (Greek: \u1f04\u03c3\u03c4\u03c1\u03bf\u03bd \u1fec\u03b5\u03bc\u03c6\u03ac\u03bd) is an astro-theological symbol associated with ancient Mesopotamian planetary worship, specifically linked to the planet Saturn and its cultic manifestations in Canaanite/Israelite religion. It appears in Acts 7:42 as part of Stephen's speech condemning Israel's idolatrous history. Biblical Source & Textual Variants Acts 7:43 (quoting Amos 5:26): \"Yea, ye took up the tabernacle of Moloch, and the star of your god Remphan.\" This presents a three-way textual divergence that is critical for understanding the symbol's meaning: Source Text Reading -------- ------ --------- Masoretic Text (Hebrew) \u05db\u05d5\u05db\u05d1 \u05d0\u05dc\u05d4\u05d9\u05da \u05e4\u05e8\u05d7 Kochav Elohekha Pargh \u2014 \"star of your god Pargh\" Septuagint (Greek LXX) \u1f04\u03c3\u03c4\u03c1\u03bf\u03bd \u039c\u03bf\u03bb\u03bf\u03c7 Aster Moloch \u2014 \"star of Mol",
+      "questions": [
+        {
+          "id": "g2-concepts-star-of-remphan-q0",
+          "question": "What specific textual divergence exists between the Masoretic Text and the Septuagint regarding the name of the deity associated with the 'star' in Acts 7:43?",
+          "choices": [
+            "The Masoretic Text uses 'Pargh' while the Septuagint uses 'Moloch'.",
+            "The Septuagint uses 'Pargh' while the Masoretic Text uses 'Moloch'.",
+            "Both texts agree on the name 'Remphan'.",
+            "The Masoretic Text omits the name entirely."
+          ],
+          "answer": 0,
+          "paraphrase": "In the version of Acts 7:43 found in the Greek Septuagint, which name replaces the one found in the Hebrew Masoretic Text?"
+        },
+        {
+          "id": "g2-concepts-star-of-remphan-q1",
+          "question": "According to the passage, what celestial body is the 'Star of Remphan' specifically linked to in terms of ancient planetary worship?",
+          "choices": [
+            "The planet Saturn.",
+            "The planet Jupiter.",
+            "The planet Mars.",
+            "The planet Venus."
+          ],
+          "answer": 0,
+          "paraphrase": "Which planet is the astro-theological symbol known as the 'Star of Remphan' connected to in ancient Mesopotamian worship?"
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-attar-mokhtar-nama-the-beloved-and-candle-moth-dialogue",
+      "source_family": "concepts-attar-mokhtar-nama-the-beloved-and-candle-moth-dialogue",
+      "path": "concepts/attar-mokhtar-nama-the-beloved-and-candle-moth-dialogue.md",
+      "sha256": "f36578a5ce2633fe0c7e39865517981bd67489113f3fd074d4385c4cd2a3ce18",
+      "memory": "The Book of the Chosen \u2014 The Beloved and Candle-Moth Dialogue From Farid ud-Din Attar's Mokhtar-nama (Book of the Chosen), chapters 41\u201350. 1,679 quatrains total in Classical Persian to English. First complete free English translation by New Tianmu Anglican Church from Ganjoor.net source text. Content Chapter 41 41 O \u2014 infinite mercy and generosity are from You. In every particle, a thousand signs from You. If all the horizons should fall into error, nothing would be possible from You but guidance. Chapter 42 42 O \u2014 a whiff of Your grace kindles paradise. Hell burns from the heat of Your wrath's fire. If the scroll of Your pain must be read aloud, I have a fifty-thousand-year day ahead of me. Chapter 43 43 You can rule a kingdom on the Loving One's palm. You can remain with all, and without all.",
+      "questions": [
+        {
+          "id": "g2-concepts-attar-mokhtar-nama-the-beloved-and-candle-moth-dialogue-q1",
+          "question": "How long does the speaker state they must endure if the scroll of divine suffering is to be read?",
+          "choices": [
+            "One thousand years.",
+            "Fifty thousand years.",
+            "One hundred years.",
+            "Ten thousand years."
+          ],
+          "answer": 1,
+          "paraphrase": "The speaker mentions facing a duration of fifty thousand years should the record of God's pain be made public."
+        }
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "g2-concepts-the-evangelion-chapter-16",
+      "source_family": "concepts-the-evangelion-chapter-16",
+      "path": "concepts/the-evangelion-chapter-16.md",
+      "sha256": "8076ff6f68e596b5399d52afd5999fa07125ffcf5803d260e0f89de770b87145",
+      "memory": "The Evangelion \u2014 Chapter 16 (XVI) HEN CERTAIN OF the scribes and of the Pharisees T answered, saying, Master, we would see a sign from... Full Text HEN CERTAIN OF the scribes and of the Pharisees T answered, saying, Master, we would see a sign from thee. But he answered and said unto them, An evil and adulterous generation seeketh after a sign; and there shall no sign be given to it, but the sign of the prophet Jonas: For as Jonas was a sign unto the Ninevites, so shall also the Son of man be to this generation. For as Jonas was three days and three nights in the whale\u2019s belly; so shall the Son of man be three days and three nights in the heart of the earth. The queen of the south shall rise up in the judgment with the men of this generation, and condemn them: for she came from the utmost parts of the earth to hear the wisdom of Solomon; and, behold, a greater than Solomon is here.",
+      "questions": [
+        {
+          "id": "g2-concepts-the-evangelion-chapter-16-q1",
+          "question": "According to the text, what is the reason given for why the queen of the south will rise up in judgment against the current generation?",
+          "choices": [
+            "She was a ruler of a powerful kingdom",
+            "She traveled from distant lands to learn from Solomon",
+            "She possessed greater wisdom than the men of that time",
+            "She was the first to seek a sign from Jesus"
+          ],
+          "answer": 1,
+          "paraphrase": "The text explains that the queen of the south will condemn the present generation because she journeyed from the farthest parts of the earth to hear Solomon's wisdom, while a greater figure is now present."
+        }
+      ],
+      "split": "heldout"
+    }
+  ]
+}

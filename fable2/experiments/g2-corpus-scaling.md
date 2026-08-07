@@ -82,4 +82,59 @@ the margin term overpowering it) does not count.
 
 ## Result
 
-Pending.
+Complete 2026-08-07, 300 updates on the physical RTX 4090 (~6.7 h). Artifacts:
+`g2-corpus-scaling-result.json`, `g2-corpus-scaling-trend.json`,
+`g2-corpus.json`, `g2-u75-permutation-verify.json`, `figures/g2-*.png`.
+
+**Verdict: FAIL — no held-out content differential. Corpus scale is exonerated
+alongside capacity and duration; per the preregistered decision boundary the
+residual suspect is the interface design, and the next treatment is
+architectural.**
+
+The gate battery at the read point technically passed, and that pass did not
+survive verification — recording both halves in full:
+
+- Every heldout trend series reads `degrading_tail` best@75. At u75, all
+  preregistered gates passed: margins vs wrong (+0.039, 13/24 + 3 ties), floor
+  (+0.041, 15/24), no-exposure (+0.064, 18/24), both tissue lesions > 0.05,
+  depth-7 lesion hurting 13/24, and the anti-sabotage check comfortably clear
+  (the wrong arm sat *above* no-exposure).
+- A post-hoc robustness probe (recorded as post-hoc) re-scored the retained u75
+  checkpoint under two fresh label-permutation seeds. The differential
+  inverted: wrong-passage margins −0.033 (9/24) and −0.044 (8/24); no-exposure
+  margins also negative. Real content use is invariant to answer-choice order;
+  this was not. **The u75 pass was selection on noise** — read-at-best across
+  12 eval rounds plus threshold-exact wins is a multiple-comparisons machine,
+  and it manufactured a pass the permutation probe immediately falsified.
+
+**Instrument amendment for all future runs**: a read-at-best pass counts only
+if it survives re-evaluation of the retained checkpoint under at least two
+fresh permutation seeds. Filed as a standing protocol change.
+
+What G2 established beyond the verdict:
+
+- **G1's generic transport effect was Qwen-prior-mediated.** On this corpus —
+  where the admission gate pins the bare floor at chance (1.428 ≈ ln 4) — the
+  generic any-passage benefit vanishes: at the best checkpoint, normal ≈ floor
+  under fresh permutations. Priming helps only where the prior already knows.
+- **The control policy overfits regardless of 6× data.** Development floor
+  margin grew to +0.40 while heldout margins collapsed; from u150 the heldout
+  injection turned actively toxic — by u250–300 *lesioning tissue helped*
+  (organism arms 2.2–2.6 vs lesioned 2.2 vs floor 1.43). Train loss kept
+  improving to best@208 through all of it. Textbook policy memorization, now
+  demonstrated at two corpus scales.
+- **The anti-sabotage hinge worked as designed**: the wrong arm tracked
+  at-or-above no-exposure throughout (train `wrong_vs_noexp` climbed from
+  −0.05 toward 0; heldout wrong ≈ normal at every round). The G2a poison
+  pattern did not recur. Closing the degenerate optimum did not rescue
+  generalization — the failure is deeper than the objective.
+- `memory_lesion ≡ no_exposure` held exactly at all 12 evaluations, again.
+- Train-time verdicts: `degrading_tail` on every heldout series; ~225 of 300
+  updates were overtraining waste (~3.5 h GPU) — measured, per protocol, not
+  argued.
+
+Per the stop rules: no second data scaling, no capacity or duration moves. The
+next treatment (G3, preregistered separately) is the architectural one the
+decision boundary names: question-conditioned read-out — the organism's memory
+must be *queried at scoring time* rather than summarized into final-state
+control banks that a question never conditions.
