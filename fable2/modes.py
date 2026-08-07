@@ -239,6 +239,8 @@ def run_mode_arm(
     demo_k: int = 4,
     sample_seed: int = 0,
     lesion_depths: frozenset[int] = frozenset(),
+    filler_features: torch.Tensor | None = None,
+    n_filler: int = 0,
 ) -> dict:
     """Score both twins for one item under one arm; fresh episode state.
 
@@ -276,6 +278,16 @@ def run_mode_arm(
             item.split, exposure_mode, k=demo_k, sample_seed=sample_seed
         )
         state = system.observe_feature_sequence(stream, state)
+    if not bare and n_filler > 0:
+        if filler_features is None:
+            raise ValueError("n_filler requires filler_features")
+        if n_filler > filler_features.shape[1]:
+            raise ValueError("n_filler exceeds the filler stream length")
+        # Delay traffic is lived experience: memory writes on, identical filler
+        # in every arm, so the demonstration language stays the only difference.
+        state = system.observe_feature_sequence(
+            filler_features[:, :n_filler], state
+        )
     if arm == "memory_lesion":
         from sol2.wiki_memory import lesion_state
 

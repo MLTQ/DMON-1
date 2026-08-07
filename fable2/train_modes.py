@@ -43,7 +43,13 @@ EVAL_ARMS = (
 
 @torch.no_grad()
 def evaluate_split(
-    system: BrocaSystem, bank: ModeBank, split: str, *, demo_k: int
+    system: BrocaSystem,
+    bank: ModeBank,
+    split: str,
+    *,
+    demo_k: int,
+    filler_features: torch.Tensor | None = None,
+    eval_delays: tuple[int, ...] = (),
 ) -> dict:
     """Arm battery over item x exposure-direction episodes, curves-compatible.
 
@@ -92,6 +98,32 @@ def evaluate_split(
             report[arm]["normal_ties"] = sum(
                 normal == other for normal, other in zip(losses["normal"], losses[arm])
             )
+        report["delayed"] = {}
+        for n_filler in eval_delays:
+            differentials, wins = [], 0
+            for item, mode in episodes:
+                sample_seed = sha_seed("eval", split, item.id, mode)
+                normal = run_mode_arm(
+                    system, bank, item, mode, "normal",
+                    demo_k=demo_k, sample_seed=sample_seed,
+                    filler_features=filler_features, n_filler=n_filler,
+                )
+                wrong = run_mode_arm(
+                    system, bank, item, mode, "wrong_mode",
+                    demo_k=demo_k, sample_seed=sample_seed,
+                    filler_features=filler_features, n_filler=n_filler,
+                )
+                differential = float(
+                    normal["log_likelihoods"][mode].detach()
+                ) - float(wrong["log_likelihoods"][mode].detach())
+                differentials.append(differential)
+                wins += differential > 0
+            report["delayed"][str(n_filler)] = {
+                "differential_mean": sum(differentials) / len(differentials),
+                "strict_wins": wins,
+                "episodes": len(differentials),
+            }
+
         report["depth_lesions"] = {}
         for depth in system.depths:
             depth_losses = []
@@ -151,6 +183,18 @@ def run_training(args: argparse.Namespace) -> dict:
     bank = ModeBank(items, demos, tokenizer, backbone, device)
     if args.demo_k * 56 > cfg.n_memory:
         raise ValueError("demonstration stream cannot exceed the memory FIFO span")
+    delay_ladder = tuple(int(n) for n in args.delay_ladder.split(","))
+    eval_delays = tuple(
+        int(n) for n in args.eval_delays.split(",") if int(n) > 0
+    ) if args.eval_delays else ()
+    filler_features = None
+    max_filler = max((*delay_ladder, *eval_delays), default=0)
+    if max_filler > 0:
+        from .retention import build_filler_stream
+
+        filler_features = build_filler_stream(
+            bank, tokenizer, backbone, max_tokens=max_filler
+        )
     system = build_broca_system(backbone, cfg, device=device)
     optimizer = torch.optim.AdamW(
         trainable_parameter_groups(system, cfg), weight_decay=0.01
@@ -175,18 +219,24 @@ def run_training(args: argparse.Namespace) -> dict:
         ]
         exposed_mode = MODES[update % 2]
         sample_seed = sha_seed("train", cfg.seed, update)
+        n_filler = delay_ladder[
+            int(torch.randint(len(delay_ladder), (1,), generator=order_generator))
+        ]
+        arm_extra = {
+            "demo_k": args.demo_k,
+            "sample_seed": sample_seed,
+            "filler_features": filler_features,
+            "n_filler": n_filler,
+        }
         with torch.no_grad():
             neutral = run_mode_arm(
-                system, bank, item, exposed_mode, "no_exposure",
-                demo_k=args.demo_k, sample_seed=sample_seed,
+                system, bank, item, exposed_mode, "no_exposure", **arm_extra
             )
         wrong = run_mode_arm(
-            system, bank, item, exposed_mode, "wrong_mode",
-            demo_k=args.demo_k, sample_seed=sample_seed,
+            system, bank, item, exposed_mode, "wrong_mode", **arm_extra
         )
         exposed = run_mode_arm(
-            system, bank, item, exposed_mode, "normal",
-            demo_k=args.demo_k, sample_seed=sample_seed,
+            system, bank, item, exposed_mode, "normal", **arm_extra
         )
         loss, advantages = paired_mode_loss(
             exposed, wrong, neutral, margin=cfg.contrast_margin
@@ -204,6 +254,7 @@ def run_training(args: argparse.Namespace) -> dict:
             {
                 "update": update + 1,
                 "question": f"{item.id}:{exposed_mode}",
+                "n_filler": n_filler,
                 "loss": float(loss.detach()),
                 "advantage_vs_no_exposure": float(advantages[0]),
                 "advantage_vs_wrong_passage": float(advantages[1]),
@@ -222,7 +273,8 @@ def run_training(args: argparse.Namespace) -> dict:
                         system, bank, "development", demo_k=args.demo_k
                     ),
                     "heldout": evaluate_split(
-                        system, bank, "heldout", demo_k=args.demo_k
+                        system, bank, "heldout", demo_k=args.demo_k,
+                        filler_features=filler_features, eval_delays=eval_delays,
                     ),
                 }
             )
@@ -270,6 +322,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--control-gain", type=float, default=1.0)
     parser.add_argument("--contrast-margin", type=float, default=0.1)
     parser.add_argument("--demo-k", type=int, default=4)
+    parser.add_argument("--delay-ladder", default="0")
+    parser.add_argument("--eval-delays", default="")
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")

@@ -781,6 +781,42 @@ def test_retention_probe_contracts() -> None:
         pass
 
 
+def test_delayed_mode_episode_gradients() -> None:
+    from .modes import paired_mode_loss, run_mode_arm, sha_seed
+    from .retention import build_filler_stream
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    system = build_broca_system(backbone, cfg, device="cpu")
+    torch.manual_seed(43)
+    randomize_heads(system)
+    tokenizer = TinyTokenizer(vocab_size=backbone.vocab_size)
+    filler = build_filler_stream(bank, tokenizer, backbone, max_tokens=16)
+    item = bank.split_items("meta_train")[0]
+    seed = sha_seed("m1b", item.id, "french")
+    kwargs = {"demo_k": 2, "sample_seed": seed, "filler_features": filler, "n_filler": 12}
+    with torch.no_grad():
+        neutral = run_mode_arm(system, bank, item, "french", "no_exposure", **kwargs)
+    wrong = run_mode_arm(system, bank, item, "french", "wrong_mode", **kwargs)
+    exposed = run_mode_arm(system, bank, item, "french", "normal", **kwargs)
+    loss, _ = paired_mode_loss(exposed, wrong, neutral, margin=0.1)
+    loss.backward()
+    organ = system.organism.attached_organs[system.organ_name]
+    assert any(
+        head.weight.grad is not None and float(head.weight.grad.abs().sum()) > 0
+        for head in organ.depth_heads
+    ), "delayed episodes must carry gradient through the filler span"
+    try:
+        run_mode_arm(
+            system, bank, item, "french", "normal",
+            demo_k=2, sample_seed=seed, n_filler=8,
+        )
+        raise AssertionError("missing-filler guard did not fire")
+    except ValueError:
+        pass
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -801,6 +837,7 @@ TESTS = [
     test_paired_mode_loss_arithmetic,
     test_mode_learnability_smoke,
     test_retention_probe_contracts,
+    test_delayed_mode_episode_gradients,
 ]
 
 
