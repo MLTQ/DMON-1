@@ -102,4 +102,43 @@ removes the dilution confound. M1c inherits the redesigned protocol and budget.
 
 ## Result
 
-Pending.
+Complete 2026-08-07: warm-started run (`runs/fable2-m1b2/`) stopped by rule at
+u100 — post-eviction differentials flat across both eval rounds, meeting the
+two-round standard at half budget. Artifact:
+`m1b-delayed-expression-result.json`.
+
+**Verdict: the preregistered null, confirmed. Delay pressure does not teach
+this anatomy persistence.**
+
+| | u50 | u100 |
+|---|---|---|
+| delay-0 differential | +0.038 / w26 | +0.023 / w26 |
+| d128 | +0.045 / w25 | +0.028 / w25 |
+| d256 (post-eviction) | +0.001 / w14 | +0.001 / w16 |
+| d384 (post-eviction) | +0.0005 / w14 | +0.001 / w17 |
+
+Three independent lines now converge: M1a measured zero recurrent carry on the
+fully mode-competent frozen organism; M1b2 shows the post-eviction differential
+immobile under 100 updates of direct gradient pressure (numerically identical
+to the frozen baseline); and the gradient arithmetic explains why — the same
+contraction that erases the state erases the credit signal that could teach a
+route (α ≥ 0.02 ⇒ Jacobian products vanish over exactly the spans that
+matter).
+
+Secondary finding, which *strengthens* the null: the delay-0 differential
+eroded monotonically under pressure (+0.085 → +0.038 → +0.023, crossing the
+validity floor) while post-eviction stayed dead. Given delay pressure, gradient
+descent found nothing better to do than cannibalize the acquisition policy —
+there was no persistence route to invest in. The erosion is the anatomy's own
+testimony that the route does not exist.
+
+The dilution-invalidated first attempt (`runs/fable2-m1b/`, stopped at ~u55)
+remains archived as designed-experiment waste, counted and named.
+
+Per the stop rules: **M1c is promoted** — slow tissue (α floor lowered to
+~0.001, a small gated population) added to the organism, then this exact
+protocol re-run warm-started, with M1b2-at-u100 as the matched control arm
+(extendable by resume if M1c's budget grows). The slow cells double as
+constant-error carousels, fixing the credit path and the storage in one
+mechanism; pass = post-eviction differential with strict-win majority,
+lesion-attributed to the slow cells specifically.

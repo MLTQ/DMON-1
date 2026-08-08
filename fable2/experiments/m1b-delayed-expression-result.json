@@ -1,0 +1,2712 @@
+{
+  "schema": 1,
+  "experiment": "m0-acquired-language-mode",
+  "config": {
+    "n_input": 8,
+    "n_memory": 256,
+    "n_compute": 96,
+    "n_relay": 32,
+    "n_output": 16,
+    "hidden": 96,
+    "n_dendrites": 12,
+    "initial_active_dendrites": 8,
+    "steps_per_token": 3,
+    "organ_queries": 4,
+    "cell_identity": true,
+    "cell_adapter_rank": 4,
+    "seed": 7,
+    "depth_fractions": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "n_control_tokens": 4,
+    "control_rank": 8,
+    "control_gain": 1.0,
+    "trunk_width": 128,
+    "updates": 200,
+    "lr": 0.001,
+    "organ_lr_multiplier": 1.0,
+    "grad_clip": 1.0,
+    "reject_grad_norm": 10000.0,
+    "contrast_margin": 0.1,
+    "task_weight": 0.0,
+    "eval_every": 50,
+    "checkpoint_every": 50,
+    "permutation_seed": 101,
+    "max_memory_tokens": 256,
+    "max_question_tokens": 256
+  },
+  "depths": [
+    7,
+    15,
+    23,
+    31
+  ],
+  "elapsed_seconds": 9954.033064842224,
+  "telemetry": [
+    {
+      "update": 1,
+      "question": "m0-item-9:french",
+      "n_filler": 0,
+      "loss": 0.012868434190750122,
+      "advantage_vs_no_exposure": 0.19230112433433533,
+      "advantage_vs_wrong_passage": 0.20516955852508545,
+      "wrong_vs_no_exposure": -0.012868434190750122,
+      "grad_norm": 2.347107147570559,
+      "control_rms": 0.1435052752494812,
+      "per_depth_control_rms": [
+        0.05219113454222679,
+        0.06788433343172073,
+        0.14607346057891846,
+        0.23174424469470978
+      ]
+    },
+    {
+      "update": 2,
+      "question": "m0-item-23:german",
+      "n_filler": 128,
+      "loss": 0.1147841289639473,
+      "advantage_vs_no_exposure": -0.007392063736915588,
+      "advantage_vs_wrong_passage": 0.07926446199417114,
+      "wrong_vs_no_exposure": -0.08665652573108673,
+      "grad_norm": 3.2328284721471383,
+      "control_rms": 0.14170029759407043,
+      "per_depth_control_rms": [
+        0.058358196169137955,
+        0.06641975045204163,
+        0.1450592428445816,
+        0.22684016823768616
+      ]
+    },
+    {
+      "update": 3,
+      "question": "m0-item-17:french",
+      "n_filler": 320,
+      "loss": 0.09889326244592667,
+      "advantage_vs_no_exposure": 0.0011067390441894531,
+      "advantage_vs_wrong_passage": 0.008429080247879028,
+      "wrong_vs_no_exposure": -0.007322341203689575,
+      "grad_norm": 2.2286758188391467,
+      "control_rms": 0.14035551249980927,
+      "per_depth_control_rms": [
+        0.05314471200108528,
+        0.06518024951219559,
+        0.14529617130756378,
+        0.2249774932861328
+      ]
+    },
+    {
+      "update": 4,
+      "question": "m0-item-13:german",
+      "n_filler": 256,
+      "loss": 0.09989813715219498,
+      "advantage_vs_no_exposure": 0.0035127252340316772,
+      "advantage_vs_wrong_passage": 0.00010186433792114258,
+      "wrong_vs_no_exposure": 0.0034108608961105347,
+      "grad_norm": 0.04402948255260562,
+      "control_rms": 0.13776695728302002,
+      "per_depth_control_rms": [
+        0.04927299916744232,
+        0.06259696185588837,
+        0.14207881689071655,
+        0.22223037481307983
+      ]
+    },
+    {
+      "update": 5,
+      "question": "m0-item-1:french",
+      "n_filler": 320,
+      "loss": 0.12402162700891495,
+      "advantage_vs_no_exposure": -0.008320927619934082,
+      "advantage_vs_wrong_passage": -0.015700697898864746,
+      "wrong_vs_no_exposure": 0.007379770278930664,
+      "grad_norm": 5.73717768979458,
+      "control_rms": 0.1355293244123459,
+      "per_depth_control_rms": [
+        0.04659749194979668,
+        0.06062605232000351,
+        0.1392480880022049,
+        0.219626784324646
+      ]
+    },
+    {
+      "update": 6,
+      "question": "m0-item-12:german",
+      "n_filler": 0,
+      "loss": 0.09814228862524033,
+      "advantage_vs_no_exposure": 0.0018577128648757935,
+      "advantage_vs_wrong_passage": 0.07073447108268738,
+      "wrong_vs_no_exposure": -0.06887675821781158,
+      "grad_norm": 1.2022560739663504,
+      "control_rms": 0.12681961059570312,
+      "per_depth_control_rms": [
+        0.04559723287820816,
+        0.05744488537311554,
+        0.1264815628528595,
+        0.20725888013839722
+      ]
+    },
+    {
+      "update": 7,
+      "question": "m0-item-7:french",
+      "n_filler": 0,
+      "loss": 0.4359050691127777,
+      "advantage_vs_no_exposure": -0.1679525375366211,
+      "advantage_vs_wrong_passage": -0.16331660747528076,
+      "wrong_vs_no_exposure": -0.004635930061340332,
+      "grad_norm": 10.46252525770416,
+      "control_rms": 0.12932302057743073,
+      "per_depth_control_rms": [
+        0.04179994389414787,
+        0.05530814081430435,
+        0.13344712555408478,
+        0.21043623983860016
+      ]
+    },
+    {
+      "update": 8,
+      "question": "m0-item-9:german",
+      "n_filler": 192,
+      "loss": 0.09980396926403046,
+      "advantage_vs_no_exposure": 0.0001960359513759613,
+      "advantage_vs_wrong_passage": 0.0022056549787521362,
+      "wrong_vs_no_exposure": -0.002009619027376175,
+      "grad_norm": 0.34789051997939263,
+      "control_rms": 0.12102749198675156,
+      "per_depth_control_rms": [
+        0.04376876354217529,
+        0.055427804589271545,
+        0.12022599577903748,
+        0.1978594958782196
+      ]
+    },
+    {
+      "update": 9,
+      "question": "m0-item-28:french",
+      "n_filler": 256,
+      "loss": 0.10263190418481827,
+      "advantage_vs_no_exposure": 0.0025963187217712402,
+      "advantage_vs_wrong_passage": -0.0026319026947021484,
+      "wrong_vs_no_exposure": 0.005228221416473389,
+      "grad_norm": 0.1960012680788034,
+      "control_rms": 0.11697781085968018,
+      "per_depth_control_rms": [
+        0.04247744381427765,
+        0.05389676243066788,
+        0.1150127500295639,
+        0.19182832539081573
+      ]
+    },
+    {
+      "update": 10,
+      "question": "m0-item-11:german",
+      "n_filler": 64,
+      "loss": 0.09920156747102737,
+      "advantage_vs_no_exposure": 0.0007984377443790436,
+      "advantage_vs_wrong_passage": 0.016329731792211533,
+      "wrong_vs_no_exposure": -0.015531294047832489,
+      "grad_norm": 0.5881302547291893,
+      "control_rms": 0.11329244077205658,
+      "per_depth_control_rms": [
+        0.04186899587512016,
+        0.052521225064992905,
+        0.1102299839258194,
+        0.18622183799743652
+      ]
+    },
+    {
+      "update": 11,
+      "question": "m0-item-4:french",
+      "n_filler": 192,
+      "loss": 0.07638666778802872,
+      "advantage_vs_no_exposure": 0.023613333702087402,
+      "advantage_vs_wrong_passage": 0.040337324142456055,
+      "wrong_vs_no_exposure": -0.016723990440368652,
+      "grad_norm": 3.640362346745279,
+      "control_rms": 0.11294211447238922,
+      "per_depth_control_rms": [
+        0.0417378693819046,
+        0.05159961059689522,
+        0.11010187864303589,
+        0.18573284149169922
+      ]
+    },
+    {
+      "update": 12,
+      "question": "m0-item-4:german",
+      "n_filler": 384,
+      "loss": 0.10143084824085236,
+      "advantage_vs_no_exposure": 0.0006049647927284241,
+      "advantage_vs_wrong_passage": -0.0014308467507362366,
+      "wrong_vs_no_exposure": 0.0020358115434646606,
+      "grad_norm": 0.014807660466205897,
+      "control_rms": 0.10971912741661072,
+      "per_depth_control_rms": [
+        0.043419670313596725,
+        0.05238135904073715,
+        0.10504846274852753,
+        0.1802467554807663
+      ]
+    },
+    {
+      "update": 13,
+      "question": "m0-item-20:french",
+      "n_filler": 128,
+      "loss": 0.09299332648515701,
+      "advantage_vs_no_exposure": 0.00816565752029419,
+      "advantage_vs_wrong_passage": 0.0070066750049591064,
+      "wrong_vs_no_exposure": 0.001158982515335083,
+      "grad_norm": 0.3104359583583386,
+      "control_rms": 0.10556946694850922,
+      "per_depth_control_rms": [
+        0.04085317254066467,
+        0.047765810042619705,
+        0.10159478336572647,
+        0.17409075796604156
+      ]
+    },
+    {
+      "update": 14,
+      "question": "m0-item-6:german",
+      "n_filler": 0,
+      "loss": 0.09180668741464615,
+      "advantage_vs_no_exposure": 0.00819331407546997,
+      "advantage_vs_wrong_passage": 0.04257458448410034,
+      "wrong_vs_no_exposure": -0.03438127040863037,
+      "grad_norm": 2.996096133901715,
+      "control_rms": 0.10640696436166763,
+      "per_depth_control_rms": [
+        0.04354804754257202,
+        0.050858043134212494,
+        0.10077649354934692,
+        0.17507395148277283
+      ]
+    },
+    {
+      "update": 15,
+      "question": "m0-item-24:french",
+      "n_filler": 256,
+      "loss": 0.09831712394952774,
+      "advantage_vs_no_exposure": 0.0038422346115112305,
+      "advantage_vs_wrong_passage": 0.001682877540588379,
+      "wrong_vs_no_exposure": 0.0021593570709228516,
+      "grad_norm": 0.048581635403493036,
+      "control_rms": 0.10643298923969269,
+      "per_depth_control_rms": [
+        0.04696527495980263,
+        0.053983692079782486,
+        0.09995373338460922,
+        0.17378492653369904
+      ]
+    },
+    {
+      "update": 16,
+      "question": "m0-item-14:german",
+      "n_filler": 128,
+      "loss": 0.09859877079725266,
+      "advantage_vs_no_exposure": 0.0014012306928634644,
+      "advantage_vs_wrong_passage": 0.009672008454799652,
+      "wrong_vs_no_exposure": -0.008270777761936188,
+      "grad_norm": 0.8011190588379133,
+      "control_rms": 0.10720398277044296,
+      "per_depth_control_rms": [
+        0.04952717944979668,
+        0.05618727579712868,
+        0.10028056800365448,
+        0.17408224940299988
+      ]
+    },
+    {
+      "update": 17,
+      "question": "m0-item-16:french",
+      "n_filler": 256,
+      "loss": 0.1028015986084938,
+      "advantage_vs_no_exposure": 0.005237460136413574,
+      "advantage_vs_wrong_passage": -0.0028015971183776855,
+      "wrong_vs_no_exposure": 0.00803905725479126,
+      "grad_norm": 0.2491045222337844,
+      "control_rms": 0.1088365763425827,
+      "per_depth_control_rms": [
+        0.05277397856116295,
+        0.06035619229078293,
+        0.10122354328632355,
+        0.17523536086082458
+      ]
+    },
+    {
+      "update": 18,
+      "question": "m0-item-18:german",
+      "n_filler": 256,
+      "loss": 0.10534041374921799,
+      "advantage_vs_no_exposure": -0.002670206129550934,
+      "advantage_vs_wrong_passage": -0.0023583024740219116,
+      "wrong_vs_no_exposure": -0.0003119036555290222,
+      "grad_norm": 1.6556018750333823,
+      "control_rms": 0.11032713949680328,
+      "per_depth_control_rms": [
+        0.05530213564634323,
+        0.06337302923202515,
+        0.10218600183725357,
+        0.1765555590391159
+      ]
+    },
+    {
+      "update": 19,
+      "question": "m0-item-16:french",
+      "n_filler": 320,
+      "loss": 0.10814521461725235,
+      "advantage_vs_no_exposure": -0.004072606563568115,
+      "advantage_vs_wrong_passage": 0.0,
+      "wrong_vs_no_exposure": -0.004072606563568115,
+      "grad_norm": 6.208293473822246,
+      "control_rms": 0.11352795362472534,
+      "per_depth_control_rms": [
+        0.058129504323005676,
+        0.06888435035943985,
+        0.10449737310409546,
+        0.18030692636966705
+      ]
+    },
+    {
+      "update": 20,
+      "question": "m0-item-12:german",
+      "n_filler": 320,
+      "loss": 0.10067620873451233,
+      "advantage_vs_no_exposure": -0.0003381073474884033,
+      "advantage_vs_wrong_passage": -7.250532507896423e-05,
+      "wrong_vs_no_exposure": -0.0002656020224094391,
+      "grad_norm": 0.29127075551405535,
+      "control_rms": 0.11488202959299088,
+      "per_depth_control_rms": [
+        0.058197494596242905,
+        0.07075349986553192,
+        0.1056428775191307,
+        0.18231318891048431
+      ]
+    },
+    {
+      "update": 21,
+      "question": "m0-item-21:french",
+      "n_filler": 256,
+      "loss": 0.09721262007951736,
+      "advantage_vs_no_exposure": 0.003691345453262329,
+      "advantage_vs_wrong_passage": 0.002787381410598755,
+      "wrong_vs_no_exposure": 0.0009039640426635742,
+      "grad_norm": 0.20830066864371638,
+      "control_rms": 0.11692998558282852,
+      "per_depth_control_rms": [
+        0.05927305668592453,
+        0.07353286445140839,
+        0.1073467880487442,
+        0.1850588619709015
+      ]
+    },
+    {
+      "update": 22,
+      "question": "m0-item-4:german",
+      "n_filler": 192,
+      "loss": 0.0995577871799469,
+      "advantage_vs_no_exposure": 0.00044221431016921997,
+      "advantage_vs_wrong_passage": 0.0016557201743125916,
+      "wrong_vs_no_exposure": -0.0012135058641433716,
+      "grad_norm": 0.4285406513061312,
+      "control_rms": 0.11884341388940811,
+      "per_depth_control_rms": [
+        0.06032109260559082,
+        0.07594146579504013,
+        0.10891581326723099,
+        0.18768760561943054
+      ]
+    },
+    {
+      "update": 23,
+      "question": "m0-item-23:french",
+      "n_filler": 192,
+      "loss": 0.08874715119600296,
+      "advantage_vs_no_exposure": 0.01125285029411316,
+      "advantage_vs_wrong_passage": 0.01908475160598755,
+      "wrong_vs_no_exposure": -0.00783190131187439,
+      "grad_norm": 1.9155707237121564,
+      "control_rms": 0.11874326318502426,
+      "per_depth_control_rms": [
+        0.05980248749256134,
+        0.0762535110116005,
+        0.10881485790014267,
+        0.187531977891922
+      ]
+    },
+    {
+      "update": 24,
+      "question": "m0-item-29:german",
+      "n_filler": 256,
+      "loss": 0.10112278908491135,
+      "advantage_vs_no_exposure": -0.0005613933317363262,
+      "advantage_vs_wrong_passage": -0.00011932011693716049,
+      "wrong_vs_no_exposure": -0.0004420732147991657,
+      "grad_norm": 0.26034523779047875,
+      "control_rms": 0.12040465325117111,
+      "per_depth_control_rms": [
+        0.0599229596555233,
+        0.07934517413377762,
+        0.11065728217363358,
+        0.18936118483543396
+      ]
+    },
+    {
+      "update": 25,
+      "question": "m0-item-16:french",
+      "n_filler": 384,
+      "loss": 0.10268381983041763,
+      "advantage_vs_no_exposure": -0.0013419091701507568,
+      "advantage_vs_wrong_passage": -0.0005270540714263916,
+      "wrong_vs_no_exposure": -0.0008148550987243652,
+      "grad_norm": 5.930731310523443,
+      "control_rms": 0.12117786705493927,
+      "per_depth_control_rms": [
+        0.05966746434569359,
+        0.08077038824558258,
+        0.11182819306850433,
+        0.1901228427886963
+      ]
+    },
+    {
+      "update": 26,
+      "question": "m0-item-23:german",
+      "n_filler": 256,
+      "loss": 0.10019636154174805,
+      "advantage_vs_no_exposure": -9.818095713853836e-05,
+      "advantage_vs_wrong_passage": -5.271285772323608e-06,
+      "wrong_vs_no_exposure": -9.290967136621475e-05,
+      "grad_norm": 0.22190500595484253,
+      "control_rms": 0.12145481258630753,
+      "per_depth_control_rms": [
+        0.057614490389823914,
+        0.08020702004432678,
+        0.11271646618843079,
+        0.1911739706993103
+      ]
+    },
+    {
+      "update": 27,
+      "question": "m0-item-11:french",
+      "n_filler": 320,
+      "loss": 0.10699740797281265,
+      "advantage_vs_no_exposure": -0.0034987032413482666,
+      "advantage_vs_wrong_passage": 0.0005010366439819336,
+      "wrong_vs_no_exposure": -0.0039997398853302,
+      "grad_norm": 5.309889280858953,
+      "control_rms": 0.12225674092769623,
+      "per_depth_control_rms": [
+        0.056075889617204666,
+        0.0801786482334137,
+        0.11410915851593018,
+        0.19285441935062408
+      ]
+    },
+    {
+      "update": 28,
+      "question": "m0-item-6:german",
+      "n_filler": 320,
+      "loss": 0.09736225754022598,
+      "advantage_vs_no_exposure": 0.0027119070291519165,
+      "advantage_vs_wrong_passage": 0.0026377439498901367,
+      "wrong_vs_no_exposure": 7.416307926177979e-05,
+      "grad_norm": 0.036393358806717985,
+      "control_rms": 0.12283779680728912,
+      "per_depth_control_rms": [
+        0.05432547256350517,
+        0.07967134565114975,
+        0.11491996794939041,
+        0.19455362856388092
+      ]
+    },
+    {
+      "update": 29,
+      "question": "m0-item-28:french",
+      "n_filler": 64,
+      "loss": 0.12841472029685974,
+      "advantage_vs_no_exposure": -0.01420736312866211,
+      "advantage_vs_wrong_passage": 0.0038155317306518555,
+      "wrong_vs_no_exposure": -0.018022894859313965,
+      "grad_norm": 8.82077308599096,
+      "control_rms": 0.11994612962007523,
+      "per_depth_control_rms": [
+        0.05182407423853874,
+        0.0752745047211647,
+        0.11242946237325668,
+        0.1911960393190384
+      ]
+    },
+    {
+      "update": 30,
+      "question": "m0-item-14:german",
+      "n_filler": 128,
+      "loss": 0.09830355644226074,
+      "advantage_vs_no_exposure": 0.0016964524984359741,
+      "advantage_vs_wrong_passage": 0.008240189403295517,
+      "wrong_vs_no_exposure": -0.006543736904859543,
+      "grad_norm": 0.7338610519607345,
+      "control_rms": 0.12404735386371613,
+      "per_depth_control_rms": [
+        0.05207812413573265,
+        0.0793309137225151,
+        0.11582496762275696,
+        0.19781313836574554
+      ]
+    },
+    {
+      "update": 31,
+      "question": "m0-item-10:french",
+      "n_filler": 192,
+      "loss": 0.10077155381441116,
+      "advantage_vs_no_exposure": 0.004346251487731934,
+      "advantage_vs_wrong_passage": -0.0007715523242950439,
+      "wrong_vs_no_exposure": 0.0051178038120269775,
+      "grad_norm": 0.19957909166991733,
+      "control_rms": 0.12191006541252136,
+      "per_depth_control_rms": [
+        0.0506255067884922,
+        0.07719772309064865,
+        0.11349198967218399,
+        0.19505226612091064
+      ]
+    },
+    {
+      "update": 32,
+      "question": "m0-item-21:german",
+      "n_filler": 256,
+      "loss": 0.10073558241128922,
+      "advantage_vs_no_exposure": -0.00036779046058654785,
+      "advantage_vs_wrong_passage": 0.000881582498550415,
+      "wrong_vs_no_exposure": -0.0012493729591369629,
+      "grad_norm": 9.148704252849925,
+      "control_rms": 0.1249435544013977,
+      "per_depth_control_rms": [
+        0.05032222718000412,
+        0.0804942399263382,
+        0.11618918925523758,
+        0.19982989132404327
+      ]
+    },
+    {
+      "update": 33,
+      "question": "m0-item-14:french",
+      "n_filler": 0,
+      "loss": 0.09430841356515884,
+      "advantage_vs_no_exposure": 0.005691587924957275,
+      "advantage_vs_wrong_passage": 0.01817113161087036,
+      "wrong_vs_no_exposure": -0.012479543685913086,
+      "grad_norm": 2.365342671459119,
+      "control_rms": 0.12199405580759048,
+      "per_depth_control_rms": [
+        0.0480983629822731,
+        0.07791640609502792,
+        0.11336815357208252,
+        0.19568710029125214
+      ]
+    },
+    {
+      "update": 34,
+      "question": "m0-item-10:german",
+      "n_filler": 128,
+      "loss": 0.10955921560525894,
+      "advantage_vs_no_exposure": -0.004779607057571411,
+      "advantage_vs_wrong_passage": 0.00911170244216919,
+      "wrong_vs_no_exposure": -0.0138913094997406,
+      "grad_norm": 6.150001869823523,
+      "control_rms": 0.12418852001428604,
+      "per_depth_control_rms": [
+        0.04647225886583328,
+        0.07837925106287003,
+        0.11591793596744537,
+        0.19987799227237701
+      ]
+    },
+    {
+      "update": 35,
+      "question": "m0-item-11:french",
+      "n_filler": 320,
+      "loss": 0.09936092048883438,
+      "advantage_vs_no_exposure": 0.0006390810012817383,
+      "advantage_vs_wrong_passage": 0.0008416324853897095,
+      "wrong_vs_no_exposure": -0.0002025514841079712,
+      "grad_norm": 0.47786341410550554,
+      "control_rms": 0.12330695986747742,
+      "per_depth_control_rms": [
+        0.04538759961724281,
+        0.07618605345487595,
+        0.1154734417796135,
+        0.19904762506484985
+      ]
+    },
+    {
+      "update": 36,
+      "question": "m0-item-0:german",
+      "n_filler": 256,
+      "loss": 0.0966453105211258,
+      "advantage_vs_no_exposure": 0.0033546946942806244,
+      "advantage_vs_wrong_passage": 0.00400952622294426,
+      "wrong_vs_no_exposure": -0.0006548315286636353,
+      "grad_norm": 0.987572676426531,
+      "control_rms": 0.12382388114929199,
+      "per_depth_control_rms": [
+        0.04513239115476608,
+        0.07617346942424774,
+        0.11618472635746002,
+        0.19997799396514893
+      ]
+    },
+    {
+      "update": 37,
+      "question": "m0-item-17:french",
+      "n_filler": 192,
+      "loss": 0.09999703615903854,
+      "advantage_vs_no_exposure": 0.004041329026222229,
+      "advantage_vs_wrong_passage": 2.9653310775756836e-06,
+      "wrong_vs_no_exposure": 0.004038363695144653,
+      "grad_norm": 0.15000141839441872,
+      "control_rms": 0.12473704665899277,
+      "per_depth_control_rms": [
+        0.04637860506772995,
+        0.07756584882736206,
+        0.11721375584602356,
+        0.20082534849643707
+      ]
+    },
+    {
+      "update": 38,
+      "question": "m0-item-13:german",
+      "n_filler": 128,
+      "loss": 0.09906847029924393,
+      "advantage_vs_no_exposure": 0.0009315311908721924,
+      "advantage_vs_wrong_passage": 0.007717803120613098,
+      "wrong_vs_no_exposure": -0.006786271929740906,
+      "grad_norm": 1.8222375221375189,
+      "control_rms": 0.12735548615455627,
+      "per_depth_control_rms": [
+        0.04404371976852417,
+        0.0779924988746643,
+        0.12101465463638306,
+        0.2054518312215805
+      ]
+    },
+    {
+      "update": 39,
+      "question": "m0-item-24:french",
+      "n_filler": 384,
+      "loss": 0.10557053983211517,
+      "advantage_vs_no_exposure": -0.002785269170999527,
+      "advantage_vs_wrong_passage": -0.002446100115776062,
+      "wrong_vs_no_exposure": -0.00033916905522346497,
+      "grad_norm": 1.272633633523569,
+      "control_rms": 0.1282312273979187,
+      "per_depth_control_rms": [
+        0.04472373425960541,
+        0.07950786501169205,
+        0.12246748059988022,
+        0.20604123175144196
+      ]
+    },
+    {
+      "update": 40,
+      "question": "m0-item-2:german",
+      "n_filler": 192,
+      "loss": 0.1001473069190979,
+      "advantage_vs_no_exposure": 0.004702240228652954,
+      "advantage_vs_wrong_passage": 0.10484954714775085,
+      "wrong_vs_no_exposure": -0.1001473069190979,
+      "grad_norm": 9.14111849597022,
+      "control_rms": 0.13107360899448395,
+      "per_depth_control_rms": [
+        0.046899255365133286,
+        0.08327475190162659,
+        0.12552592158317566,
+        0.20935660600662231
+      ]
+    },
+    {
+      "update": 41,
+      "question": "m0-item-15:french",
+      "n_filler": 256,
+      "loss": 0.10073522478342056,
+      "advantage_vs_no_exposure": 0.010606884956359863,
+      "advantage_vs_wrong_passage": -0.0007352232933044434,
+      "wrong_vs_no_exposure": 0.011342108249664307,
+      "grad_norm": 1.2087361156359318,
+      "control_rms": 0.13254575431346893,
+      "per_depth_control_rms": [
+        0.04852747544646263,
+        0.08568296581506729,
+        0.12710687518119812,
+        0.21076257526874542
+      ]
+    },
+    {
+      "update": 42,
+      "question": "m0-item-19:german",
+      "n_filler": 192,
+      "loss": 0.126583069562912,
+      "advantage_vs_no_exposure": -0.013291537761688232,
+      "advantage_vs_wrong_passage": 0.0616757869720459,
+      "wrong_vs_no_exposure": -0.07496732473373413,
+      "grad_norm": 13.288425549638655,
+      "control_rms": 0.133447527885437,
+      "per_depth_control_rms": [
+        0.047910671681165695,
+        0.08646056801080704,
+        0.12841281294822693,
+        0.2120666205883026
+      ]
+    },
+    {
+      "update": 43,
+      "question": "m0-item-8:french",
+      "n_filler": 128,
+      "loss": 0.029915213584899902,
+      "advantage_vs_no_exposure": 0.0833720862865448,
+      "advantage_vs_wrong_passage": 0.1132872998714447,
+      "wrong_vs_no_exposure": -0.029915213584899902,
+      "grad_norm": 7.097707526691584,
+      "control_rms": 0.13395623862743378,
+      "per_depth_control_rms": [
+        0.05171618238091469,
+        0.0898522213101387,
+        0.1271539330482483,
+        0.2118041068315506
+      ]
+    },
+    {
+      "update": 44,
+      "question": "m0-item-7:german",
+      "n_filler": 64,
+      "loss": 0.09347110986709595,
+      "advantage_vs_no_exposure": 0.006528891623020172,
+      "advantage_vs_wrong_passage": 0.033970482647418976,
+      "wrong_vs_no_exposure": -0.027441591024398804,
+      "grad_norm": 1.6174086584995921,
+      "control_rms": 0.135094553232193,
+      "per_depth_control_rms": [
+        0.04857676476240158,
+        0.08732670545578003,
+        0.12996254861354828,
+        0.21477018296718597
+      ]
+    },
+    {
+      "update": 45,
+      "question": "m0-item-20:french",
+      "n_filler": 256,
+      "loss": 0.1155920997262001,
+      "advantage_vs_no_exposure": -0.007796049118041992,
+      "advantage_vs_wrong_passage": -0.004986941814422607,
+      "wrong_vs_no_exposure": -0.0028091073036193848,
+      "grad_norm": 5.336816077825954,
+      "control_rms": 0.13510216772556305,
+      "per_depth_control_rms": [
+        0.0488203689455986,
+        0.0861412063241005,
+        0.1299518197774887,
+        0.21521888673305511
+      ]
+    },
+    {
+      "update": 46,
+      "question": "m0-item-19:german",
+      "n_filler": 192,
+      "loss": 0.09013230353593826,
+      "advantage_vs_no_exposure": 0.009867697954177856,
+      "advantage_vs_wrong_passage": 0.031235486268997192,
+      "wrong_vs_no_exposure": -0.021367788314819336,
+      "grad_norm": 3.7823376237108963,
+      "control_rms": 0.13459861278533936,
+      "per_depth_control_rms": [
+        0.0480724461376667,
+        0.08347532153129578,
+        0.12959635257720947,
+        0.21538996696472168
+      ]
+    },
+    {
+      "update": 47,
+      "question": "m0-item-20:french",
+      "n_filler": 320,
+      "loss": 0.10219667106866837,
+      "advantage_vs_no_exposure": 0.0012196004390716553,
+      "advantage_vs_wrong_passage": -0.002196669578552246,
+      "wrong_vs_no_exposure": 0.0034162700176239014,
+      "grad_norm": 0.06498312433103412,
+      "control_rms": 0.1332877278327942,
+      "per_depth_control_rms": [
+        0.04717991128563881,
+        0.07997465133666992,
+        0.12792253494262695,
+        0.21465414762496948
+      ]
+    },
+    {
+      "update": 48,
+      "question": "m0-item-0:german",
+      "n_filler": 192,
+      "loss": 0.10011941939592361,
+      "advantage_vs_no_exposure": -2.1818093955516815e-05,
+      "advantage_vs_wrong_passage": -9.760446846485138e-05,
+      "wrong_vs_no_exposure": 7.578637450933456e-05,
+      "grad_norm": 0.15727141196781033,
+      "control_rms": 0.1319565773010254,
+      "per_depth_control_rms": [
+        0.04559862241148949,
+        0.07615793496370316,
+        0.12650974094867706,
+        0.21393030881881714
+      ]
+    },
+    {
+      "update": 49,
+      "question": "m0-item-21:french",
+      "n_filler": 64,
+      "loss": 0.08718063682317734,
+      "advantage_vs_no_exposure": 0.012819364666938782,
+      "advantage_vs_wrong_passage": 0.02223469316959381,
+      "wrong_vs_no_exposure": -0.00941532850265503,
+      "grad_norm": 4.003088082506374,
+      "control_rms": 0.13406045734882355,
+      "per_depth_control_rms": [
+        0.050713639706373215,
+        0.08021833002567291,
+        0.12649188935756683,
+        0.2165219634771347
+      ]
+    },
+    {
+      "update": 50,
+      "question": "m0-item-17:german",
+      "n_filler": 384,
+      "loss": 0.14714637398719788,
+      "advantage_vs_no_exposure": -0.023573189973831177,
+      "advantage_vs_wrong_passage": -0.0171642005443573,
+      "wrong_vs_no_exposure": -0.006408989429473877,
+      "grad_norm": 6.570523623768043,
+      "control_rms": 0.13051992654800415,
+      "per_depth_control_rms": [
+        0.04335542023181915,
+        0.0721868947148323,
+        0.12473013997077942,
+        0.2132921814918518
+      ]
+    },
+    {
+      "update": 51,
+      "question": "m0-item-2:french",
+      "n_filler": 192,
+      "loss": 0.08130816370248795,
+      "advantage_vs_no_exposure": 0.018691837787628174,
+      "advantage_vs_wrong_passage": 0.025458067655563354,
+      "wrong_vs_no_exposure": -0.006766229867935181,
+      "grad_norm": 0.9478025823458166,
+      "control_rms": 0.13195165991783142,
+      "per_depth_control_rms": [
+        0.044324278831481934,
+        0.07552815228700638,
+        0.12501807510852814,
+        0.2152819186449051
+      ]
+    },
+    {
+      "update": 52,
+      "question": "m0-item-28:german",
+      "n_filler": 192,
+      "loss": 0.283431738615036,
+      "advantage_vs_no_exposure": -0.02825784683227539,
+      "advantage_vs_wrong_passage": -0.1551738977432251,
+      "wrong_vs_no_exposure": 0.1269160509109497,
+      "grad_norm": 12.34342417415602,
+      "control_rms": 0.1290096491575241,
+      "per_depth_control_rms": [
+        0.039419542998075485,
+        0.07079438865184784,
+        0.12298538535833359,
+        0.21185562014579773
+      ]
+    },
+    {
+      "update": 53,
+      "question": "m0-item-8:french",
+      "n_filler": 192,
+      "loss": 0.028669320046901703,
+      "advantage_vs_no_exposure": 0.07133068144321442,
+      "advantage_vs_wrong_passage": 0.0783095508813858,
+      "wrong_vs_no_exposure": -0.006978869438171387,
+      "grad_norm": 2.276892104860728,
+      "control_rms": 0.13399647176265717,
+      "per_depth_control_rms": [
+        0.04544718563556671,
+        0.08027689158916473,
+        0.12578345835208893,
+        0.2179195135831833
+      ]
+    },
+    {
+      "update": 54,
+      "question": "m0-item-3:german",
+      "n_filler": 128,
+      "loss": 0.08329466730356216,
+      "advantage_vs_no_exposure": 0.016705334186553955,
+      "advantage_vs_wrong_passage": 0.05484721064567566,
+      "wrong_vs_no_exposure": -0.038141876459121704,
+      "grad_norm": 2.4190321642057264,
+      "control_rms": 0.13263361155986786,
+      "per_depth_control_rms": [
+        0.04363642632961273,
+        0.07804398983716965,
+        0.12604983150959015,
+        0.21559947729110718
+      ]
+    },
+    {
+      "update": 55,
+      "question": "m0-item-2:french",
+      "n_filler": 320,
+      "loss": 0.09961510449647903,
+      "advantage_vs_no_exposure": 0.00038489699363708496,
+      "advantage_vs_wrong_passage": 0.0015520453453063965,
+      "wrong_vs_no_exposure": -0.0011671483516693115,
+      "grad_norm": 0.6031072608097193,
+      "control_rms": 0.13492430746555328,
+      "per_depth_control_rms": [
+        0.047720253467559814,
+        0.08338111639022827,
+        0.12860526144504547,
+        0.2169085592031479
+      ]
+    },
+    {
+      "update": 56,
+      "question": "m0-item-22:german",
+      "n_filler": 384,
+      "loss": 0.09936323016881943,
+      "advantage_vs_no_exposure": 0.003548368811607361,
+      "advantage_vs_wrong_passage": 0.0006367713212966919,
+      "wrong_vs_no_exposure": 0.002911597490310669,
+      "grad_norm": 0.03874221437580288,
+      "control_rms": 0.1376941204071045,
+      "per_depth_control_rms": [
+        0.05160175636410713,
+        0.0884602963924408,
+        0.13148944079875946,
+        0.21922872960567474
+      ]
+    },
+    {
+      "update": 57,
+      "question": "m0-item-21:french",
+      "n_filler": 384,
+      "loss": 0.10037866234779358,
+      "advantage_vs_no_exposure": -2.516433596611023e-06,
+      "advantage_vs_wrong_passage": -0.0003761444240808487,
+      "wrong_vs_no_exposure": 0.00037362799048423767,
+      "grad_norm": 0.30986293008248994,
+      "control_rms": 0.13996213674545288,
+      "per_depth_control_rms": [
+        0.054849978536367416,
+        0.09269891679286957,
+        0.13388288021087646,
+        0.22097820043563843
+      ]
+    },
+    {
+      "update": 58,
+      "question": "m0-item-12:german",
+      "n_filler": 384,
+      "loss": 0.09977714717388153,
+      "advantage_vs_no_exposure": 0.0005594640970230103,
+      "advantage_vs_wrong_passage": 0.00022285431623458862,
+      "wrong_vs_no_exposure": 0.00033660978078842163,
+      "grad_norm": 0.025257585234213332,
+      "control_rms": 0.14227502048015594,
+      "per_depth_control_rms": [
+        0.057956624776124954,
+        0.09655465185642242,
+        0.13627898693084717,
+        0.22296860814094543
+      ]
+    },
+    {
+      "update": 59,
+      "question": "m0-item-18:french",
+      "n_filler": 256,
+      "loss": 0.11904148012399673,
+      "advantage_vs_no_exposure": -0.006195932626724243,
+      "advantage_vs_wrong_passage": -0.012845546007156372,
+      "wrong_vs_no_exposure": 0.006649613380432129,
+      "grad_norm": 4.487835088857902,
+      "control_rms": 0.14423973858356476,
+      "per_depth_control_rms": [
+        0.06060415506362915,
+        0.09979648143053055,
+        0.13837115466594696,
+        0.2245921492576599
+      ]
+    },
+    {
+      "update": 60,
+      "question": "m0-item-27:german",
+      "n_filler": 192,
+      "loss": 0.20183026790618896,
+      "advantage_vs_no_exposure": 0.07229554653167725,
+      "advantage_vs_wrong_passage": 0.2741258144378662,
+      "wrong_vs_no_exposure": -0.20183026790618896,
+      "grad_norm": 15.936117082790298,
+      "control_rms": 0.14506542682647705,
+      "per_depth_control_rms": [
+        0.062471069395542145,
+        0.10021702945232391,
+        0.14001671969890594,
+        0.2250002920627594
+      ]
+    },
+    {
+      "update": 61,
+      "question": "m0-item-12:french",
+      "n_filler": 320,
+      "loss": 0.09793286770582199,
+      "advantage_vs_no_exposure": 0.0022578388452529907,
+      "advantage_vs_wrong_passage": 0.0020671337842941284,
+      "wrong_vs_no_exposure": 0.0001907050609588623,
+      "grad_norm": 0.2168975250234671,
+      "control_rms": 0.14428028464317322,
+      "per_depth_control_rms": [
+        0.0633934736251831,
+        0.0991254672408104,
+        0.13904684782028198,
+        0.2238047868013382
+      ]
+    },
+    {
+      "update": 62,
+      "question": "m0-item-16:german",
+      "n_filler": 128,
+      "loss": 0.0962594524025917,
+      "advantage_vs_no_exposure": 0.003740549087524414,
+      "advantage_vs_wrong_passage": 0.07224142551422119,
+      "wrong_vs_no_exposure": -0.06850087642669678,
+      "grad_norm": 5.344661297168263,
+      "control_rms": 0.14348113536834717,
+      "per_depth_control_rms": [
+        0.06291993707418442,
+        0.09703512489795685,
+        0.1394122689962387,
+        0.22256870567798615
+      ]
+    },
+    {
+      "update": 63,
+      "question": "m0-item-26:french",
+      "n_filler": 192,
+      "loss": 0.08567515760660172,
+      "advantage_vs_no_exposure": 0.014324843883514404,
+      "advantage_vs_wrong_passage": 0.01797497272491455,
+      "wrong_vs_no_exposure": -0.0036501288414001465,
+      "grad_norm": 1.9782259934116737,
+      "control_rms": 0.14063149690628052,
+      "per_depth_control_rms": [
+        0.06231360882520676,
+        0.09415995329618454,
+        0.13478344678878784,
+        0.21952949464321136
+      ]
+    },
+    {
+      "update": 64,
+      "question": "m0-item-6:german",
+      "n_filler": 192,
+      "loss": 0.08272627741098404,
+      "advantage_vs_no_exposure": 0.01727372407913208,
+      "advantage_vs_wrong_passage": 0.027314186096191406,
+      "wrong_vs_no_exposure": -0.010040462017059326,
+      "grad_norm": 16.084985989606736,
+      "control_rms": 0.13960148394107819,
+      "per_depth_control_rms": [
+        0.060594283044338226,
+        0.09172176569700241,
+        0.13478915393352509,
+        0.2184070348739624
+      ]
+    },
+    {
+      "update": 65,
+      "question": "m0-item-18:french",
+      "n_filler": 384,
+      "loss": 0.09983772039413452,
+      "advantage_vs_no_exposure": 0.0002716071903705597,
+      "advantage_vs_wrong_passage": 0.00016228482127189636,
+      "wrong_vs_no_exposure": 0.00010932236909866333,
+      "grad_norm": 0.010715140366709532,
+      "control_rms": 0.13644404709339142,
+      "per_depth_control_rms": [
+        0.05871937796473503,
+        0.08747152984142303,
+        0.1303185373544693,
+        0.21537354588508606
+      ]
+    },
+    {
+      "update": 66,
+      "question": "m0-item-8:german",
+      "n_filler": 128,
+      "loss": 0.09593786299228668,
+      "advantage_vs_no_exposure": 0.004062142223119736,
+      "advantage_vs_wrong_passage": 0.011651348322629929,
+      "wrong_vs_no_exposure": -0.007589206099510193,
+      "grad_norm": 0.4121891286606075,
+      "control_rms": 0.13542796671390533,
+      "per_depth_control_rms": [
+        0.05726377293467522,
+        0.0852951630949974,
+        0.12981058657169342,
+        0.21437756717205048
+      ]
+    },
+    {
+      "update": 67,
+      "question": "m0-item-21:french",
+      "n_filler": 64,
+      "loss": 0.10062531381845474,
+      "advantage_vs_no_exposure": -9.62642952799797e-05,
+      "advantage_vs_wrong_passage": -0.000529053620994091,
+      "wrong_vs_no_exposure": 0.00043278932571411133,
+      "grad_norm": 0.1663849221154177,
+      "control_rms": 0.12895743548870087,
+      "per_depth_control_rms": [
+        0.05466381087899208,
+        0.07773678004741669,
+        0.11880013346672058,
+        0.20826776325702667
+      ]
+    },
+    {
+      "update": 68,
+      "question": "m0-item-11:german",
+      "n_filler": 128,
+      "loss": 0.0911816656589508,
+      "advantage_vs_no_exposure": 0.008818335831165314,
+      "advantage_vs_wrong_passage": 0.023006998002529144,
+      "wrong_vs_no_exposure": -0.01418866217136383,
+      "grad_norm": 0.8990227539664288,
+      "control_rms": 0.1326577216386795,
+      "per_depth_control_rms": [
+        0.05472614988684654,
+        0.08005134761333466,
+        0.12617598474025726,
+        0.21229399740695953
+      ]
+    },
+    {
+      "update": 69,
+      "question": "m0-item-2:french",
+      "n_filler": 192,
+      "loss": 0.09945356100797653,
+      "advantage_vs_no_exposure": 0.0005464442074298859,
+      "advantage_vs_wrong_passage": 0.0010136626660823822,
+      "wrong_vs_no_exposure": -0.00046721845865249634,
+      "grad_norm": 0.3491927919316487,
+      "control_rms": 0.12723033130168915,
+      "per_depth_control_rms": [
+        0.05195164307951927,
+        0.0726485624909401,
+        0.11739681661128998,
+        0.20734377205371857
+      ]
+    },
+    {
+      "update": 70,
+      "question": "m0-item-23:german",
+      "n_filler": 128,
+      "loss": 0.09944536536931992,
+      "advantage_vs_no_exposure": 0.0005546379834413528,
+      "advantage_vs_wrong_passage": 0.008082620799541473,
+      "wrong_vs_no_exposure": -0.0075279828161001205,
+      "grad_norm": 0.2986065412268121,
+      "control_rms": 0.1304795742034912,
+      "per_depth_control_rms": [
+        0.05210623890161514,
+        0.07526503503322601,
+        0.12418659031391144,
+        0.21046967804431915
+      ]
+    },
+    {
+      "update": 71,
+      "question": "m0-item-0:french",
+      "n_filler": 384,
+      "loss": 0.09316534548997879,
+      "advantage_vs_no_exposure": 0.006834656000137329,
+      "advantage_vs_wrong_passage": 0.007114201784133911,
+      "wrong_vs_no_exposure": -0.00027954578399658203,
+      "grad_norm": 1.5590305636677713,
+      "control_rms": 0.12897710502147675,
+      "per_depth_control_rms": [
+        0.0507189966738224,
+        0.07218741625547409,
+        0.12170393019914627,
+        0.2096308171749115
+      ]
+    },
+    {
+      "update": 72,
+      "question": "m0-item-14:german",
+      "n_filler": 384,
+      "loss": 0.10276837646961212,
+      "advantage_vs_no_exposure": -0.001384187489748001,
+      "advantage_vs_wrong_passage": 0.0016446039080619812,
+      "wrong_vs_no_exposure": -0.0030287913978099823,
+      "grad_norm": 0.826673544189121,
+      "control_rms": 0.12807132303714752,
+      "per_depth_control_rms": [
+        0.04967723786830902,
+        0.06986001878976822,
+        0.12034869939088821,
+        0.20922954380512238
+      ]
+    },
+    {
+      "update": 73,
+      "question": "m0-item-3:french",
+      "n_filler": 0,
+      "loss": 0.07222559303045273,
+      "advantage_vs_no_exposure": 0.02777440845966339,
+      "advantage_vs_wrong_passage": 0.031092748045921326,
+      "wrong_vs_no_exposure": -0.0033183395862579346,
+      "grad_norm": 1.3386810304796608,
+      "control_rms": 0.12620912492275238,
+      "per_depth_control_rms": [
+        0.04852483421564102,
+        0.06550690531730652,
+        0.11503706127405167,
+        0.20936962962150574
+      ]
+    },
+    {
+      "update": 74,
+      "question": "m0-item-15:german",
+      "n_filler": 320,
+      "loss": 0.1005019098520279,
+      "advantage_vs_no_exposure": -0.0002509579062461853,
+      "advantage_vs_wrong_passage": 0.00011551752686500549,
+      "wrong_vs_no_exposure": -0.0003664754331111908,
+      "grad_norm": 0.7994298130939855,
+      "control_rms": 0.12945447862148285,
+      "per_depth_control_rms": [
+        0.05043654516339302,
+        0.06995601952075958,
+        0.12126176804304123,
+        0.21187670528888702
+      ]
+    },
+    {
+      "update": 75,
+      "question": "m0-item-20:french",
+      "n_filler": 320,
+      "loss": 0.09602943807840347,
+      "advantage_vs_no_exposure": 0.0039705634117126465,
+      "advantage_vs_wrong_passage": 0.008044779300689697,
+      "wrong_vs_no_exposure": -0.004074215888977051,
+      "grad_norm": 1.5600997248251092,
+      "control_rms": 0.1317809820175171,
+      "per_depth_control_rms": [
+        0.051983121782541275,
+        0.07185786217451096,
+        0.12373579293489456,
+        0.21514776349067688
+      ]
+    },
+    {
+      "update": 76,
+      "question": "m0-item-16:german",
+      "n_filler": 0,
+      "loss": 0.0977989211678505,
+      "advantage_vs_no_exposure": 0.002201080322265625,
+      "advantage_vs_wrong_passage": 0.01940828561782837,
+      "wrong_vs_no_exposure": -0.017207205295562744,
+      "grad_norm": 2.064824476357994,
+      "control_rms": 0.13417838513851166,
+      "per_depth_control_rms": [
+        0.05347154289484024,
+        0.074623703956604,
+        0.12770459055900574,
+        0.21743734180927277
+      ]
+    },
+    {
+      "update": 77,
+      "question": "m0-item-14:french",
+      "n_filler": 0,
+      "loss": 0.0603904202580452,
+      "advantage_vs_no_exposure": 0.03960958123207092,
+      "advantage_vs_wrong_passage": 0.0634450912475586,
+      "wrong_vs_no_exposure": -0.02383551001548767,
+      "grad_norm": 1.8575866749144605,
+      "control_rms": 0.1339302659034729,
+      "per_depth_control_rms": [
+        0.05428197234869003,
+        0.069428451359272,
+        0.11980344355106354,
+        0.22277690470218658
+      ]
+    },
+    {
+      "update": 78,
+      "question": "m0-item-21:german",
+      "n_filler": 256,
+      "loss": 0.09968464076519012,
+      "advantage_vs_no_exposure": 0.0006346851587295532,
+      "advantage_vs_wrong_passage": 0.0003153607249259949,
+      "wrong_vs_no_exposure": 0.00031932443380355835,
+      "grad_norm": 0.034390553804022644,
+      "control_rms": 0.13691982626914978,
+      "per_depth_control_rms": [
+        0.05626435577869415,
+        0.07343877851963043,
+        0.12605628371238708,
+        0.22480887174606323
+      ]
+    },
+    {
+      "update": 79,
+      "question": "m0-item-2:french",
+      "n_filler": 320,
+      "loss": 0.09961635619401932,
+      "advantage_vs_no_exposure": 0.0015678592026233673,
+      "advantage_vs_wrong_passage": 0.0003836434334516525,
+      "wrong_vs_no_exposure": 0.0011842157691717148,
+      "grad_norm": 0.006781744012097872,
+      "control_rms": 0.13918954133987427,
+      "per_depth_control_rms": [
+        0.05823701247572899,
+        0.07393346726894379,
+        0.1270502656698227,
+        0.22911885380744934
+      ]
+    },
+    {
+      "update": 80,
+      "question": "m0-item-23:german",
+      "n_filler": 192,
+      "loss": 0.09938737750053406,
+      "advantage_vs_no_exposure": 0.0006126295775175095,
+      "advantage_vs_wrong_passage": 0.006259302608668804,
+      "wrong_vs_no_exposure": -0.005646673031151295,
+      "grad_norm": 0.1311770744935831,
+      "control_rms": 0.14091236889362335,
+      "per_depth_control_rms": [
+        0.05954597517848015,
+        0.07557128369808197,
+        0.12948377430438995,
+        0.23108959197998047
+      ]
+    },
+    {
+      "update": 81,
+      "question": "m0-item-11:french",
+      "n_filler": 0,
+      "loss": 0.04290477931499481,
+      "advantage_vs_no_exposure": 0.05709521844983101,
+      "advantage_vs_wrong_passage": 0.0751725286245346,
+      "wrong_vs_no_exposure": -0.0180773064494133,
+      "grad_norm": 0.7849254986946189,
+      "control_rms": 0.1451602280139923,
+      "per_depth_control_rms": [
+        0.06359834969043732,
+        0.07380976527929306,
+        0.12746402621269226,
+        0.24196331202983856
+      ]
+    },
+    {
+      "update": 82,
+      "question": "m0-item-19:german",
+      "n_filler": 256,
+      "loss": 0.10155389457941055,
+      "advantage_vs_no_exposure": -0.00042757950723171234,
+      "advantage_vs_wrong_passage": -0.001126311719417572,
+      "wrong_vs_no_exposure": 0.0006987322121858597,
+      "grad_norm": 0.5266436289279867,
+      "control_rms": 0.14599712193012238,
+      "per_depth_control_rms": [
+        0.06460591405630112,
+        0.07626476138830185,
+        0.12999047338962555,
+        0.24160480499267578
+      ]
+    },
+    {
+      "update": 83,
+      "question": "m0-item-18:french",
+      "n_filler": 128,
+      "loss": 0.11288546770811081,
+      "advantage_vs_no_exposure": -0.006236144341528416,
+      "advantage_vs_wrong_passage": -0.0066493237391114235,
+      "wrong_vs_no_exposure": 0.0004131793975830078,
+      "grad_norm": 0.6492482132826849,
+      "control_rms": 0.15193673968315125,
+      "per_depth_control_rms": [
+        0.07067643105983734,
+        0.07646171748638153,
+        0.1280999779701233,
+        0.2551233470439911
+      ]
+    },
+    {
+      "update": 84,
+      "question": "m0-item-2:german",
+      "n_filler": 0,
+      "loss": 0.12932929396629333,
+      "advantage_vs_no_exposure": 0.03232380747795105,
+      "advantage_vs_wrong_passage": 0.16165310144424438,
+      "wrong_vs_no_exposure": -0.12932929396629333,
+      "grad_norm": 2.821345419338944,
+      "control_rms": 0.14762288331985474,
+      "per_depth_control_rms": [
+        0.06465335190296173,
+        0.08061407506465912,
+        0.13527542352676392,
+        0.2412300705909729
+      ]
+    },
+    {
+      "update": 85,
+      "question": "m0-item-12:french",
+      "n_filler": 64,
+      "loss": 0.06887555867433548,
+      "advantage_vs_no_exposure": 0.03112444281578064,
+      "advantage_vs_wrong_passage": 0.0675525814294815,
+      "wrong_vs_no_exposure": -0.03642813861370087,
+      "grad_norm": 1.7680167946100345,
+      "control_rms": 0.15558961033821106,
+      "per_depth_control_rms": [
+        0.07242844998836517,
+        0.08151605725288391,
+        0.13520756363868713,
+        0.25818726420402527
+      ]
+    },
+    {
+      "update": 86,
+      "question": "m0-item-7:german",
+      "n_filler": 320,
+      "loss": 0.09994614124298096,
+      "advantage_vs_no_exposure": 5.385652184486389e-05,
+      "advantage_vs_wrong_passage": 0.00010722875595092773,
+      "wrong_vs_no_exposure": -5.337223410606384e-05,
+      "grad_norm": 0.6351520489934782,
+      "control_rms": 0.15164931118488312,
+      "per_depth_control_rms": [
+        0.06700573861598969,
+        0.0825071632862091,
+        0.138264998793602,
+        0.24814437329769135
+      ]
+    },
+    {
+      "update": 87,
+      "question": "m0-item-24:french",
+      "n_filler": 64,
+      "loss": 0.09922747313976288,
+      "advantage_vs_no_exposure": 0.000772533006966114,
+      "advantage_vs_wrong_passage": 0.002016061916947365,
+      "wrong_vs_no_exposure": -0.0012435289099812508,
+      "grad_norm": 0.2152276903980415,
+      "control_rms": 0.15749071538448334,
+      "per_depth_control_rms": [
+        0.0717104822397232,
+        0.08399312198162079,
+        0.1405327469110489,
+        0.25935810804367065
+      ]
+    },
+    {
+      "update": 88,
+      "question": "m0-item-28:german",
+      "n_filler": 384,
+      "loss": 0.11033586412668228,
+      "advantage_vs_no_exposure": -0.0014024972915649414,
+      "advantage_vs_wrong_passage": -0.00893336534500122,
+      "wrong_vs_no_exposure": 0.007530868053436279,
+      "grad_norm": 2.552019597668907,
+      "control_rms": 0.15118147432804108,
+      "per_depth_control_rms": [
+        0.06472882628440857,
+        0.08330143988132477,
+        0.14118525385856628,
+        0.24568501114845276
+      ]
+    },
+    {
+      "update": 89,
+      "question": "m0-item-21:french",
+      "n_filler": 192,
+      "loss": 0.06911680847406387,
+      "advantage_vs_no_exposure": 0.030883193016052246,
+      "advantage_vs_wrong_passage": 0.048037089407444,
+      "wrong_vs_no_exposure": -0.017153896391391754,
+      "grad_norm": 1.2889211288916498,
+      "control_rms": 0.15543736517429352,
+      "per_depth_control_rms": [
+        0.06733489781618118,
+        0.08485046774148941,
+        0.14418821036815643,
+        0.2532178461551666
+      ]
+    },
+    {
+      "update": 90,
+      "question": "m0-item-19:german",
+      "n_filler": 320,
+      "loss": 0.10026997327804565,
+      "advantage_vs_no_exposure": -0.00011364230886101723,
+      "advantage_vs_wrong_passage": -0.00015632668510079384,
+      "wrong_vs_no_exposure": 4.268437623977661e-05,
+      "grad_norm": 0.051865776252452846,
+      "control_rms": 0.14700357615947723,
+      "per_depth_control_rms": [
+        0.06088455393910408,
+        0.08264778554439545,
+        0.14082108438014984,
+        0.2367953658103943
+      ]
+    },
+    {
+      "update": 91,
+      "question": "m0-item-23:french",
+      "n_filler": 320,
+      "loss": 0.0886257067322731,
+      "advantage_vs_no_exposure": 0.016745686531066895,
+      "advantage_vs_wrong_passage": 0.011374294757843018,
+      "wrong_vs_no_exposure": 0.005371391773223877,
+      "grad_norm": 0.12104765001300237,
+      "control_rms": 0.14551851153373718,
+      "per_depth_control_rms": [
+        0.059569623321294785,
+        0.08200754970312119,
+        0.14044933021068573,
+        0.2338862121105194
+      ]
+    },
+    {
+      "update": 92,
+      "question": "m0-item-9:german",
+      "n_filler": 192,
+      "loss": 0.09940668195486069,
+      "advantage_vs_no_exposure": 0.0005933195352554321,
+      "advantage_vs_wrong_passage": 0.004035677295178175,
+      "wrong_vs_no_exposure": -0.003442357759922743,
+      "grad_norm": 0.07319087373948406,
+      "control_rms": 0.1421067714691162,
+      "per_depth_control_rms": [
+        0.057410478591918945,
+        0.080720454454422,
+        0.13821269571781158,
+        0.22773414850234985
+      ]
+    },
+    {
+      "update": 93,
+      "question": "m0-item-5:french",
+      "n_filler": 64,
+      "loss": 0.08000881969928741,
+      "advantage_vs_no_exposure": 0.019991178065538406,
+      "advantage_vs_wrong_passage": 0.04293672367930412,
+      "wrong_vs_no_exposure": -0.022945545613765717,
+      "grad_norm": 1.2431396323751012,
+      "control_rms": 0.15837061405181885,
+      "per_depth_control_rms": [
+        0.06704998016357422,
+        0.08510352671146393,
+        0.15124553442001343,
+        0.2563425302505493
+      ]
+    },
+    {
+      "update": 94,
+      "question": "m0-item-22:german",
+      "n_filler": 128,
+      "loss": 0.19477900862693787,
+      "advantage_vs_no_exposure": 0.006265528500080109,
+      "advantage_vs_wrong_passage": 0.20104452967643738,
+      "wrong_vs_no_exposure": -0.19477900862693787,
+      "grad_norm": 5.3003719947718,
+      "control_rms": 0.14101414382457733,
+      "per_depth_control_rms": [
+        0.05626177415251732,
+        0.08018121868371964,
+        0.13790689408779144,
+        0.22567063570022583
+      ]
+    },
+    {
+      "update": 95,
+      "question": "m0-item-3:french",
+      "n_filler": 256,
+      "loss": 0.10265735536813736,
+      "advantage_vs_no_exposure": -0.0013286769390106201,
+      "advantage_vs_wrong_passage": 0.0004978775978088379,
+      "wrong_vs_no_exposure": -0.001826554536819458,
+      "grad_norm": 2.896841048370811,
+      "control_rms": 0.1388188600540161,
+      "per_depth_control_rms": [
+        0.05518438667058945,
+        0.07896387577056885,
+        0.1362614929676056,
+        0.22188939154148102
+      ]
+    },
+    {
+      "update": 96,
+      "question": "m0-item-0:german",
+      "n_filler": 64,
+      "loss": 0.09269307553768158,
+      "advantage_vs_no_exposure": 0.00730692595243454,
+      "advantage_vs_wrong_passage": 0.04709900915622711,
+      "wrong_vs_no_exposure": -0.03979208320379257,
+      "grad_norm": 1.0080389775459861,
+      "control_rms": 0.14800386130809784,
+      "per_depth_control_rms": [
+        0.05960959941148758,
+        0.08277571201324463,
+        0.1448342651128769,
+        0.2371465563774109
+      ]
+    },
+    {
+      "update": 97,
+      "question": "m0-item-7:french",
+      "n_filler": 192,
+      "loss": 0.05355612188577652,
+      "advantage_vs_no_exposure": 0.0464438796043396,
+      "advantage_vs_wrong_passage": 0.057395875453948975,
+      "wrong_vs_no_exposure": -0.010951995849609375,
+      "grad_norm": 3.0783245278506373,
+      "control_rms": 0.15763883292675018,
+      "per_depth_control_rms": [
+        0.06421270221471786,
+        0.08453979343175888,
+        0.1549486517906189,
+        0.2532205879688263
+      ]
+    },
+    {
+      "update": 98,
+      "question": "m0-item-6:german",
+      "n_filler": 320,
+      "loss": 0.0990978553891182,
+      "advantage_vs_no_exposure": 0.0009021461009979248,
+      "advantage_vs_wrong_passage": 0.0037690848112106323,
+      "wrong_vs_no_exposure": -0.0028669387102127075,
+      "grad_norm": 0.8561070930157477,
+      "control_rms": 0.1518974006175995,
+      "per_depth_control_rms": [
+        0.05988121032714844,
+        0.08481661230325699,
+        0.14881044626235962,
+        0.24365368485450745
+      ]
+    },
+    {
+      "update": 99,
+      "question": "m0-item-3:french",
+      "n_filler": 256,
+      "loss": 0.09976822137832642,
+      "advantage_vs_no_exposure": 0.000776343047618866,
+      "advantage_vs_wrong_passage": 0.00023178383708000183,
+      "wrong_vs_no_exposure": 0.0005445592105388641,
+      "grad_norm": 0.01618131033182225,
+      "control_rms": 0.15472199022769928,
+      "per_depth_control_rms": [
+        0.06008560582995415,
+        0.08565059304237366,
+        0.15182730555534363,
+        0.24851104617118835
+      ]
+    },
+    {
+      "update": 100,
+      "question": "m0-item-12:german",
+      "n_filler": 320,
+      "loss": 0.10145781189203262,
+      "advantage_vs_no_exposure": -0.000728905200958252,
+      "advantage_vs_wrong_passage": 0.00039202719926834106,
+      "wrong_vs_no_exposure": -0.001120932400226593,
+      "grad_norm": 0.41142842533242857,
+      "control_rms": 0.1567658931016922,
+      "per_depth_control_rms": [
+        0.06000029295682907,
+        0.08626898378133774,
+        0.15404629707336426,
+        0.2520506978034973
+      ]
+    }
+  ],
+  "evaluations": [
+    {
+      "update": 50,
+      "development": {
+        "count": 16,
+        "normal": {
+          "mean_loss": 0.7366616649087518,
+          "mean_bits": 1.0627781307768636,
+          "mean_mode_margin": 0.04451085813343525,
+          "accuracy": 0.5625,
+          "control_rms": 0.1320600500330329,
+          "per_question_loss": [
+            0.9371116757392883,
+            1.1161656379699707,
+            0.7865815758705139,
+            0.7678919434547424,
+            0.37762653827667236,
+            0.958346426486969,
+            1.1300781965255737,
+            1.086822748184204,
+            1.0876543521881104,
+            1.2875556945800781,
+            0.1671874225139618,
+            0.046390365809202194,
+            0.9427488446235657,
+            0.8426849842071533,
+            0.17845028638839722,
+            0.07328994572162628
+          ]
+        },
+        "wrong_mode": {
+          "mean_loss": 0.7798741506412625,
+          "mean_bits": 1.1251205696476418,
+          "mean_mode_margin": -0.041323729790747166,
+          "accuracy": 0.4375,
+          "control_rms": 0.1320360517129302,
+          "per_question_loss": [
+            0.8898852467536926,
+            1.2602887153625488,
+            0.7504568696022034,
+            0.8398953676223755,
+            0.4022814929485321,
+            0.923937201499939,
+            1.111488938331604,
+            1.262361764907837,
+            1.110016107559204,
+            1.4707585573196411,
+            0.2102893739938736,
+            0.07062441855669022,
+            0.9985451102256775,
+            0.8631315231323242,
+            0.21367451548576355,
+            0.10035120695829391
+          ],
+          "normal_strict_wins": 12,
+          "normal_ties": 0
+        },
+        "no_exposure": {
+          "mean_loss": 0.7474873207975179,
+          "mean_bits": 1.078396250841957,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.13153108023107052,
+          "per_question_loss": [
+            0.9053006172180176,
+            1.1467294692993164,
+            0.7694619297981262,
+            0.7755957245826721,
+            0.38547399640083313,
+            0.9474343061447144,
+            1.1033782958984375,
+            1.140759825706482,
+            1.1173486709594727,
+            1.3298372030258179,
+            0.1955934762954712,
+            0.050460536032915115,
+            0.9661303758621216,
+            0.8527872562408447,
+            0.1919463872909546,
+            0.08155906200408936
+          ],
+          "normal_strict_wins": 12,
+          "normal_ties": 0
+        },
+        "memory_lesion": {
+          "mean_loss": 0.747116201557219,
+          "mean_bits": 1.077860838954399,
+          "mean_mode_margin": -0.0011674943380057812,
+          "accuracy": 0.5,
+          "control_rms": 0.13155653979629278,
+          "per_question_loss": [
+            0.915992021560669,
+            1.1421979665756226,
+            0.7696658968925476,
+            0.7954373955726624,
+            0.3857201337814331,
+            0.9215208292007446,
+            1.107404112815857,
+            1.1565420627593994,
+            1.1067159175872803,
+            1.3310866355895996,
+            0.1946265995502472,
+            0.04765850305557251,
+            0.9835155606269836,
+            0.8268485069274902,
+            0.19113066792488098,
+            0.07779641449451447
+          ],
+          "normal_strict_wins": 11,
+          "normal_ties": 0
+        },
+        "internal_lesion": {
+          "mean_loss": 0.7455941289663315,
+          "mean_bits": 1.0756649523756527,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.13134148716926575,
+          "per_question_loss": [
+            0.8933203816413879,
+            1.1375277042388916,
+            0.7626901268959045,
+            0.7851586937904358,
+            0.38832518458366394,
+            0.9317218065261841,
+            1.1116818189620972,
+            1.139192819595337,
+            1.1095077991485596,
+            1.3218038082122803,
+            0.20019136369228363,
+            0.050029173493385315,
+            0.9875914454460144,
+            0.8399782180786133,
+            0.1919150948524475,
+            0.07887062430381775
+          ],
+          "normal_strict_wins": 11,
+          "normal_ties": 0
+        },
+        "bare_floor": {
+          "mean_loss": 1.9931850135326385,
+          "mean_bits": 2.875558134597739,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.0,
+          "per_question_loss": [
+            1.934069037437439,
+            1.5950345993041992,
+            2.112978935241699,
+            2.44943904876709,
+            1.9926422834396362,
+            2.402902603149414,
+            2.0100514888763428,
+            2.137012243270874,
+            2.2980294227600098,
+            2.2095255851745605,
+            2.033472776412964,
+            1.7337342500686646,
+            1.5515081882476807,
+            1.8880001306533813,
+            1.9635398387908936,
+            1.5790197849273682
+          ],
+          "normal_strict_wins": 16,
+          "normal_ties": 0
+        },
+        "delayed": {},
+        "depth_lesions": {
+          "7": {
+            "mean_loss": 0.7895329529419541,
+            "lesion_hurts_count": 11
+          },
+          "15": {
+            "mean_loss": 1.2791932709515095,
+            "lesion_hurts_count": 16
+          },
+          "23": {
+            "mean_loss": 0.6552973436191678,
+            "lesion_hurts_count": 7
+          },
+          "31": {
+            "mean_loss": 0.7051023882813752,
+            "lesion_hurts_count": 8
+          }
+        }
+      },
+      "heldout": {
+        "count": 32,
+        "normal": {
+          "mean_loss": 0.8128360211849213,
+          "mean_bits": 1.1726744968194023,
+          "mean_mode_margin": 0.03592420695349574,
+          "accuracy": 0.5625,
+          "control_rms": 0.13194311689585447,
+          "per_question_loss": [
+            1.0900216102600098,
+            0.9676108956336975,
+            1.2156504392623901,
+            2.529576539993286,
+            0.584808349609375,
+            0.5074015855789185,
+            0.10126343369483948,
+            0.11661941558122635,
+            0.330686092376709,
+            0.45605164766311646,
+            0.5925365686416626,
+            0.05861983448266983,
+            1.3402000665664673,
+            0.7291425466537476,
+            0.8897769451141357,
+            1.3993120193481445,
+            0.3550359606742859,
+            1.7733346223831177,
+            0.32066336274147034,
+            0.03313600271940231,
+            0.1603894829750061,
+            0.8139280676841736,
+            0.7797082662582397,
+            0.549820065498352,
+            2.0592925548553467,
+            1.4701077938079834,
+            0.11616145074367523,
+            0.06936690956354141,
+            1.090402603149414,
+            1.0980027914047241,
+            1.0688244104385376,
+            1.3433003425598145
+          ]
+        },
+        "wrong_mode": {
+          "mean_loss": 0.8507466473383829,
+          "mean_bits": 1.2273679691679968,
+          "mean_mode_margin": -0.04010272934101522,
+          "accuracy": 0.4375,
+          "control_rms": 0.1319507835432887,
+          "per_question_loss": [
+            1.1552313566207886,
+            1.0735994577407837,
+            1.2420053482055664,
+            2.632328987121582,
+            0.5569235682487488,
+            0.5506570339202881,
+            0.1297045201063156,
+            0.12959441542625427,
+            0.3477257490158081,
+            0.502102792263031,
+            0.6614840626716614,
+            0.07018878310918808,
+            1.3027291297912598,
+            0.7439050674438477,
+            0.8073323369026184,
+            1.4163219928741455,
+            0.3796870708465576,
+            1.8494247198104858,
+            0.2516810894012451,
+            0.0357234887778759,
+            0.23538652062416077,
+            0.9929047226905823,
+            0.8729168772697449,
+            0.643899142742157,
+            1.945858359336853,
+            1.643807053565979,
+            0.15789276361465454,
+            0.06883493810892105,
+            1.0991487503051758,
+            1.2058433294296265,
+            1.1336932182312012,
+            1.385356068611145
+          ],
+          "normal_strict_wins": 26,
+          "normal_ties": 0
+        },
+        "no_exposure": {
+          "mean_loss": 0.8262828479055315,
+          "mean_bits": 1.19207416704492,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.13153473567217588,
+          "per_question_loss": [
+            1.1174330711364746,
+            0.9968129396438599,
+            1.2397727966308594,
+            2.5629398822784424,
+            0.5654128193855286,
+            0.5367616415023804,
+            0.1177949532866478,
+            0.1191134974360466,
+            0.3427863121032715,
+            0.4544095993041992,
+            0.6574733257293701,
+            0.060285042971372604,
+            1.3242437839508057,
+            0.7263531684875488,
+            0.8266693949699402,
+            1.407766342163086,
+            0.3608348071575165,
+            1.792742133140564,
+            0.260966032743454,
+            0.034267473965883255,
+            0.21035924553871155,
+            0.8775182962417603,
+            0.8405824899673462,
+            0.5727233290672302,
+            1.982656717300415,
+            1.5301785469055176,
+            0.14265045523643494,
+            0.06660377234220505,
+            1.1025978326797485,
+            1.1360962390899658,
+            1.1154342889785767,
+            1.3588109016418457
+          ],
+          "normal_strict_wins": 24,
+          "normal_ties": 0
+        },
+        "memory_lesion": {
+          "mean_loss": 0.8248732123756781,
+          "mean_bits": 1.1900404928565396,
+          "mean_mode_margin": 0.0012308999430388212,
+          "accuracy": 0.5,
+          "control_rms": 0.1315524815581739,
+          "per_question_loss": [
+            1.1066999435424805,
+            0.999083399772644,
+            1.236773133277893,
+            2.5537376403808594,
+            0.5542700290679932,
+            0.5242739319801331,
+            0.1178227886557579,
+            0.12172280997037888,
+            0.3354654908180237,
+            0.47361332178115845,
+            0.6493632197380066,
+            0.05963543429970741,
+            1.3307408094406128,
+            0.7375860810279846,
+            0.8283520340919495,
+            1.4055845737457275,
+            0.35366231203079224,
+            1.806514024734497,
+            0.2721005380153656,
+            0.03491099178791046,
+            0.20352958142757416,
+            0.8873210549354553,
+            0.8337165117263794,
+            0.5744320750236511,
+            1.980965495109558,
+            1.5402742624282837,
+            0.13697372376918793,
+            0.06671284139156342,
+            1.089125394821167,
+            1.1331584453582764,
+            1.093733310699463,
+            1.3540875911712646
+          ],
+          "normal_strict_wins": 24,
+          "normal_ties": 0
+        },
+        "internal_lesion": {
+          "mean_loss": 0.8242467698873952,
+          "mean_bits": 1.1891367273852917,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.13134148716926575,
+          "per_question_loss": [
+            1.1281049251556396,
+            1.0008959770202637,
+            1.22684645652771,
+            2.545168876647949,
+            0.5556968450546265,
+            0.5394988656044006,
+            0.12023384869098663,
+            0.12091942131519318,
+            0.3461938798427582,
+            0.46742281317710876,
+            0.6543812155723572,
+            0.05964842811226845,
+            1.3044946193695068,
+            0.7179781198501587,
+            0.8253840804100037,
+            1.4064656496047974,
+            0.36374902725219727,
+            1.8220428228378296,
+            0.2720101475715637,
+            0.034846529364585876,
+            0.20680907368659973,
+            0.8768668174743652,
+            0.8324472308158875,
+            0.5803589820861816,
+            1.9607713222503662,
+            1.5324795246124268,
+            0.14162245392799377,
+            0.06670160591602325,
+            1.0879945755004883,
+            1.1273491382598877,
+            1.094325065612793,
+            1.3561882972717285
+          ],
+          "normal_strict_wins": 24,
+          "normal_ties": 0
+        },
+        "bare_floor": {
+          "mean_loss": 2.1135790050029755,
+          "mean_bits": 3.0492499490448224,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.0,
+          "per_question_loss": [
+            2.2246322631835938,
+            2.521226406097412,
+            2.6362998485565186,
+            3.1013424396514893,
+            1.7953747510910034,
+            1.4225471019744873,
+            1.3302080631256104,
+            1.227486252784729,
+            1.5675557851791382,
+            1.5280262231826782,
+            1.696087121963501,
+            2.021907091140747,
+            2.561286211013794,
+            2.061426877975464,
+            1.7816098928451538,
+            2.064893960952759,
+            1.9703489542007446,
+            2.237900495529175,
+            1.3125419616699219,
+            1.781941533088684,
+            3.1865315437316895,
+            3.409940481185913,
+            1.6111817359924316,
+            1.7972023487091064,
+            2.6772677898406982,
+            3.1366143226623535,
+            1.8526666164398193,
+            1.83112633228302,
+            2.112745761871338,
+            2.0936193466186523,
+            2.743241310119629,
+            2.33774733543396
+          ],
+          "normal_strict_wins": 32,
+          "normal_ties": 0
+        },
+        "delayed": {
+          "128": {
+            "differential_mean": 0.04528524214401841,
+            "strict_wins": 25,
+            "episodes": 32
+          },
+          "256": {
+            "differential_mean": 0.0012654154561460018,
+            "strict_wins": 14,
+            "episodes": 32
+          },
+          "384": {
+            "differential_mean": 0.0005279749166220427,
+            "strict_wins": 14,
+            "episodes": 32
+          }
+        },
+        "depth_lesions": {
+          "7": {
+            "mean_loss": 0.9330300288274884,
+            "lesion_hurts_count": 26
+          },
+          "15": {
+            "mean_loss": 1.3481498574838042,
+            "lesion_hurts_count": 32
+          },
+          "23": {
+            "mean_loss": 0.7722825733944774,
+            "lesion_hurts_count": 14
+          },
+          "31": {
+            "mean_loss": 0.7618183568120003,
+            "lesion_hurts_count": 13
+          }
+        }
+      }
+    },
+    {
+      "update": 100,
+      "development": {
+        "count": 16,
+        "normal": {
+          "mean_loss": 1.065132545598317,
+          "mean_bits": 1.5366614414241295,
+          "mean_mode_margin": 0.028116585686802864,
+          "accuracy": 0.5,
+          "control_rms": 0.16114180628210306,
+          "per_question_loss": [
+            1.4753005504608154,
+            1.668788194656372,
+            1.0831067562103271,
+            0.7696847319602966,
+            0.9644776582717896,
+            0.8150632381439209,
+            1.7860571146011353,
+            1.5594524145126343,
+            2.1723577976226807,
+            2.2416982650756836,
+            0.29632484912872314,
+            0.008973703719675541,
+            1.267922043800354,
+            0.6348451375961304,
+            0.28580930829048157,
+            0.012258965522050858
+          ]
+        },
+        "wrong_mode": {
+          "mean_loss": 1.094936395995319,
+          "mean_bits": 1.579659308591281,
+          "mean_mode_margin": -0.029451515525579453,
+          "accuracy": 0.5,
+          "control_rms": 0.16109332721680403,
+          "per_question_loss": [
+            1.4688551425933838,
+            1.7401461601257324,
+            1.0692754983901978,
+            0.8970963358879089,
+            0.9195869565010071,
+            0.8777422904968262,
+            1.821479082107544,
+            1.6210360527038574,
+            2.1306257247924805,
+            2.3069562911987305,
+            0.3897475004196167,
+            0.011522884480655193,
+            1.2532939910888672,
+            0.6313564777374268,
+            0.3665235638618469,
+            0.013738383539021015
+          ],
+          "normal_strict_wins": 10,
+          "normal_ties": 0
+        },
+        "no_exposure": {
+          "mean_loss": 1.0788887243252248,
+          "mean_bits": 1.5565074122550218,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.1603680271655321,
+          "per_question_loss": [
+            1.5034867525100708,
+            1.6816377639770508,
+            1.0744562149047852,
+            0.8028367161750793,
+            0.9334326982498169,
+            0.8301364183425903,
+            1.806801676750183,
+            1.6028573513031006,
+            2.1448516845703125,
+            2.2522170543670654,
+            0.3603481352329254,
+            0.009152273647487164,
+            1.2683701515197754,
+            0.6411436200141907,
+            0.3375954031944275,
+            0.01289567444473505
+          ],
+          "normal_strict_wins": 13,
+          "normal_ties": 0
+        },
+        "memory_lesion": {
+          "mean_loss": 1.076730672561098,
+          "mean_bits": 1.5533940016769343,
+          "mean_mode_margin": 0.002845361828804016,
+          "accuracy": 0.5,
+          "control_rms": 0.1603928804397583,
+          "per_question_loss": [
+            1.5027896165847778,
+            1.6868106126785278,
+            1.0611512660980225,
+            0.7980712652206421,
+            0.9355832934379578,
+            0.824149489402771,
+            1.8220866918563843,
+            1.5717716217041016,
+            2.135702133178711,
+            2.268001079559326,
+            0.36516162753105164,
+            0.009658985771238804,
+            1.2533514499664307,
+            0.6404240727424622,
+            0.34022951126098633,
+            0.012748043984174728
+          ],
+          "normal_strict_wins": 12,
+          "normal_ties": 0
+        },
+        "internal_lesion": {
+          "mean_loss": 1.0728113757213578,
+          "mean_bits": 1.5477396515624693,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.16018426418304443,
+          "per_question_loss": [
+            1.4938501119613647,
+            1.6651644706726074,
+            1.057743787765503,
+            0.7929109930992126,
+            0.9260786771774292,
+            0.8142321705818176,
+            1.8053321838378906,
+            1.5750826597213745,
+            2.1350178718566895,
+            2.2463202476501465,
+            0.3670060336589813,
+            0.009769544936716557,
+            1.2785758972167969,
+            0.6463007926940918,
+            0.33925941586494446,
+            0.01233715284615755
+          ],
+          "normal_strict_wins": 11,
+          "normal_ties": 0
+        },
+        "bare_floor": {
+          "mean_loss": 1.9931850135326385,
+          "mean_bits": 2.875558134597739,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.0,
+          "per_question_loss": [
+            1.934069037437439,
+            1.5950345993041992,
+            2.112978935241699,
+            2.44943904876709,
+            1.9926422834396362,
+            2.402902603149414,
+            2.0100514888763428,
+            2.137012243270874,
+            2.2980294227600098,
+            2.2095255851745605,
+            2.033472776412964,
+            1.7337342500686646,
+            1.5515081882476807,
+            1.8880001306533813,
+            1.9635398387908936,
+            1.5790197849273682
+          ],
+          "normal_strict_wins": 14,
+          "normal_ties": 0
+        },
+        "delayed": {},
+        "depth_lesions": {
+          "7": {
+            "mean_loss": 0.8719245954416692,
+            "lesion_hurts_count": 5
+          },
+          "15": {
+            "mean_loss": 1.016705402173102,
+            "lesion_hurts_count": 8
+          },
+          "23": {
+            "mean_loss": 0.7217524967854843,
+            "lesion_hurts_count": 5
+          },
+          "31": {
+            "mean_loss": 1.0049790579359978,
+            "lesion_hurts_count": 8
+          }
+        }
+      },
+      "heldout": {
+        "count": 32,
+        "normal": {
+          "mean_loss": 1.093510606297059,
+          "mean_bits": 1.5776023288642507,
+          "mean_mode_margin": 0.02660396182909608,
+          "accuracy": 0.53125,
+          "control_rms": 0.16098910802975297,
+          "per_question_loss": [
+            1.9660215377807617,
+            1.4426686763763428,
+            1.4509347677230835,
+            2.5621023178100586,
+            1.2836750745773315,
+            0.7383020520210266,
+            0.11274807155132294,
+            0.09777915477752686,
+            0.12329600751399994,
+            0.46658673882484436,
+            1.360199213027954,
+            0.008774231187999249,
+            2.153951644897461,
+            0.8105781674385071,
+            1.3801497220993042,
+            1.853276014328003,
+            0.4646950662136078,
+            2.126617908477783,
+            0.8939502239227295,
+            0.029948774725198746,
+            0.3836720585823059,
+            1.4322407245635986,
+            1.2050737142562866,
+            0.7405291795730591,
+            2.0614471435546875,
+            1.4628243446350098,
+            0.28434643149375916,
+            0.04154546558856964,
+            1.8127821683883667,
+            1.5880845785140991,
+            1.446598768234253,
+            1.206939458847046
+          ]
+        },
+        "wrong_mode": {
+          "mean_loss": 1.1164887456397992,
+          "mean_bits": 1.6107527765428775,
+          "mean_mode_margin": -0.019694210728630424,
+          "accuracy": 0.46875,
+          "control_rms": 0.16100940061733127,
+          "per_question_loss": [
+            1.934191107749939,
+            1.5025590658187866,
+            1.4905186891555786,
+            2.6006484031677246,
+            1.2619285583496094,
+            0.798026978969574,
+            0.11746305972337723,
+            0.12241686135530472,
+            0.1646995097398758,
+            0.4978023171424866,
+            1.4156990051269531,
+            0.00993019063025713,
+            2.157907009124756,
+            0.8260261416435242,
+            1.3665459156036377,
+            1.8954869508743286,
+            0.5144251585006714,
+            2.1701064109802246,
+            0.8793004751205444,
+            0.0300473440438509,
+            0.46282434463500977,
+            1.4458082914352417,
+            1.2431268692016602,
+            0.7942563891410828,
+            2.0306155681610107,
+            1.5075440406799316,
+            0.308281809091568,
+            0.03683461993932724,
+            1.8153926134109497,
+            1.6616384983062744,
+            1.4530606269836426,
+            1.2125270366668701
+          ],
+          "normal_strict_wins": 26,
+          "normal_ties": 0
+        },
+        "no_exposure": {
+          "mean_loss": 1.1061468902626075,
+          "mean_bits": 1.5958326330766124,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.16037354990839958,
+          "per_question_loss": [
+            1.958465337753296,
+            1.475598931312561,
+            1.492047905921936,
+            2.5719470977783203,
+            1.2924860715866089,
+            0.7721676826477051,
+            0.11262035369873047,
+            0.10389908403158188,
+            0.15050719678401947,
+            0.4764805734157562,
+            1.4001542329788208,
+            0.009293192997574806,
+            2.1597542762756348,
+            0.8105995655059814,
+            1.3643090724945068,
+            1.866492748260498,
+            0.49457111954689026,
+            2.15366792678833,
+            0.8911876678466797,
+            0.027145814150571823,
+            0.42797181010246277,
+            1.4498369693756104,
+            1.2260874509811401,
+            0.7726587653160095,
+            2.0289409160614014,
+            1.46674644947052,
+            0.30241313576698303,
+            0.03845897689461708,
+            1.8070855140686035,
+            1.645569086074829,
+            1.4522136449813843,
+            1.1953219175338745
+          ],
+          "normal_strict_wins": 23,
+          "normal_ties": 0
+        },
+        "memory_lesion": {
+          "mean_loss": 1.1064777343708556,
+          "mean_bits": 1.5963099402308891,
+          "mean_mode_margin": 0.001077016582712531,
+          "accuracy": 0.5,
+          "control_rms": 0.16038990020751953,
+          "per_question_loss": [
+            1.9357049465179443,
+            1.4714815616607666,
+            1.4933618307113647,
+            2.5709145069122314,
+            1.279636025428772,
+            0.7521325349807739,
+            0.11363250762224197,
+            0.10083626955747604,
+            0.1507643610239029,
+            0.4833836257457733,
+            1.3905614614486694,
+            0.009310395456850529,
+            2.1529600620269775,
+            0.8161006569862366,
+            1.3509790897369385,
+            1.8800244331359863,
+            0.5000724196434021,
+            2.160571575164795,
+            0.9025058150291443,
+            0.027457447722554207,
+            0.440403550863266,
+            1.44962477684021,
+            1.235132098197937,
+            0.7534893751144409,
+            2.0537075996398926,
+            1.4661016464233398,
+            0.29540902376174927,
+            0.0411231555044651,
+            1.814916968345642,
+            1.6481765508651733,
+            1.465742588043213,
+            1.201068639755249
+          ],
+          "normal_strict_wins": 24,
+          "normal_ties": 0
+        },
+        "internal_lesion": {
+          "mean_loss": 1.104384621954523,
+          "mean_bits": 1.593290217327823,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.16018426418304443,
+          "per_question_loss": [
+            1.9570999145507812,
+            1.4958710670471191,
+            1.493560552597046,
+            2.58414888381958,
+            1.2802400588989258,
+            0.7604955434799194,
+            0.11770952492952347,
+            0.10104871541261673,
+            0.15445959568023682,
+            0.4764305055141449,
+            1.4122475385665894,
+            0.008823081851005554,
+            2.151242733001709,
+            0.8135955929756165,
+            1.3487035036087036,
+            1.8629639148712158,
+            0.49075186252593994,
+            2.156276226043701,
+            0.8910896182060242,
+            0.029959701001644135,
+            0.4347524344921112,
+            1.445163369178772,
+            1.2217973470687866,
+            0.7700865864753723,
+            2.026745557785034,
+            1.4758650064468384,
+            0.30348265171051025,
+            0.04079507663846016,
+            1.7900376319885254,
+            1.6100382804870605,
+            1.4346401691436768,
+            1.2001856565475464
+          ],
+          "normal_strict_wins": 22,
+          "normal_ties": 0
+        },
+        "bare_floor": {
+          "mean_loss": 2.1135790050029755,
+          "mean_bits": 3.0492499490448224,
+          "mean_mode_margin": 0.0,
+          "accuracy": 0.5,
+          "control_rms": 0.0,
+          "per_question_loss": [
+            2.2246322631835938,
+            2.521226406097412,
+            2.6362998485565186,
+            3.1013424396514893,
+            1.7953747510910034,
+            1.4225471019744873,
+            1.3302080631256104,
+            1.227486252784729,
+            1.5675557851791382,
+            1.5280262231826782,
+            1.696087121963501,
+            2.021907091140747,
+            2.561286211013794,
+            2.061426877975464,
+            1.7816098928451538,
+            2.064893960952759,
+            1.9703489542007446,
+            2.237900495529175,
+            1.3125419616699219,
+            1.781941533088684,
+            3.1865315437316895,
+            3.409940481185913,
+            1.6111817359924316,
+            1.7972023487091064,
+            2.6772677898406982,
+            3.1366143226623535,
+            1.8526666164398193,
+            1.83112633228302,
+            2.112745761871338,
+            2.0936193466186523,
+            2.743241310119629,
+            2.33774733543396
+          ],
+          "normal_strict_wins": 32,
+          "normal_ties": 0
+        },
+        "delayed": {
+          "128": {
+            "differential_mean": 0.02802888906444423,
+            "strict_wins": 25,
+            "episodes": 32
+          },
+          "256": {
+            "differential_mean": 0.0013953133020550013,
+            "strict_wins": 16,
+            "episodes": 32
+          },
+          "384": {
+            "differential_mean": 0.00131774038891308,
+            "strict_wins": 17,
+            "episodes": 32
+          }
+        },
+        "depth_lesions": {
+          "7": {
+            "mean_loss": 1.029749134904705,
+            "lesion_hurts_count": 13
+          },
+          "15": {
+            "mean_loss": 1.075347592588514,
+            "lesion_hurts_count": 19
+          },
+          "23": {
+            "mean_loss": 0.802812356618233,
+            "lesion_hurts_count": 9
+          },
+          "31": {
+            "mean_loss": 0.9943140926770866,
+            "lesion_hurts_count": 12
+          }
+        }
+      }
+    }
+  ],
+  "peak_allocated_gib": 11.583127498626709,
+  "peak_reserved_gib": 11.64453125
+}
