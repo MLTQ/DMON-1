@@ -66,6 +66,24 @@ the original 300-update protocol. **Budget symmetry**: M1c inherits exactly the
 budget M1b ends at, and the same early-stop rule — matched budgets are what
 make the control comparison attributable.
 
+## Amendment 2 (conditional redesign; written after u50, before u100)
+
+u50 exposed a dilution confound: with 6/7 of episodes delayed and post-eviction
+episodes unlearnable under the null, the acquisition signal is diluted ~7× and
+the delay-0 differential is absent (+0.004/19 vs M0's +0.085/30 at u50) — the
+run is failing its own treatment-validity gate, heading toward a null that says
+nothing ("never acquired" masquerading as "did not persist").
+
+Rule, recorded before u100: if at u100 the delay-0 differential remains below
++0.042, the run stops as **invalid-by-design (dilution), not null**, and M1b
+relaunches redesigned — **warm-started from the M0 u300 checkpoint** (an
+organism that already owns acquisition), same delay ladder, same objective,
+fresh optimizer, 200 updates, eval every 50 with the same delayed battery and
+validity gate (delay-0 differential must stay ≥ +0.042 — persistence may not be
+bought by unlearning acquisition). The persistence question is unchanged; the
+redesign only removes the dilution confound. M1c inherits the redesigned
+protocol and budget.
+
 ## Stop rules
 
 - A fail (predicted): stop at 300; no duration/scale moves; proceed to M1c
