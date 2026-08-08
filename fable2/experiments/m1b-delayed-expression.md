@@ -74,15 +74,21 @@ the delay-0 differential is absent (+0.004/19 vs M0's +0.085/30 at u50) — the
 run is failing its own treatment-validity gate, heading toward a null that says
 nothing ("never acquired" masquerading as "did not persist").
 
-Rule, recorded before u100: if at u100 the delay-0 differential remains below
-+0.042, the run stops as **invalid-by-design (dilution), not null**, and M1b
-relaunches redesigned — **warm-started from the M0 u300 checkpoint** (an
-organism that already owns acquisition), same delay ladder, same objective,
-fresh optimizer, 200 updates, eval every 50 with the same delayed battery and
-validity gate (delay-0 differential must stay ≥ +0.042 — persistence may not be
-bought by unlearning acquisition). The persistence question is unchanged; the
-redesign only removes the dilution confound. M1c inherits the redesigned
-protocol and budget.
+Rule as first written: confirm at u100, then relaunch redesigned. Superseded
+by operator call at ~u55, recorded here: the dilution is structural — at 1/7
+acquisition-bearing episodes, matching M0's acquisition curve extrapolates to
+~u350, beyond even the original budget — so the u100 confirmation had no
+evidentiary value and was waste. The run was stopped at ~u55 as
+**invalid-by-design (dilution), not null**; its artifacts remain in
+`runs/fable2-m1b/` unlisted as evidence for anything.
+
+The relaunch (`runs/fable2-m1b2/`): **warm-started from the M0 u300
+checkpoint** (an organism that already owns acquisition), same delay ladder,
+same objective, fresh optimizer, 200 updates, eval every 50 with the same
+delayed battery and validity gate (delay-0 differential must stay ≥ +0.042 —
+persistence may not be bought by unlearning acquisition). The persistence
+question and the preregistered fail prediction are unchanged; the redesign only
+removes the dilution confound. M1c inherits the redesigned protocol and budget.
 
 ## Stop rules
 
