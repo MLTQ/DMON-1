@@ -282,6 +282,28 @@ def run_training(args: argparse.Namespace) -> dict:
         loss, advantages = paired_mode_loss(
             exposed, wrong, neutral, margin=cfg.contrast_margin
         )
+        anchor_loss_value = None
+        if args.anchor_delay0 and n_filler > 0:
+            # M1c-c anchored interleave: ground acquisition at delay 0 in the
+            # same step, so persistence pressure cannot pay for routes with the
+            # delay-0 policy (the three-run cannibalization signature).
+            anchor_extra = dict(arm_extra, n_filler=0)
+            with torch.no_grad():
+                anchor_neutral = run_mode_arm(
+                    system, bank, item, exposed_mode, "no_exposure", **anchor_extra
+                )
+            anchor_wrong = run_mode_arm(
+                system, bank, item, exposed_mode, "wrong_mode", **anchor_extra
+            )
+            anchor_exposed = run_mode_arm(
+                system, bank, item, exposed_mode, "normal", **anchor_extra
+            )
+            anchor_loss, _ = paired_mode_loss(
+                anchor_exposed, anchor_wrong, anchor_neutral,
+                margin=cfg.contrast_margin,
+            )
+            anchor_loss_value = float(anchor_loss.detach())
+            loss = loss + anchor_loss
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         grad_norm = gradient_norm_or_raise(system, reject_above=cfg.reject_grad_norm)
@@ -297,6 +319,7 @@ def run_training(args: argparse.Namespace) -> dict:
                 "question": f"{item.id}:{exposed_mode}",
                 "n_filler": n_filler,
                 "loss": float(loss.detach()),
+                "anchor_loss": anchor_loss_value,
                 "advantage_vs_no_exposure": float(advantages[0]),
                 "advantage_vs_wrong_passage": float(advantages[1]),
                 "wrong_vs_no_exposure": float(advantages[2]),
@@ -371,6 +394,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n-slow", type=int, default=0)
     parser.add_argument("--graft-edge-logit", type=float, default=-3.0)
     parser.add_argument("--slow-initial-alpha", type=float, default=0.02)
+    parser.add_argument("--anchor-delay0", action="store_true")
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")

@@ -109,6 +109,33 @@ unthrottled). The validity gate polices the stronger splice's behavioral
 cost; the stability clause covers the weaker contraction. Run:
 `runs/fable2-m1cb/`.
 
-## Result (M1c-b)
+## Result (M1c-b) — stopped by rule at u100
+
+The initialization fixes changed the story but not the ending
+(`runs/fable2-m1cb/`): the **first nonzero lesion attribution in the
+program** appeared — at d128 the differential halves-to-thirds under
+slow-lesion in both rounds (u50: +0.0085 → +0.0040; u100: +0.0042 →
++0.0013) — but the validity gate broke for the third consecutive delayed
+run (+0.007 → +0.003 vs the +0.042 floor) and every differential
+compressed with it.
+
+Three replications now share one signature: **the mixed-delay objective
+itself is destructive.** Five of seven delay draws are episodes the
+organism cannot yet satisfy; their hinge gradient has no productive
+direction and trades against the delay-0 policy — acquisition erodes faster
+than any new route can capitalize on it. The organ showed its first
+flicker; the curriculum poisoned the patient.
+
+## Amendment 2 — M1c-c (anchored interleave; pre-execution)
+
+One change: every update with a delayed episode also computes the full
+paired triple at delay 0 (same item, mode, and demonstration sample) and
+**sums both losses**, so each optimizer step must respect acquisition while
+learning persistence — delay pressure can add routes but can no longer pay
+for them with the delay-0 policy. Ladder, anatomy (n_slow 16, α₀ 0.002,
+graft −1.0), budget, gates, and instruments unchanged. Per-update cost
+roughly doubles on delayed draws; run: `runs/fable2-m1cc/`.
+
+## Result (M1c-c)
 
 Pending.
