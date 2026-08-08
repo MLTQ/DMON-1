@@ -15,6 +15,13 @@ class Sol2Config:
     n_compute: int = 64
     n_relay: int = 16
     n_output: int = 8
+    # Slow tissue (M1c): a small weakly-contractive population appended after
+    # relay so existing anatomy keeps exact indices. n_slow=0 is a bitwise
+    # no-op on the kernel — no rule, no rows, no layout change.
+    n_slow: int = 0
+    slow_alpha_min: float = 0.001
+    slow_alpha_max: float = 0.05
+    slow_initial_alpha: float = 0.02
     hidden: int = 96
     n_dendrites: int = 12
     initial_active_dendrites: int = 8
@@ -67,6 +74,7 @@ class Sol2Config:
             + self.n_compute
             + self.n_relay
             + self.n_output
+            + self.n_slow
         )
 
     @property
@@ -101,6 +109,15 @@ class Sol2Config:
             raise ValueError("operator bound and attention temperature must be positive")
         if self.schedule not in {"constant", "cosine"}:
             raise ValueError("schedule must be 'constant' or 'cosine'")
+        if self.n_slow < 0:
+            raise ValueError("n_slow cannot be negative")
+        if self.n_slow > 0:
+            if not 0 < self.slow_alpha_min < self.slow_alpha_max <= 1.0:
+                raise ValueError("slow alpha bounds must satisfy 0 < min < max <= 1")
+            if not (
+                self.slow_alpha_min <= self.slow_initial_alpha <= self.slow_alpha_max
+            ):
+                raise ValueError("slow initial alpha must lie inside its bounds")
         if self.vocab_size < 0:
             raise ValueError("vocab_size cannot be negative")
 

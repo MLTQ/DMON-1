@@ -878,6 +878,88 @@ def test_checkpointed_observation_equivalence() -> None:
     assert grads > 0, "gradients must flow through checkpointed observation"
 
 
+def test_slow_graft_census_and_near_silence() -> None:
+    from .modes import run_mode_arm, sha_seed
+    from .slow import deactivate_grafted_slots, graft_from_checkpoint
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    donor = build_broca_system(backbone, cfg, device="cpu")
+    torch.manual_seed(53)
+    randomize_heads(donor)
+    donor.organism.eval()
+    optimizer = torch.optim.AdamW(trainable_parameter_groups(donor, cfg))
+    item = bank.split_items("heldout")[0]
+    seed = sha_seed("m1c", item.id, "french")
+    with torch.no_grad():
+        reference = run_mode_arm(donor, bank, item, "french", "normal", demo_k=2, sample_seed=seed)
+
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "donor.pt"
+        save_checkpoint(path, donor, optimizer, cfg, update=7)
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        slow_cfg = cfg.scaled(n_slow=8)
+        grafted = build_broca_system(backbone, slow_cfg, device="cpu")
+        census = graft_from_checkpoint(payload, grafted)
+    grafted.organism.eval()
+    assert census["identical"] + census["prefix"] == len(payload["organism"]), (
+        "graft census must account for every checkpoint tensor"
+    )
+    assert census["rewired_slots"] > 0 and census["source_update"] == 7
+
+    with torch.no_grad():
+        live = run_mode_arm(grafted, bank, item, "french", "normal", demo_k=2, sample_seed=seed)
+    assert deactivate_grafted_slots(grafted.organism) == census["rewired_slots"]
+    with torch.no_grad():
+        silenced = run_mode_arm(grafted, bank, item, "french", "normal", demo_k=2, sample_seed=seed)
+    for mode in ("french", "german"):
+        assert torch.allclose(
+            silenced["log_likelihoods"][mode],
+            reference["log_likelihoods"][mode],
+            atol=1e-5,
+        ), "slots-off grafted organism must reproduce the donor computation"
+    assert not torch.equal(
+        live["log_likelihoods"]["french"], silenced["log_likelihoods"]["french"]
+    ), "grafted slots must actually couple slow tissue into the computation"
+
+
+def test_slow_lesion_arm() -> None:
+    from .modes import run_mode_arm, sha_seed
+    from .retention import build_filler_stream
+    from .slow import graft_from_checkpoint
+
+    cfg = small_config()
+    backbone = ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3)
+    bank = build_toy_mode_bank(backbone)
+    plain = build_broca_system(backbone, cfg, device="cpu")
+    item = bank.split_items("heldout")[0]
+    seed = sha_seed("lesion", item.id, "french")
+    try:
+        run_mode_arm(plain, bank, item, "french", "normal", demo_k=2, sample_seed=seed, freeze_slow=True)
+        raise AssertionError("freeze_slow must require slow tissue")
+    except KeyError:
+        pass
+
+    slow_cfg = cfg.scaled(n_slow=8)
+    system = build_broca_system(backbone, slow_cfg, device="cpu")
+    torch.manual_seed(59)
+    randomize_heads(system)
+    from .slow import rewire_dormant_slots_to_slow
+
+    rewire_dormant_slots_to_slow(system.organism)
+    system.organism.eval()
+    tokenizer = TinyTokenizer(vocab_size=backbone.vocab_size)
+    filler = build_filler_stream(bank, tokenizer, backbone, max_tokens=12)
+    kwargs = {"demo_k": 2, "sample_seed": seed, "filler_features": filler, "n_filler": 12}
+    with torch.no_grad():
+        intact = run_mode_arm(system, bank, item, "french", "normal", **kwargs)
+        lesioned = run_mode_arm(system, bank, item, "french", "normal", **kwargs, freeze_slow=True)
+    assert not torch.equal(
+        intact["log_likelihoods"]["french"], lesioned["log_likelihoods"]["french"]
+    ), "freezing coupled slow tissue must alter the computation"
+
+
 TESTS = [
     test_config_contracts,
     test_resolve_depths,
@@ -900,6 +982,8 @@ TESTS = [
     test_retention_probe_contracts,
     test_delayed_mode_episode_gradients,
     test_checkpointed_observation_equivalence,
+    test_slow_graft_census_and_near_silence,
+    test_slow_lesion_arm,
 ]
 
 

@@ -728,6 +728,41 @@ def test_campaign_worker_executes_dependency_chain() -> None:
         assert campaign_status(root)["counts"]["complete"] == 2
 
 
+
+def test_slow_tissue_is_optional_slow_and_layout_stable() -> None:
+    """M1c: n_slow=0 is bitwise-stable; slow cells append last and integrate slowly."""
+
+    import torch as _torch
+
+    base = Sol2(Sol2Config(vocab_size=11))
+    assert not any("slow" in key for key in base.state_dict()), (
+        "n_slow=0 must not change the state-dict layout"
+    )
+    assert base.active_tissues == base.TISSUES
+
+    cfg = Sol2Config(vocab_size=11, n_slow=6)
+    model = Sol2(cfg)
+    assert model.n_cells == base.n_cells + 6
+    assert int(model.slow_idx[0]) == base.n_cells, "slow tissue must append last"
+    assert "slow" in model.tissues.rules and "slow" in model.active_tissues
+    assert _torch.equal(model.tissue_indices("slow"), model.slow_idx)
+    assert len(model.internal_idx) == len(base.internal_idx) + 6
+
+    _torch.manual_seed(0)
+    state = model.initial_state(2, "cpu")
+    logits, state, _ = model.step(_torch.randint(0, 11, (2,)), state)
+    assert bool(_torch.isfinite(logits).all())
+    slow_mag = float(state.hidden[:, model.slow_idx].detach().abs().mean())
+    compute_mag = float(state.hidden[:, model.compute_idx].detach().abs().mean())
+    assert slow_mag < 0.5 * compute_mag, "slow tissue must integrate more slowly"
+
+    try:
+        Sol2Config(vocab_size=11, n_slow=3, slow_alpha_min=0.2, slow_alpha_max=0.1).validate()
+        raise AssertionError("slow alpha bound guard did not fire")
+    except ValueError:
+        pass
+
+
 def main() -> None:
     tests = [
         test_shapes_bounds_and_topology,
@@ -740,6 +775,7 @@ def main() -> None:
         test_gradient_reaches_every_adaptive_layer,
         test_tiny_repeated_stream_can_be_learned,
         test_growth_preserves_anatomy_state_and_optimizer,
+        test_slow_tissue_is_optional_slow_and_layout_stable,
         test_adapter_growth_and_directional_reserve_are_append_only,
         test_causal_interventions_preserve_counts_and_restore,
         test_matched_gru_budget,

@@ -9,6 +9,12 @@ bundles can be explicitly attached, detached, and selected.
 
 ## Components
 
+> M1c addition: with `n_slow > 0`, `active_tissues` gains "slow", the tissue
+> appends after relay (existing indices never move — exact checkpoint grafts),
+> joins `internal_idx`, the source pool, mutable and expression rows. Relay
+> growth is refused while slow tissue exists (growth.py guard).
+
+
 ### `StepHealth`
 
 Records hidden/message/logit scale, tissue update rates, organ-attention allocation,

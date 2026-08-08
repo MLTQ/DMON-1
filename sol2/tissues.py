@@ -89,7 +89,14 @@ class TissueBank(nn.Module):
         "output": 0.40,
     }
 
-    def __init__(self, hidden: int, bounded_operators: bool, operator_bound: float):
+    def __init__(
+        self,
+        hidden: int,
+        bounded_operators: bool,
+        operator_bound: float,
+        *,
+        slow_alpha: tuple[float, float, float] | None = None,
+    ):
         super().__init__()
         self.rules = nn.ModuleDict(
             {
@@ -102,6 +109,20 @@ class TissueBank(nn.Module):
                 for name, alpha in self.INITIAL_ALPHA.items()
             }
         )
+        if slow_alpha is not None:
+            # M1c slow tissue: the alpha band is the anatomy — weakly
+            # contractive cells whose input-computed gate can learn
+            # spike-to-write / near-zero-to-hold. Constructed only when
+            # requested so n_slow=0 keeps the state-dict layout bitwise stable.
+            alpha_min, alpha_max, initial_alpha = slow_alpha
+            self.rules["slow"] = TissueRule(
+                hidden,
+                initial_alpha=initial_alpha,
+                bounded_operators=bounded_operators,
+                operator_bound=operator_bound,
+                alpha_min=alpha_min,
+                alpha_max=alpha_max,
+            )
 
     def forward(
         self,

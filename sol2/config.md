@@ -7,6 +7,11 @@ contract for a SOL2 run. The serialized configuration travels with every checkpo
 
 ## Components
 
+> M1c addition: `n_slow` (default 0 — bitwise no-op) appends a slow tissue
+> after relay with its own α band (`slow_alpha_min/max`, `slow_initial_alpha`);
+> validation enforces 0 < min < max ≤ 1 and initial inside the band.
+
+
 ### `Sol2Config`
 
 - Separates input, memory, compute, relay, and output tissues.

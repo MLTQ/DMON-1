@@ -7,6 +7,12 @@ cell in the organism, and allows private cell expression on top in `model.py`.
 
 ## Components
 
+> M1c addition: `TissueBank(slow_alpha=(min, max, initial))` constructs a fifth
+> rule "slow" with a widened α band (~0.001 floor: weakly-contractive cells that
+> double as constant-error carousels). Constructed only when requested so the
+> default state-dict layout is unchanged.
+
+
 ### `TissueRule`
 
 - Concatenates current state, incoming message, and external drive.

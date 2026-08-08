@@ -36,6 +36,14 @@ def _replace_resized_parameter(
     return new
 
 
+def _refuse_slow_tissue(model) -> None:
+    if getattr(model.cfg, "n_slow", 0) > 0:
+        raise NotImplementedError(
+            "relay growth with slow tissue present is not supported: slow cells "
+            "sit after relay, so appending relay cells would shift their indices"
+        )
+
+
 def grow_relay_tissue(
     model: Sol2,
     optimizer: torch.optim.Optimizer,
@@ -49,6 +57,7 @@ def grow_relay_tissue(
 
     if n_new < 1:
         raise ValueError("n_new must be positive")
+    _refuse_slow_tissue(model)
     device = model.mutable_idx.device
     old_n = model.n_cells
     new_ids = torch.arange(old_n, old_n + n_new, device=device)

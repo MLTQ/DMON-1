@@ -49,6 +49,9 @@ class Sol2(nn.Module):
         if cfg.vocab_size <= 0:
             raise ValueError("fill vocab_size from the corpus before building SOL2")
         self.cfg = cfg
+        # Slow tissue participates in the rule loop only when present, keeping
+        # n_slow=0 anatomies (and their checkpoints) bitwise unchanged.
+        self.active_tissues = self.TISSUES + (("slow",) if cfg.n_slow else ())
         self._build_index_buffers()
 
         hidden = cfg.hidden
@@ -57,9 +60,10 @@ class Sol2(nn.Module):
         self.sensory_gain = nn.Parameter(torch.zeros(cfg.n_input, hidden))
         self.sensory_bias = nn.Parameter(torch.zeros(cfg.n_input, hidden))
 
-        source_pool = torch.cat(
-            [self.input_idx, self.memory_idx, self.compute_idx, self.relay_idx]
-        )
+        pool_parts = [self.input_idx, self.memory_idx, self.compute_idx, self.relay_idx]
+        if cfg.n_slow:
+            pool_parts.append(self.slow_idx)
+        source_pool = torch.cat(pool_parts)
         self.graph = DirectedConnectome(
             cfg.n_cells,
             hidden,
@@ -80,6 +84,11 @@ class Sol2(nn.Module):
             hidden,
             bounded_operators=cfg.bounded_operators,
             operator_bound=cfg.operator_bound,
+            slow_alpha=(
+                (cfg.slow_alpha_min, cfg.slow_alpha_max, cfg.slow_initial_alpha)
+                if cfg.n_slow
+                else None
+            ),
         )
 
         if cfg.cell_identity:
@@ -234,7 +243,7 @@ class Sol2(nn.Module):
         cfg = self.cfg
         cursor = 0
         ranges: dict[str, torch.Tensor] = {}
-        for name, count in (
+        layout: list[tuple[str, int]] = [
             ("input", cfg.n_input),
             ("memory", cfg.n_memory),
             ("compute", cfg.n_compute),
@@ -242,7 +251,13 @@ class Sol2(nn.Module):
             # Relay tissue is last so transport growth can append cells without
             # moving any existing organ or making checkpoint layout implicit.
             ("relay", cfg.n_relay),
-        ):
+        ]
+        if cfg.n_slow:
+            # Slow tissue appends after relay: every pre-existing cell keeps its
+            # exact index, which is what makes checkpoint grafting exact. Relay
+            # growth with slow tissue present is refused in growth.py.
+            layout.append(("slow", cfg.n_slow))
+        for name, count in layout:
             ranges[name] = torch.arange(cursor, cursor + count, dtype=torch.long)
             cursor += count
         for name, value in ranges.items():
@@ -254,9 +269,10 @@ class Sol2(nn.Module):
         self._rebuild_mutable()
 
     def _rebuild_mutable(self) -> None:
-        mutable = torch.cat(
-            [self.input_idx, self.compute_idx, self.relay_idx, self.output_idx]
-        )
+        mutable_parts = [self.input_idx, self.compute_idx, self.relay_idx, self.output_idx]
+        if self.cfg.n_slow:
+            mutable_parts.append(self.slow_idx)
+        mutable = torch.cat(mutable_parts)
         if hasattr(self, "mutable_idx"):
             self.mutable_idx = mutable.to(self.mutable_idx.device)
         else:
@@ -264,10 +280,13 @@ class Sol2(nn.Module):
 
         # Private-expression rows follow physical mutable-cell order. Memory owns no
         # learned rule and therefore receives no dead identity parameter. Relay is
-        # physically last, so new relay expression rows append without moving organs.
-        expression_cells = torch.cat(
-            [self.input_idx, self.compute_idx, self.output_idx, self.relay_idx]
-        )
+        # physically last (slow after it, appended, so old rows keep positions).
+        expression_parts = [
+            self.input_idx, self.compute_idx, self.output_idx, self.relay_idx
+        ]
+        if self.cfg.n_slow:
+            expression_parts.append(self.slow_idx)
+        expression_cells = torch.cat(expression_parts)
         expression_pos = torch.full(
             (self.n_cells,), -1, dtype=torch.long, device=expression_cells.device
         )
@@ -284,7 +303,7 @@ class Sol2(nn.Module):
                 self.register_buffer(name, value)
 
         cursor = 0
-        for name in self.TISSUES:
+        for name in self.active_tissues:
             count = len(getattr(self, f"{name}_idx"))
             value = torch.arange(cursor, cursor + count, dtype=torch.long)
             attr = f"{name}_pos"
@@ -302,14 +321,18 @@ class Sol2(nn.Module):
             + len(self.compute_idx)
             + len(self.relay_idx)
             + len(self.output_idx)
+            + (len(self.slow_idx) if self.cfg.n_slow else 0)
         )
 
     @property
     def internal_idx(self) -> torch.Tensor:
-        return torch.cat([self.compute_idx, self.relay_idx])
+        parts = [self.compute_idx, self.relay_idx]
+        if self.cfg.n_slow:
+            parts.append(self.slow_idx)
+        return torch.cat(parts)
 
     def tissue_indices(self, name: str) -> torch.Tensor:
-        if name not in (*self.TISSUES, "memory", "internal"):
+        if name not in (*self.active_tissues, "memory", "internal"):
             raise KeyError(f"unknown tissue {name!r}")
         return self.internal_idx if name == "internal" else getattr(self, f"{name}_idx")
 
@@ -430,7 +453,7 @@ class Sol2(nn.Module):
             if micro == 0:
                 drive = drive.index_copy(1, self.input_pos, sensory_drive)
 
-            for name in self.TISSUES:
+            for name in self.active_tissues:
                 cells = getattr(self, f"{name}_idx")
                 positions = getattr(self, f"{name}_pos")
                 target_shift, alpha_shift = self._private_expression(cells)

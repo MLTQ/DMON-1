@@ -25,6 +25,11 @@ class Fable2Config:
     organ_queries: int = 4
     cell_identity: bool = True
     cell_adapter_rank: int = 4
+    # M1c slow tissue: 0 keeps the M0/G-line anatomy bitwise unchanged.
+    n_slow: int = 0
+    slow_alpha_min: float = 0.001
+    slow_alpha_max: float = 0.05
+    slow_initial_alpha: float = 0.02
     seed: int = 7
 
     # Broca graft. Depth fractions index frozen transformer blocks (0, 1] and are
@@ -65,6 +70,10 @@ class Fable2Config:
             organ_queries=self.organ_queries,
             cell_identity=self.cell_identity,
             cell_adapter_rank=self.cell_adapter_rank,
+            n_slow=self.n_slow,
+            slow_alpha_min=self.slow_alpha_min,
+            slow_alpha_max=self.slow_alpha_max,
+            slow_initial_alpha=self.slow_initial_alpha,
             # The organism's own token organ is unused here; the Broca organ senses
             # frozen features directly. Two keeps the embedding nondegenerate.
             vocab_size=2,

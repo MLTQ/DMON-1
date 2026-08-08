@@ -99,30 +99,38 @@ def evaluate_split(
                 normal == other for normal, other in zip(losses["normal"], losses[arm])
             )
         report["delayed"] = {}
+        has_slow = getattr(system.organism.cfg, "n_slow", 0) > 0
         for n_filler in eval_delays:
-            differentials, wins = [], 0
-            for item, mode in episodes:
-                sample_seed = sha_seed("eval", split, item.id, mode)
-                normal = run_mode_arm(
-                    system, bank, item, mode, "normal",
-                    demo_k=demo_k, sample_seed=sample_seed,
-                    filler_features=filler_features, n_filler=n_filler,
+            block: dict = {}
+            for label, freeze_slow in (("", False), ("lesioned_", True)):
+                if freeze_slow and not has_slow:
+                    continue
+                differentials, wins = [], 0
+                for item, mode in episodes:
+                    sample_seed = sha_seed("eval", split, item.id, mode)
+                    normal = run_mode_arm(
+                        system, bank, item, mode, "normal",
+                        demo_k=demo_k, sample_seed=sample_seed,
+                        filler_features=filler_features, n_filler=n_filler,
+                        freeze_slow=freeze_slow,
+                    )
+                    wrong = run_mode_arm(
+                        system, bank, item, mode, "wrong_mode",
+                        demo_k=demo_k, sample_seed=sample_seed,
+                        filler_features=filler_features, n_filler=n_filler,
+                        freeze_slow=freeze_slow,
+                    )
+                    differential = float(
+                        normal["log_likelihoods"][mode].detach()
+                    ) - float(wrong["log_likelihoods"][mode].detach())
+                    differentials.append(differential)
+                    wins += differential > 0
+                block[f"{label}differential_mean"] = (
+                    sum(differentials) / len(differentials)
                 )
-                wrong = run_mode_arm(
-                    system, bank, item, mode, "wrong_mode",
-                    demo_k=demo_k, sample_seed=sample_seed,
-                    filler_features=filler_features, n_filler=n_filler,
-                )
-                differential = float(
-                    normal["log_likelihoods"][mode].detach()
-                ) - float(wrong["log_likelihoods"][mode].detach())
-                differentials.append(differential)
-                wins += differential > 0
-            report["delayed"][str(n_filler)] = {
-                "differential_mean": sum(differentials) / len(differentials),
-                "strict_wins": wins,
-                "episodes": len(differentials),
-            }
+                block[f"{label}strict_wins"] = wins
+                block["episodes"] = len(differentials)
+            report["delayed"][str(n_filler)] = block
 
         report["depth_lesions"] = {}
         for depth in system.depths:
@@ -178,6 +186,7 @@ def run_training(args: argparse.Namespace) -> dict:
         contrast_margin=args.contrast_margin,
         eval_every=args.eval_every,
         checkpoint_every=args.checkpoint_every,
+        n_slow=args.n_slow,
     )
     backbone = MultiDepthBackbone.from_pretrained(
         args.model,
@@ -209,8 +218,21 @@ def run_training(args: argparse.Namespace) -> dict:
         )
     system = build_broca_system(backbone, cfg, device=device)
     if args.init_checkpoint:
-        source_update = load_organism_weights(Path(args.init_checkpoint), system)
-        print(f"warm-started organism from {args.init_checkpoint} (u{source_update})")
+        if args.graft_slow:
+            from .slow import graft_from_checkpoint
+
+            payload = torch.load(
+                args.init_checkpoint, map_location="cpu", weights_only=False
+            )
+            census = graft_from_checkpoint(payload, system)
+            print(f"grafted slow tissue: {census}", flush=True)
+        else:
+            source_update = load_organism_weights(Path(args.init_checkpoint), system)
+            print(
+                f"warm-started organism from {args.init_checkpoint} "
+                f"(u{source_update})",
+                flush=True,
+            )
     optimizer = torch.optim.AdamW(
         trainable_parameter_groups(system, cfg), weight_decay=0.01
     )
@@ -342,6 +364,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-delays", default="")
     parser.add_argument("--checkpoint-chunk", type=int, default=32)
     parser.add_argument("--init-checkpoint", default="")
+    parser.add_argument("--graft-slow", action="store_true")
+    parser.add_argument("--n-slow", type=int, default=0)
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")

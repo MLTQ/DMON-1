@@ -242,6 +242,7 @@ def run_mode_arm(
     filler_features: torch.Tensor | None = None,
     n_filler: int = 0,
     checkpoint_chunk: int | None = None,
+    freeze_slow: bool = False,
 ) -> dict:
     """Score both twins for one item under one arm; fresh episode state.
 
@@ -257,6 +258,12 @@ def run_mode_arm(
     state = system.initial_state(1, bank.device)
     frozen_idx = None
     bare = False
+    # M1c slow-lesion attribution: exposure runs with slow tissue alive (the
+    # mode may write into it); slow is frozen at zero from the filler onward,
+    # so anything that survives eviction without slow cells is not theirs.
+    slow_frozen_idx = None
+    if freeze_slow:
+        slow_frozen_idx = organism.tissue_indices("slow")
     if arm == "bare_floor":
         bare = True
         exposure_mode = None
@@ -289,13 +296,23 @@ def run_mode_arm(
         # Delay traffic is lived experience: memory writes on, identical filler
         # in every arm, so the demonstration language stays the only difference.
         state = system.observe_feature_sequence(
-            filler_features[:, :n_filler], state, checkpoint_chunk=checkpoint_chunk
+            filler_features[:, :n_filler],
+            state,
+            checkpoint_chunk=checkpoint_chunk,
+            frozen_idx=slow_frozen_idx,
         )
     if arm == "memory_lesion":
         from sol2.wiki_memory import lesion_state
 
         state = lesion_state(state, organism.memory_idx)
 
+    scoring_frozen = frozen_idx
+    if slow_frozen_idx is not None:
+        scoring_frozen = (
+            slow_frozen_idx
+            if scoring_frozen is None
+            else torch.cat([scoring_frozen, slow_frozen_idx])
+        )
     log_likelihoods = {}
     stats = {"control_rms": 0.0, "per_depth_control_rms": ()}
     for mode in MODES:
@@ -305,7 +322,7 @@ def run_mode_arm(
             bank.item_prompt_features[item.id],
             state,
             bare=bare,
-            frozen_idx=frozen_idx,
+            frozen_idx=scoring_frozen,
             lesion_depths=lesion_depths,
         )
         log_likelihoods[mode] = llh
