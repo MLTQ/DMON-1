@@ -78,6 +78,37 @@ filler and query.
 - A pass promotes M2 (mode switching and reacquisition on the slow-tissue
   anatomy) and licenses the H-organ build in parallel.
 
-## Result
+## Result — first attempt (stopped by rule at u100) and diagnosis
+
+The first run (`runs/fable2-m1c/`) stopped at u100: post-eviction flat with
+slow-lesion a no-op everywhere, and the validity gate broken (+0.011 → +0.006
+vs the +0.042 floor). Per the stop rules, diagnosis before budget
+(`m1c-diagnosis.json`):
+
+- **Write path alive**: mode-conditional content lands in slow cells at
+  exposure end (delta 0.019 ≈ their full magnitude).
+- **Gate never gated**: α frozen at its 0.0200 initialization (variance 1e-5).
+  At fixed α=0.02 the exposure content decays to ~1.7e-7 across 256 filler
+  tokens — 17-token tissue in practice; the slow-state growth through filler
+  (ratio 2.36) is filler dilution overwriting the mode.
+- **Credit starved twice**: slow-rule gradient 0.0012 vs organ 23 (the −3.0
+  graft logit ≈ 2% read share throttles credit) and nothing survives to query
+  time to credit anyway. Grafted edge logits moved 0.007 in 100 updates.
+
+The gate could never learn to hold because the evidence that holding pays was
+erased before every lesson.
+
+## Amendment 1 — M1c-b (initialization, not architecture; pre-execution)
+
+Two constants change, everything else identical: `slow_initial_alpha`
+0.02 → **0.002** (hold-by-default: ~21% span-wide retention at init, exposure
+still writes to ~half saturation over 672 microsteps; the gate learns to
+spike from a holding baseline instead of learning to hold from an erasing
+one) and graft edge logit −3.0 → **−1.0** (read share ~15–30%, credit
+unthrottled). The validity gate polices the stronger splice's behavioral
+cost; the stability clause covers the weaker contraction. Run:
+`runs/fable2-m1cb/`.
+
+## Result (M1c-b)
 
 Pending.

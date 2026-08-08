@@ -16,7 +16,9 @@ from .system import BrocaSystem
 GRAFT_EDGE_RAW_LOGIT = -3.0
 
 
-def graft_from_checkpoint(payload: dict, system: BrocaSystem) -> dict:
+def graft_from_checkpoint(
+    payload: dict, system: BrocaSystem, *, edge_raw_logit: float = GRAFT_EDGE_RAW_LOGIT
+) -> dict:
     """Copy an old-anatomy checkpoint into a slow-augmented system, with census.
 
     Returns the census: every checkpoint tensor is accounted as `identical`
@@ -61,12 +63,17 @@ def graft_from_checkpoint(payload: dict, system: BrocaSystem) -> dict:
     if census["identical"] + census["prefix"] != len(old_state):
         raise RuntimeError("graft census does not account for every checkpoint tensor")
 
-    census["rewired_slots"] = rewire_dormant_slots_to_slow(organism)
+    census["rewired_slots"] = rewire_dormant_slots_to_slow(
+        organism, edge_raw_logit=edge_raw_logit
+    )
+    census["graft_edge_raw_logit"] = float(edge_raw_logit)
     census["source_update"] = int(payload["update"])
     return census
 
 
-def rewire_dormant_slots_to_slow(organism) -> int:
+def rewire_dormant_slots_to_slow(
+    organism, *, edge_raw_logit: float = GRAFT_EDGE_RAW_LOGIT
+) -> int:
     """Point one dormant slot per compute/output cell at a slow source.
 
     Weak raw logit −3.0 (the growth convention): present enough to carry
@@ -87,7 +94,7 @@ def rewire_dormant_slots_to_slow(organism) -> int:
             slot = int(dormant[0])
             graph.sources[cell, slot] = slow_cells[position % len(slow_cells)]
             graph.active[cell, slot] = True
-            graph.edge_logit[cell, slot] = GRAFT_EDGE_RAW_LOGIT
+            graph.edge_logit[cell, slot] = edge_raw_logit
             rewired += 1
     if rewired == 0:
         raise RuntimeError("no dormant slots available to graft slow tissue into")

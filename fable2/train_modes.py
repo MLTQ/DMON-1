@@ -187,6 +187,7 @@ def run_training(args: argparse.Namespace) -> dict:
         eval_every=args.eval_every,
         checkpoint_every=args.checkpoint_every,
         n_slow=args.n_slow,
+        slow_initial_alpha=args.slow_initial_alpha,
     )
     backbone = MultiDepthBackbone.from_pretrained(
         args.model,
@@ -224,7 +225,9 @@ def run_training(args: argparse.Namespace) -> dict:
             payload = torch.load(
                 args.init_checkpoint, map_location="cpu", weights_only=False
             )
-            census = graft_from_checkpoint(payload, system)
+            census = graft_from_checkpoint(
+                payload, system, edge_raw_logit=args.graft_edge_logit
+            )
             print(f"grafted slow tissue: {census}", flush=True)
         else:
             source_update = load_organism_weights(Path(args.init_checkpoint), system)
@@ -366,6 +369,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--init-checkpoint", default="")
     parser.add_argument("--graft-slow", action="store_true")
     parser.add_argument("--n-slow", type=int, default=0)
+    parser.add_argument("--graft-edge-logit", type=float, default=-3.0)
+    parser.add_argument("--slow-initial-alpha", type=float, default=0.02)
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")
