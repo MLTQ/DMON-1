@@ -49,6 +49,23 @@ curves/trends read this) and the paired differential at delays {128, 256, 384}
 4. Replication of any post-eviction differential on fresh demonstration
    samples.
 
+## Amendment 1 (early stop; written at ~u48, before any evaluation existed)
+
+A null does not need 300 updates; it needs a working treatment and a flat
+signal across more than one round. At u100 (two eval rounds), stop and record
+the null if BOTH hold:
+
+- delay-0 differential ≥ half M0's value (+0.042) in both rounds — training
+  demonstrably works; the absence of persistence is not the absence of
+  learning;
+- post-eviction differentials (N=256 and N=384) flat in both rounds: strict
+  wins ≤ 17/32 and |mean| < 0.02.
+
+If either fails (treatment broken, or any post-eviction signal), continue to
+the original 300-update protocol. **Budget symmetry**: M1c inherits exactly the
+budget M1b ends at, and the same early-stop rule — matched budgets are what
+make the control comparison attributable.
+
 ## Stop rules
 
 - A fail (predicted): stop at 300; no duration/scale moves; proceed to M1c
