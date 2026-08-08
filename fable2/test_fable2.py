@@ -408,6 +408,23 @@ def test_checkpoint_roundtrip() -> None:
         resumed = run_arm(clone_system, bank, item, "normal")
     assert torch.equal(reference.label_logits, resumed.label_logits)
 
+    # Warm-start loader: organism weights only, source update returned.
+    from .train_modes import load_organism_weights
+
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "warm.pt"
+        save_checkpoint(path, system, optimizer, cfg, update=9)
+        warm = build_broca_system(
+            ToyMultiDepthBackbone(vocab_size=97, width=32, n_layers=4, seed=3),
+            cfg,
+            device="cpu",
+        )
+        assert load_organism_weights(path, warm) == 9
+        for (name_a, a), (name_b, b) in zip(
+            system.organism.state_dict().items(), warm.organism.state_dict().items()
+        ):
+            assert name_a == name_b and torch.equal(a, b), f"warm-start mismatch {name_a}"
+
 
 def test_learnability_smoke() -> None:
     cfg = small_config().scaled(lr=3e-3)

@@ -147,6 +147,18 @@ def evaluate_split(
         system.organism.train(was_training)
 
 
+def load_organism_weights(path: Path, system: BrocaSystem) -> int:
+    """Warm-start: organism weights only — fresh optimizer, fresh update count."""
+
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    if payload.get("schema") != 1:
+        raise ValueError("unsupported fable2 checkpoint schema")
+    if tuple(payload["depths"]) != system.depths:
+        raise ValueError("init checkpoint depths do not match the current system")
+    system.organism.load_state_dict(payload["organism"])
+    return int(payload["update"])
+
+
 def run_training(args: argparse.Namespace) -> dict:
     device = torch.device(args.device)
     if device.type == "cuda":
@@ -196,6 +208,9 @@ def run_training(args: argparse.Namespace) -> dict:
             bank, tokenizer, backbone, max_tokens=max_filler
         )
     system = build_broca_system(backbone, cfg, device=device)
+    if args.init_checkpoint:
+        source_update = load_organism_weights(Path(args.init_checkpoint), system)
+        print(f"warm-started organism from {args.init_checkpoint} (u{source_update})")
     optimizer = torch.optim.AdamW(
         trainable_parameter_groups(system, cfg), weight_decay=0.01
     )
@@ -326,6 +341,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--delay-ladder", default="0")
     parser.add_argument("--eval-delays", default="")
     parser.add_argument("--checkpoint-chunk", type=int, default=32)
+    parser.add_argument("--init-checkpoint", default="")
     parser.add_argument("--eval-every", type=int, default=25)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")
